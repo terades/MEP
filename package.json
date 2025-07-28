@@ -1,0 +1,10 @@
+{
+  "name": "mep-website",
+  "version": "1.0.0",
+  "description": "Static website for MEP project",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
