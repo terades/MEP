@@ -1025,38 +1025,35 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			        const buegelname = document.getElementById('buegelname').value.trim();
 			        const rezeptname = document.getElementById('rezeptname').value.trim();
 			
-			        // BVBS Header
-			        let bvbsCode = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
-			
-			        // PtGABBIE data section
-			        let ptgabbie = "PtGABBIE;";
-			        ptgabbie += `i${anfangsueberstand};`;
-			        ptgabbie += `f${endueberstand};`;
-			        zonesData.forEach(zone => {
-			            ptgabbie += `d${zone.dia};n${zone.num};p${zone.pitch};`;
-			        });
-			
-			        if (buegelname) ptgabbie += `s${buegelname};`;
-			        if (rezeptname) ptgabbie += `r${rezeptname};`;
-			
-			        // Remove trailing semicolon if no optional data was added
-			        if (ptgabbie.endsWith(';')) {
-			            ptgabbie = ptgabbie.slice(0, -1);
-			        }
-			
-			        ptgabbie += "@";
-			
-			        // Combine parts for checksum calculation
-			        const preChecksumCode = bvbsCode + ptgabbie + "C";
-			        const checksum = calculateChecksum(preChecksumCode);
-			        
-			        // Final code with checksum
-			        const finalBvbsCode = preChecksumCode + checksum + "@";
-			        
-			        document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
-			
-			        updateBarcodeDebugInfo(`Generated BVBS code: ${finalBvbsCode}`);
-			        updateBarcodeDebugInfo(`Code length: ${finalBvbsCode.length}`);
+                                const buildCode = (zonesArr, startOv, endOv) => {
+                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
+                                    let pt = "PtGABBIE;";
+                                    pt += `i${startOv};`;
+                                    pt += `f${endOv};`;
+                                    zonesArr.forEach(z => { pt += `d${z.dia};n${z.num};p${z.pitch};`; });
+                                    if (buegelname) pt += `s${buegelname};`;
+                                    if (rezeptname) pt += `r${rezeptname};`;
+                                    if (pt.endsWith(';')) pt = pt.slice(0,-1);
+                                    pt += "@";
+                                    const pre = head + pt + "C";
+                                    const cs = calculateChecksum(pre);
+                                    return pre + cs + "@";
+                                };
+
+                                let finalBvbsCode = buildCode(zonesData, anfangsueberstand, endueberstand);
+                                let finalBvbsCode2 = null;
+                                if (zonesData.length > 16) {
+                                    const firstZones = zonesData.slice(0,16);
+                                    const secondZones = zonesData.slice(16);
+                                    finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0);
+                                    finalBvbsCode2 = buildCode(secondZones, zonesData[15].pitch, endueberstand);
+                                    document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n" + finalBvbsCode2 + "\r\n";
+                                } else {
+                                    document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
+                                }
+
+                                updateBarcodeDebugInfo(`Generated BVBS code: ${finalBvbsCode}`);
+                                updateBarcodeDebugInfo(`Code length: ${finalBvbsCode.length}${finalBvbsCode2 ? '/' + finalBvbsCode2.length : ''}`);
 			
 			        // Check for library before trying to use it
 			        if (typeof bwipjs === 'undefined') {
@@ -1167,23 +1164,38 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			
 			// Update the printable label preview
 			// Update the printable label preview
-			function updateLabelPreview(barcodeSvg) {
-			document.getElementById('labelProjekt').textContent =
-			document.getElementById('projekt').value || '-';
-                        document.getElementById('labelKommNr').textContent =
-                        document.getElementById('KommNr').value || '-';
-                        document.getElementById('labelBuegelname').textContent =
-                        document.getElementById('buegelname').value || '-';
-			document.getElementById('labelAuftrag').textContent =
-			document.getElementById('auftrag').value || '-';
-			document.getElementById('labelGesamtlange').textContent =
-			(document.getElementById('gesamtlange').value || '-') + ' mm';
-			document.getElementById('labelPosnr').textContent =
-			document.getElementById('posnr').value || '-';
-			
-			const labelImage = document.getElementById('labelBarcodeImage');
-			const labelText  = document.getElementById('labelBarcodeText');
-			const bvbsCode   = document.getElementById('outputBvbsCode').value.trim();
+function updateLabelPreview(barcodeSvg) {
+                        const projekt = document.getElementById('projekt').value || '-';
+                        const KommNr  = document.getElementById('KommNr').value || '-';
+                        const buegelname = document.getElementById('buegelname').value || '-';
+                        const auftrag = document.getElementById('auftrag').value || '-';
+                        const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
+                        const posnr = document.getElementById('posnr').value || '-';
+                        const suffix = zonesData.length > 16 ? '/2' : '';
+
+                        const fillLabel = (idSuffix) => {
+                            document.getElementById('labelProjekt' + idSuffix).textContent = projekt;
+                            document.getElementById('labelKommNr' + idSuffix).textContent = KommNr;
+                            document.getElementById('labelBuegelname' + idSuffix).textContent = buegelname;
+                            document.getElementById('labelAuftrag' + idSuffix).textContent = auftrag;
+                            document.getElementById('labelGesamtlange' + idSuffix).textContent = gesamtlange;
+                            document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suffix;
+                        };
+
+                        fillLabel('');
+                        const second = document.getElementById('printableLabel2');
+                        if (second) {
+                            if (zonesData.length > 16) {
+                                second.style.display = 'block';
+                                fillLabel('2');
+                            } else {
+                                second.style.display = 'none';
+                            }
+                        }
+
+                        const labelImage = document.getElementById('labelBarcodeImage');
+                        const labelText  = document.getElementById('labelBarcodeText');
+                        const bvbsCode   = document.getElementById('outputBvbsCode').value.trim();
 			
 			if (barcodeSvg) {
 			labelImage.src         = `data:image/svg+xml;base64,${btoa(barcodeSvg)}`;
@@ -1210,32 +1222,17 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			
 			    // Event listeners
 			    document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
-			    document.getElementById('generateButton').addEventListener('click', () => {
-			// 1) BVBS-Code generieren und PDF417‑SVG im Card erzeugen
-			generateBvbsCodeAndBarcode();
-			
-			// 2) Label‑Felder updaten
-			const projekt       = document.getElementById('projekt').value;
-			const KommNr         = document.getElementById('KommNr').value;
-			const auftrag       = document.getElementById('auftrag').value;
-			const posnr         = document.getElementById('posnr').value;
-                        const anzahl        = document.getElementById('anzahl').value;
-                        const gesamtlange   = document.getElementById('gesamtlange').value;
-                        const buegelname    = document.getElementById('buegelname').value;
-			
-                        document.getElementById('labelProjekt').textContent      = projekt;
-                        document.getElementById('labelKommNr').textContent       = KommNr;
-                        document.getElementById('labelBuegelname').textContent   = buegelname || '-';
-                        document.getElementById('labelAuftrag').textContent      = auftrag;
-                        document.getElementById('labelPosnr').textContent        = posnr;
-                        document.getElementById('labelGesamtlange').textContent  = gesamtlange + ' mm';
-			
-			// 3) Canvas‑Barcode für das Druck‑Label erzeugen
-			const barcodeText = document.getElementById('outputBvbsCode').value.trim() || 'FallbackCode';
-			generateBarcodeToLabel(barcodeText);
-			const code = document.getElementById('outputBvbsCode').value.trim() || 'FallbackCode';
-			generateBarcodeToLabel(code);
-			});
+                            document.getElementById('generateButton').addEventListener('click', () => {
+                        generateBvbsCodeAndBarcode();
+                        updateLabelPreview();
+                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                        if (codes.length > 0) {
+                            generateBarcodeToLabel(codes[0], '');
+                            if (codes.length > 1) {
+                                generateBarcodeToLabel(codes[1], '2');
+                            }
+                        }
+                        });
 			
 			
 			
@@ -1319,9 +1316,14 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			        }
 			    });
 			// ganz unten im DOMContentLoaded-Callback
-			updateLabelPreview();  
-			const initialCode = document.getElementById('outputBvbsCode').value.trim() || 'FallbackCode';
-			generateBarcodeToLabel(initialCode);
+                        updateLabelPreview();
+                        const initialCodes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                        if (initialCodes.length > 0) {
+                            generateBarcodeToLabel(initialCodes[0], '');
+                            if (initialCodes.length > 1) {
+                                generateBarcodeToLabel(initialCodes[1], '2');
+                            }
+                        }
 			
 			    // Set initial zones if none are loaded
 			    if (zonesData.length === 0) {
