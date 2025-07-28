@@ -956,23 +956,71 @@
 			}
 			@media print {
 			body * {
-			visibility: hidden;
+				visibility: hidden; /* Alles verstecken, außer den Druck-Labels */
 			}
-			#printableLabel, #printableLabel2, #printableLabel *, #printableLabel2 * {
-			visibility: visible;
+
+			/* Nur die Druck-Labels und deren Inhalte sichtbar machen */
+			#printableLabel,
+			#printableLabel2,
+			#printableLabel *,
+			#printableLabel2 * {
+				visibility: visible;
 			}
-			#printableLabel, #printableLabel2 {
-			position: absolute;
-			left: 0;
-			top: 0;
-			margin: 0;
-			padding: 1mm;
-			border: none;
-			width: 100%;
-			height: 100%;
-                        page-break-after: always;
+
+			#printableLabel,
+			#printableLabel2 {
+				position: static; /* Von absolute zu static ändern, um normalen Dokumentfluss zu gewährleisten */
+				margin: 0; /* Keine externen Ränder */
+				padding: 4mm; /* Padding wie im Bildschirm-Layout, um den Inhalt korrekt zu positionieren */
+				border: none; /* Keine sichtbaren Rahmen beim Druck */
+				width: 100mm; /* Feste Breite beibehalten */
+				height: auto; /* Höhe automatisch anpassen */
+				box-sizing: border-box; /* Padding und Border in die Breite/Höhe einbeziehen */
+				float: none; /* Float entfernen, falls vorhanden, um den Block-Kontext zu bewahren */
+				overflow: visible; /* Sicherstellen, dass nichts abgeschnitten wird */
 			}
+
+			#printableLabel {
+				page-break-after: always; /* Nach dem ersten Label immer einen Seitenumbruch erzwingen */
 			}
+
+			#printableLabel2 {
+				page-break-before: always; /* Das zweite Label immer auf einer neuen Seite beginnen lassen */
+				margin-left: 0 !important; /* Sicherstellen, dass kein linker Margin angewendet wird */
+				/* margin-top kann hier in der Druckansicht auch auf 0 gesetzt werden,
+				da page-break-before den Abstand zur vorherigen Seite regelt. */
+				margin-top: 0 !important;
+			}
+
+			/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
+			@page {
+				margin: 5mm; /* Setzt alle Seitenränder auf 5mm, um mehr Platz für das Label zu lassen */
+				size: auto; /* Die Seite auf die Größe des Inhalts anpassen, oder A4 wählen */
+			}
+
+			/* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
+			#labelBarcodeContainer canvas,
+			#labelBarcodeImage {
+				display: block;
+				max-width: 100%;
+				height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
+				margin: 0 auto;
+			}
+
+			/* Das Elternelement des Labels im Druck auf Breite setzen,
+			um das "Abschneiden" zu verhindern, falls es eine Layout-Einschränkung gab. */
+			#labelPreviewContainer {
+				display: block; /* Flexbox für Druckansicht entfernen, um Seitenumbrüche zu respektieren */
+				padding: 0; /* Kein Padding im Druckcontainer */
+				background-color: transparent; /* Hintergrund entfernen */
+				border-radius: 0; /* Keine Eckenradien */
+				border: none; /* Keine Rahmen */
+			}
+
+			.label-grid {
+				display: grid; /* Grid-Layout beibehalten */
+			}
+		}
 
 			.language-select {
 			position: absolute;
