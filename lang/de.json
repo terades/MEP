@@ -125,5 +125,7 @@
   "Kein Label‑Container gefunden!": "Kein Label‑Container gefunden!",
   "Barcode Label Fehler:": "Barcode Label Fehler:",
   "Templates aus localStorage geladen": "Templates aus localStorage geladen",
-  "Abstand mm": "Abstand mm"
+  "Abstand mm": "Abstand mm",
+  "ZPL anzeigen": "ZPL-Code anzeigen",
+  "ZPL Code": "ZPL-Code"
 }

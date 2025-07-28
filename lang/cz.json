@@ -125,5 +125,7 @@
   "Kein Label‑Container gefunden!": "Nenalezen žádný kontejner štítku!",
   "Barcode Label Fehler:": "Chyba štítku čárového kódu:",
   "Templates aus localStorage geladen": "Šablony načteny z lokálního úložiště",
-  "Abstand mm": "Rozteč mm"
+  "Abstand mm": "Rozteč mm",
+  "ZPL anzeigen": "Zobrazit ZPL",
+  "ZPL Code": "ZPL kód"
 }
