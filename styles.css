@@ -922,17 +922,16 @@
 			text-overflow: clip;
 			}
 			}
-                        #printableLabel, #printableLabel2 {
-                        font-family: 'Arial', sans-serif;
-                        color: #000;
-                        background: #fff;
-                        padding: 4mm;
-                        box-sizing: border-box;
-                        overflow: hidden;
-                        }
-                        #printableLabel2 {
-                        display: none;
-                        }
+
+			#printableLabel, #printableLabel2 {
+			font-family: 'Arial', sans-serif;
+			color: #000;
+			background: #fff;
+			padding: 4mm;
+			box-sizing: border-box;
+			overflow: hidden;
+			}
+
 			#printableLabel h3, #printableLabel2 h3 {
 			text-align: center;
 			margin: 0 0 4mm 0;

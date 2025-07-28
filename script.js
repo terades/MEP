@@ -1178,24 +1178,29 @@ function updateLabelPreview(barcodeSvg) {
                         const auftrag = document.getElementById('auftrag').value || '-';
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
-                        const suffix1 = zonesData.length > 16 ? '/1' : '';
-                        const suffix2 = zonesData.length > 16 ? '/2' : '';
 
-                        const fillLabel = (idSuffix, suf) => {
+                        const suffix = zonesData.length > 16 ? '/2' : '';
+
+                        const fillLabel = (idSuffix) => {
+
                             document.getElementById('labelProjekt' + idSuffix).textContent = projekt;
                             document.getElementById('labelKommNr' + idSuffix).textContent = KommNr;
                             document.getElementById('labelBuegelname' + idSuffix).textContent = buegelname;
                             document.getElementById('labelAuftrag' + idSuffix).textContent = auftrag;
                             document.getElementById('labelGesamtlange' + idSuffix).textContent = gesamtlange;
-                            document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suf;
+
+                            document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suffix;
                         };
 
-                        fillLabel('', suffix1);
+                        fillLabel('');
+
                         const second = document.getElementById('printableLabel2');
                         if (second) {
                             if (zonesData.length > 16) {
                                 second.style.display = 'block';
-                                fillLabel('2', suffix2);
+
+                                fillLabel('2');
+
                             } else {
                                 second.style.display = 'none';
                             }
