@@ -932,19 +932,19 @@
 			overflow: hidden;
 			}
 
-			#printableLabel h3, #printableLabel2 h3 {
-			text-align: center;
-			margin: 0 0 4mm 0;
-			font-size: 14pt;
-			font-weight: bold;
-			}
-			.label-grid {
-			display: grid;
-			grid-template-columns: 1fr 2fr;
-			gap: 1mm 3mm;
-			font-size: 10pt;
-			margin-bottom: 4mm;
-			}
+                        #printableLabel h3, #printableLabel2 h3 {
+                        text-align: center;
+                        margin: 0 0 4mm 0;
+                        font-size: 16pt;
+                        font-weight: bold;
+                        }
+                        .label-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 2fr;
+                        gap: 1mm 3mm;
+                        font-size: 12pt;
+                        margin-bottom: 4mm;
+                        }
 			.label-grid > div:nth-child(odd) {
 			font-weight: bold;
 			text-align: right;
@@ -980,23 +980,21 @@
 				overflow: visible; /* Sicherstellen, dass nichts abgeschnitten wird */
 			}
 
-			#printableLabel {
-				page-break-after: always; /* Nach dem ersten Label immer einen Seitenumbruch erzwingen */
-			}
+                        #printableLabel,
+                        #printableLabel2 {
+                                page-break-after: auto;
+                                page-break-before: auto;
+                        }
 
-			#printableLabel2 {
-				page-break-before: always; /* Das zweite Label immer auf einer neuen Seite beginnen lassen */
-				margin-left: 0 !important; /* Sicherstellen, dass kein linker Margin angewendet wird */
-				/* margin-top kann hier in der Druckansicht auch auf 0 gesetzt werden,
-				da page-break-before den Abstand zur vorherigen Seite regelt. */
-				margin-top: 0 !important;
-			}
+                        .two-page #printableLabel {
+                                page-break-after: always;
+                        }
 
 			/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
-			@page {
-				margin: 5mm; /* Setzt alle Seitenränder auf 5mm, um mehr Platz für das Label zu lassen */
-				size: auto; /* Die Seite auf die Größe des Inhalts anpassen, oder A4 wählen */
-			}
+                        @page {
+                                size: 100mm 60mm;
+                                margin: 0;
+                        }
 
 			/* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
 			#labelBarcodeContainer canvas,
