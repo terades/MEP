@@ -284,10 +284,27 @@ let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
 			}
 			
 			// Close the template management modal
-			function closeTemplateManagerModal() {
-			    const modal = document.getElementById('templateManagerModal');
-			    modal.classList.remove('visible');
-			}
+                        function closeTemplateManagerModal() {
+                            const modal = document.getElementById('templateManagerModal');
+                            modal.classList.remove('visible');
+                        }
+
+                        function openZplModal() {
+                            const modal = document.getElementById('zplModal');
+                            const content = document.getElementById('zplCodeContent');
+                            if (modal && content) {
+                                const zpl1 = generateZplForLabel('');
+                                const secondLabelVisible = zonesData.length > 16;
+                                const zpl2 = secondLabelVisible ? '\n\n' + generateZplForLabel('2') : '';
+                                content.textContent = zpl1 + zpl2;
+                                modal.classList.add('visible');
+                            }
+                        }
+
+                        function closeZplModal() {
+                            const modal = document.getElementById('zplModal');
+                            if (modal) modal.classList.remove('visible');
+                        }
 			
 			// Generate a compact summary of zones for the template manager
 			function generateZoneSummary(zones) {
@@ -1185,9 +1202,10 @@ function updateLabelPreview(barcodeSvg) {
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
-                        const suffix = zonesData.length > 16 ? '/2' : '';
+                        const suffixFirst = zonesData.length > 16 ? '/1' : '';
+                        const suffixSecond = zonesData.length > 16 ? '/2' : '';
 
-                        const fillLabel = (idSuffix) => {
+                        const fillLabel = (idSuffix, suffix) => {
 
                             document.getElementById('labelProjekt' + idSuffix).textContent = projekt;
                             document.getElementById('labelKommNr' + idSuffix).textContent = KommNr;
@@ -1198,7 +1216,7 @@ function updateLabelPreview(barcodeSvg) {
                             document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suffix;
                         };
 
-                        fillLabel('');
+                        fillLabel('', suffixFirst);
 
                         const second = document.getElementById('printableLabel2');
                         if (second) {
@@ -1206,7 +1224,7 @@ function updateLabelPreview(barcodeSvg) {
                                 second.style.display = 'block';
                                 document.body.classList.add('two-page');
 
-                                fillLabel('2');
+                                fillLabel('2', suffixSecond);
 
                             } else {
                                 second.style.display = 'none';
@@ -1291,14 +1309,15 @@ function updateLabelPreview(barcodeSvg) {
 			        document.body.removeChild(a);
 			        URL.revokeObjectURL(url);
 			    });
-			    document.getElementById('printLabelButton')?.addEventListener('click', () => {
-			        if (document.getElementById('outputBvbsCode').value.trim() === '') {
-			            showFeedback('barcodeError', 'Bitte generieren Sie zuerst den Code, um das Label zu drucken.', 'warning', 5000);
-			            return;
-			        }
-			        window.print();
-			    });
-			    document.getElementById('openTemplateManagerButton')?.addEventListener('click', () => openTemplateManagerModal());
+                            document.getElementById('printLabelButton')?.addEventListener('click', () => {
+                                if (document.getElementById('outputBvbsCode').value.trim() === '') {
+                                    showFeedback('barcodeError', 'Bitte generieren Sie zuerst den Code, um das Label zu drucken.', 'warning', 5000);
+                                    return;
+                                }
+                                window.print();
+                            });
+                            document.getElementById('showZplButton')?.addEventListener('click', () => openZplModal());
+                            document.getElementById('openTemplateManagerButton')?.addEventListener('click', () => openTemplateManagerModal());
 			    document.getElementById('saveCurrentTemplateButton')?.addEventListener('click', () => saveCurrentTemplate());
 			    document.getElementById('downloadTemplatesButton')?.addEventListener('click', () => downloadTemplatesAsJson());
 			    document.getElementById('deleteAllTemplatesButton')?.addEventListener('click', () => deleteAllTemplatesFromModal());
@@ -1421,13 +1440,38 @@ function updateLabelPreview(barcodeSvg) {
                         });
 			container.appendChild(canvas);
 			} catch (err) {
-			console.error('Barcode Label Fehler:', err);
-			// als Fallback einfach den rohen Text anzeigen
-			if (txt) {
-			txt.textContent = text;
-			txt.style.display = 'block';
-			}
-			}
-			}
+                        console.error('Barcode Label Fehler:', err);
+                        // als Fallback einfach den rohen Text anzeigen
+                        if (txt) {
+                        txt.textContent = text;
+                        txt.style.display = 'block';
+                        }
+                        }
+                        }
+
+                        function generateZplForLabel(idSuffix = '') {
+                            const getText = (id) => document.getElementById(id + idSuffix)?.textContent || '';
+                            const pos = getText('labelPosnr');
+                            const komm = getText('labelKommNr');
+                            const name = getText('labelBuegelname');
+                            const proj = getText('labelProjekt');
+                            const auftrag = getText('labelAuftrag');
+                            const laenge = getText('labelGesamtlange');
+                            const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                            const code = idSuffix === '2' ? (codes[1] || '') : (codes[0] || '');
+
+                            let zpl = '^XA\n';
+                            zpl += `^FO20,20^A0N,40,40^FDPos: ${pos}^FS\n`;
+                            zpl += `^FO20,70^A0N,30,30^FD${komm}^FS\n`;
+                            zpl += `^FO20,110^A0N,30,30^FD${name}^FS\n`;
+                            zpl += `^FO20,150^A0N,30,30^FDProjekt: ${proj}^FS\n`;
+                            zpl += `^FO20,190^A0N,30,30^FDAuftrag: ${auftrag}^FS\n`;
+                            zpl += `^FO20,230^A0N,30,30^FDL\xC3\xA4nge: ${laenge}^FS\n`;
+                            if (code) {
+                                zpl += `^FO20,270^B7N,4,3^FD${code}^FS\n`;
+                            }
+                            zpl += '^XZ';
+                            return zpl;
+                        }
 			
 			

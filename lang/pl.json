@@ -125,5 +125,7 @@
   "Kein Label‑Container gefunden!": "Nie znaleziono kontenera etykiety!",
   "Barcode Label Fehler:": "Błąd etykiety kodu kreskowego:",
   "Templates aus localStorage geladen": "Szablony załadowane z localStorage",
-  "Abstand mm": "Rozstaw  mm"
+  "Abstand mm": "Rozstaw  mm",
+  "ZPL anzeigen": "Pokaż ZPL",
+  "ZPL Code": "Kod ZPL"
 }
