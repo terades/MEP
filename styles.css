@@ -993,11 +993,34 @@
                                 page-break-after: always;
                         }
 
-			/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
+						/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
                         @page {
-                                size: 100mm 60mm;
-                                margin: 0;
-                        }
+							size: 124mm 62mm;  /* Zebra-Label-Größe */
+							margin: 0;
+						}
+
+						body {
+							margin: 0;
+							padding: 0;
+						}
+
+						.sticker {
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							width: 124mm;
+							height: 62mm;
+							box-sizing: border-box;
+							page-break-after: always;
+						}
+
+						.sticker-content {
+							width: 116mm;
+							height: 54mm;
+						}
+
+
+
 
 			/* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
                         #labelBarcodeContainer canvas,
