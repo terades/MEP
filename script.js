@@ -13,7 +13,8 @@
 			const SVG_DIM_FONT_SIZE = "14px";
 			const SVG_TOTAL_DIM_FONT_SIZE = "15px";
 			const SVG_SINGLE_STIRRUP_FONT_SIZE = "13px";
-			const NUM_ZONE_COLORS_AVAILABLE = 20;
+const NUM_ZONE_COLORS_AVAILABLE = 20;
+const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			
 			// Highlight classes
 			const HIGHLIGHT_COLOR_CLASS_STROKE = 'highlight-stroke';
@@ -561,14 +562,23 @@
 			}
 			
 			// Add a new zone to the list
-			function addZone(dia = 8, num = 3, pitch = 150) {
-			    zonesData.push({
-			        id: nextZoneId++,
-			        dia: dia,
-			        num: num,
-			        pitch: pitch
-			    });
-			    renderAllZones();
+                        function addZone(dia = 8, num = 3, pitch = 150) {
+                            if (zonesData.length >= MAX_ZONES) {
+                                showFeedback('templateFeedback', 'Maximale Zonenanzahl erreicht.', 'warning', 3000);
+                                return;
+                            }
+                            zonesData.push({
+                                id: nextZoneId++,
+                                dia: dia,
+                                num: num,
+                                pitch: pitch
+                            });
+                            renderAllZones();
+
+                            if (zonesData.length >= MAX_ZONES) {
+                                const btn = document.getElementById('addZoneButton');
+                                if (btn) btn.disabled = true;
+                            }
 			
 			    // Scroll to the new zone and briefly highlight it
 			    setTimeout(() => {
@@ -601,17 +611,21 @@
 			}
 			
 			// Remove a specific zone by ID
-			function removeSpecificZoneById(zoneId) {
-			    zonesData = zonesData.filter(zone => zone.id != zoneId);
-			    // Adjust highlighted zone if it was deleted
-			    if (highlightedZoneDisplayIndex && (zonesData.length < highlightedZoneDisplayIndex || !zonesData.find((z, i) => i + 1 === highlightedZoneDisplayIndex))) {
-			        setHighlightedZone(null, false);
+                        function removeSpecificZoneById(zoneId) {
+                            zonesData = zonesData.filter(zone => zone.id != zoneId);
+                            // Adjust highlighted zone if it was deleted
+                            if (highlightedZoneDisplayIndex && (zonesData.length < highlightedZoneDisplayIndex || !zonesData.find((z, i) => i + 1 === highlightedZoneDisplayIndex))) {
+                                setHighlightedZone(null, false);
 			    } else if (zonesData.length === 0) {
 			        setHighlightedZone(null, false);
-			    }
-			    renderAllZones();
-			    showFeedback('templateFeedback', 'Zone gelöscht.', 'success', 2000);
-			}
+                            }
+                            renderAllZones();
+                            if (zonesData.length < MAX_ZONES) {
+                                const btn = document.getElementById('addZoneButton');
+                                if (btn) btn.disabled = false;
+                            }
+                            showFeedback('templateFeedback', 'Zone gelöscht.', 'success', 2000);
+                        }
 			
 			// Debounce function to prevent excessive updates while typing
 			function triggerPreviewUpdateDebounced() {
@@ -1156,8 +1170,10 @@
 			function updateLabelPreview(barcodeSvg) {
 			document.getElementById('labelProjekt').textContent =
 			document.getElementById('projekt').value || '-';
-			document.getElementById('labelKommNr').textContent =
-			document.getElementById('KommNr').value || '-';
+                        document.getElementById('labelKommNr').textContent =
+                        document.getElementById('KommNr').value || '-';
+                        document.getElementById('labelBuegelname').textContent =
+                        document.getElementById('buegelname').value || '-';
 			document.getElementById('labelAuftrag').textContent =
 			document.getElementById('auftrag').value || '-';
 			document.getElementById('labelGesamtlange').textContent =
@@ -1203,14 +1219,16 @@
 			const KommNr         = document.getElementById('KommNr').value;
 			const auftrag       = document.getElementById('auftrag').value;
 			const posnr         = document.getElementById('posnr').value;
-			const anzahl        = document.getElementById('anzahl').value;
-			const gesamtlange   = document.getElementById('gesamtlange').value;
+                        const anzahl        = document.getElementById('anzahl').value;
+                        const gesamtlange   = document.getElementById('gesamtlange').value;
+                        const buegelname    = document.getElementById('buegelname').value;
 			
-			document.getElementById('labelProjekt').textContent      = projekt;
-			document.getElementById('labelKommNr').textContent        = KommNr;
-			document.getElementById('labelAuftrag').textContent      = auftrag;
-			document.getElementById('labelPosnr').textContent        = posnr;
-			document.getElementById('labelGesamtlange').textContent  = gesamtlange + ' mm';
+                        document.getElementById('labelProjekt').textContent      = projekt;
+                        document.getElementById('labelKommNr').textContent       = KommNr;
+                        document.getElementById('labelBuegelname').textContent   = buegelname || '-';
+                        document.getElementById('labelAuftrag').textContent      = auftrag;
+                        document.getElementById('labelPosnr').textContent        = posnr;
+                        document.getElementById('labelGesamtlange').textContent  = gesamtlange + ' mm';
 			
 			// 3) Canvas‑Barcode für das Druck‑Label erzeugen
 			const barcodeText = document.getElementById('outputBvbsCode').value.trim() || 'FallbackCode';
