@@ -922,6 +922,7 @@
 			text-overflow: clip;
 			}
 			}
+
 			#printableLabel, #printableLabel2 {
 			font-family: 'Arial', sans-serif;
 			color: #000;
@@ -930,6 +931,7 @@
 			box-sizing: border-box;
 			overflow: hidden;
 			}
+
 			#printableLabel h3, #printableLabel2 h3 {
 			text-align: center;
 			margin: 0 0 4mm 0;

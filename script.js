@@ -1060,7 +1060,7 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			            console.error("bwip-js library not loaded!");
 			            updateBarcodeDebugInfo("bwip-js Bibliothek nicht geladen!");
 			            showFeedback('barcodeError', 'Fehler: Barcode-Bibliothek nicht geladen. Bitte Seite neu laden.', 'error', 5000);
-			            createFallbackBarcode(finalBvbsCode);
+                                createFallbackBarcode(finalBvbsCode, finalBvbsCode2);
 			            return;
 			        }
 			
@@ -1133,24 +1133,31 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			
 			
 			// Fallback for barcode generation (e.g. if running from file:// protocol)
-			function createFallbackBarcode(bvbsCode) {
-			    const barcodeContainer = document.getElementById('barcodeSvgContainer');
-			    const errorEl = document.getElementById('barcodeError');
-			    barcodeContainer.innerHTML = '';
-			    barcodeContainer.classList.add('hidden');
-			    errorEl.textContent = '';
-			    try {
-			        updateBarcodeDebugInfo("Erstelle Fallback-Barcode (Text)");
-			        const labelImage = document.getElementById('labelBarcodeImage');
-			        const labelText = document.getElementById('labelBarcodeText');
-			        labelImage.src = '';
-			        labelImage.style.display = 'none';
-			        if (labelText) {
-			            labelText.textContent = bvbsCode;
-			            labelText.style.display = 'block';
-			            labelText.style.fontStyle = 'normal';
-			            labelText.style.color = '#333';
-			        }
+                        function createFallbackBarcode(code1, code2) {
+                        const barcodeContainer = document.getElementById('barcodeSvgContainer');
+                        const errorEl = document.getElementById('barcodeError');
+                        barcodeContainer.innerHTML = '';
+                        barcodeContainer.classList.add('hidden');
+                        errorEl.textContent = '';
+                        try {
+                            updateBarcodeDebugInfo("Erstelle Fallback-Barcode (Text)");
+                                const fill = (suffix, code) => {
+                                    const labelImage = document.getElementById('labelBarcodeImage' + suffix);
+                                    const labelText = document.getElementById('labelBarcodeText' + suffix);
+                                    if (labelImage) {
+                                        labelImage.src = '';
+                                        labelImage.style.display = 'none';
+                                    }
+                                    if (labelText) {
+                                        labelText.textContent = code;
+                                        labelText.style.display = 'block';
+                                        labelText.style.fontStyle = 'normal';
+                                        labelText.style.color = '#333';
+                                    }
+                                };
+
+                                fill('', code1);
+                                if (code2) fill('2', code2);
 			        showFeedback('barcodeError', 'Barcode-Generierung fehlgeschlagen. Es wird ein Text-Fallback angezeigt.', 'warning', 5000);
 			        updateBarcodeDebugInfo("Fallback-Barcode (Text) erfolgreich erstellt");
 			        updateLabelPreview(null);
@@ -1171,23 +1178,29 @@ function updateLabelPreview(barcodeSvg) {
                         const auftrag = document.getElementById('auftrag').value || '-';
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
+
                         const suffix = zonesData.length > 16 ? '/2' : '';
 
                         const fillLabel = (idSuffix) => {
+
                             document.getElementById('labelProjekt' + idSuffix).textContent = projekt;
                             document.getElementById('labelKommNr' + idSuffix).textContent = KommNr;
                             document.getElementById('labelBuegelname' + idSuffix).textContent = buegelname;
                             document.getElementById('labelAuftrag' + idSuffix).textContent = auftrag;
                             document.getElementById('labelGesamtlange' + idSuffix).textContent = gesamtlange;
+
                             document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suffix;
                         };
 
                         fillLabel('');
+
                         const second = document.getElementById('printableLabel2');
                         if (second) {
                             if (zonesData.length > 16) {
                                 second.style.display = 'block';
+
                                 fillLabel('2');
+
                             } else {
                                 second.style.display = 'none';
                             }
@@ -1366,20 +1379,18 @@ function updateLabelPreview(barcodeSvg) {
 			});
 			
 			
-			function generateBarcodeToLabel(text) {
-			const container = document.getElementById('labelBarcodeContainer');
-			if (!container) {
-			console.error('Kein Label‑Container gefunden!'); 
-			return;
-			}
-			// clear out any previous canvas
-			container.innerHTML = '';
-			
-			// also hide the <img> / <div> fallback
-			const img = document.getElementById('labelBarcodeImage');
-			const txt = document.getElementById('labelBarcodeText');
-			if (img) img.style.display = 'none';
-			if (txt) txt.style.display = 'none';
+                        function generateBarcodeToLabel(text, idSuffix = '') {
+                        const container = document.getElementById('labelBarcodeContainer' + idSuffix);
+                        if (!container) {
+                        console.error('Kein Label‑Container gefunden!');
+                        return;
+                        }
+                        container.innerHTML = '';
+
+                        const img = document.getElementById('labelBarcodeImage' + idSuffix);
+                        const txt = document.getElementById('labelBarcodeText' + idSuffix);
+                        if (img) img.style.display = 'none';
+                        if (txt) txt.style.display = 'none';
 			
 			// create a new canvas
 			const canvas = document.createElement('canvas');
