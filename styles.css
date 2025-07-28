@@ -615,21 +615,23 @@
 			gap: .5rem;
 			}
 			/* Damit das Canvas im Label immer maximal 100% breit ist */
-			#labelBarcodeContainer canvas {
-			display: block;
-			max-width: 100%;
-			max-height: 120px;
-			height: auto;
-			margin: 0 auto;
-			}
-			/* Und falls Du statt Canvas das <img> nutzt, auch hier */
-			#labelBarcodeImage {
-			display: block;
-			max-width: 100%;
-			max-height: 120px;
-			height: auto;
-			margin: 0 auto;
-			}
+                        #labelBarcodeContainer canvas,
+                        #labelBarcodeContainer2 canvas {
+                        display: block;
+                        max-width: 100%;
+                        max-height: 120px;
+                        height: auto;
+                        margin: 0 auto;
+                        }
+                        /* Und falls Du statt Canvas das <img> nutzt, auch hier */
+                        #labelBarcodeImage,
+                        #labelBarcodeImage2 {
+                        display: block;
+                        max-width: 100%;
+                        max-height: 120px;
+                        height: auto;
+                        margin: 0 auto;
+                        }
 			.download-canvas-btn-container {
 			margin-top: .5rem;
 			text-align: right;
@@ -949,11 +951,12 @@
 			font-weight: bold;
 			text-align: right;
 			}
-			#labelBarcodeImage {
-			max-width: 100%;
-			height: 30px;
-			display: block;
-			}
+                        #labelBarcodeImage,
+                        #labelBarcodeImage2 {
+                        max-width: 100%;
+                        height: 30px;
+                        display: block;
+                        }
 			@media print {
 			body * {
 				visibility: hidden; /* Alles verstecken, außer den Druck-Labels */
@@ -997,13 +1000,15 @@
                         }
 
 			/* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
-			#labelBarcodeContainer canvas,
-			#labelBarcodeImage {
-				display: block;
-				max-width: 100%;
-				height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
-				margin: 0 auto;
-			}
+                        #labelBarcodeContainer canvas,
+                        #labelBarcodeContainer2 canvas,
+                        #labelBarcodeImage,
+                        #labelBarcodeImage2 {
+                                display: block;
+                                max-width: 100%;
+                                height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
+                                margin: 0 auto;
+                        }
 
 			/* Das Elternelement des Labels im Druck auf Breite setzen,
 			um das "Abschneiden" zu verhindern, falls es eine Layout-Einschränkung gab. */

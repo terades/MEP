@@ -14,7 +14,7 @@
 			const SVG_TOTAL_DIM_FONT_SIZE = "15px";
 			const SVG_SINGLE_STIRRUP_FONT_SIZE = "13px";
 const NUM_ZONE_COLORS_AVAILABLE = 20;
-const MAX_ZONES = 20; // maximale Anzahl an Zonen
+let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
 			
 			// Highlight classes
 			const HIGHLIGHT_COLOR_CLASS_STROKE = 'highlight-stroke';
@@ -42,7 +42,7 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			}
 			
 			// Helper function for input-specific feedback
-			function showInputFeedback(inputElement, message, type = 'info', duration = 3000) {
+                        function showInputFeedback(inputElement, message, type = 'info', duration = 3000) {
 			    let feedbackElement = inputElement.nextElementSibling;
 			    if (!feedbackElement || !feedbackElement.classList.contains('input-feedback')) {
 			        feedbackElement = document.createElement('span');
@@ -563,7 +563,7 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			
 			// Add a new zone to the list
                         function addZone(dia = 8, num = 3, pitch = 150) {
-                            if (zonesData.length >= MAX_ZONES) {
+                            if (zonesData.length >= maxZones) {
                                 showFeedback('templateFeedback', 'Maximale Zonenanzahl erreicht.', 'warning', 3000);
                                 return;
                             }
@@ -574,11 +574,7 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
                                 pitch: pitch
                             });
                             renderAllZones();
-
-                            if (zonesData.length >= MAX_ZONES) {
-                                const btn = document.getElementById('addZoneButton');
-                                if (btn) btn.disabled = true;
-                            }
+                            updateAddZoneButtonState();
 			
 			    // Scroll to the new zone and briefly highlight it
 			    setTimeout(() => {
@@ -620,11 +616,21 @@ const MAX_ZONES = 20; // maximale Anzahl an Zonen
 			        setHighlightedZone(null, false);
                             }
                             renderAllZones();
-                            if (zonesData.length < MAX_ZONES) {
-                                const btn = document.getElementById('addZoneButton');
-                                if (btn) btn.disabled = false;
-                            }
+                            updateAddZoneButtonState();
                             showFeedback('templateFeedback', 'Zone gelöscht.', 'success', 2000);
+                        }
+
+                        function updateAddZoneButtonState() {
+                            const btn = document.getElementById('addZoneButton');
+                            if (btn) btn.disabled = zonesData.length >= maxZones;
+                        }
+
+                        function updateMaxZones(value) {
+                            const parsed = parseInt(value, 10);
+                            if (Number.isInteger(parsed) && parsed >= 1) {
+                                maxZones = parsed;
+                            }
+                            updateAddZoneButtonState();
                         }
 			
 			// Debounce function to prevent excessive updates while typing
@@ -1238,7 +1244,12 @@ function updateLabelPreview(barcodeSvg) {
 			    loadTemplatesFromFile();
 			
 			    // Event listeners
-			    document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
+                            document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
+                            document.getElementById('maxZonesInput')?.addEventListener('input', (e) => updateMaxZones(e.target.value));
+                            const maxZonesEl = document.getElementById('maxZonesInput');
+                            if (maxZonesEl) {
+                                updateMaxZones(maxZonesEl.value);
+                            }
                             document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();
                         updateLabelPreview();
@@ -1363,8 +1374,9 @@ function updateLabelPreview(barcodeSvg) {
 			        zonesData = initialZones;
 			    }
 			
-			    renderAllZones();
-			    drawCagePreview();
+                            renderAllZones();
+                            updateAddZoneButtonState();
+                            drawCagePreview();
 			    // 1) Label mit Feldern befüllen
 			    updateLabelPreview();
 			    // 2) echten Barcode erzeugen (SVG im PDF417‑Card und Canvas im Label)
