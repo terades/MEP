@@ -970,3 +970,19 @@
 			height: 100%;
 			}
 			}
+
+			.language-select {
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
+			background: var(--background-color);
+			border-radius: 4px;
+			padding: 0.2rem 0.5rem;
+			}
+
+			.language-select select {
+			border: none;
+			background: transparent;
+			font-size: 0.9rem;
+			}
+
