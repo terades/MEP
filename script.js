@@ -1198,12 +1198,16 @@ function updateLabelPreview(barcodeSvg) {
                         if (second) {
                             if (zonesData.length > 16) {
                                 second.style.display = 'block';
+                                document.body.classList.add('two-page');
 
                                 fillLabel('2');
 
                             } else {
                                 second.style.display = 'none';
+                                document.body.classList.remove('two-page');
                             }
+                        } else {
+                            document.body.classList.remove('two-page');
                         }
 
                         const labelImage = document.getElementById('labelBarcodeImage');
@@ -1395,14 +1399,14 @@ function updateLabelPreview(barcodeSvg) {
 			// create a new canvas
 			const canvas = document.createElement('canvas');
 			try {
-			bwipjs.toCanvas(canvas, {
-			bcid:        'pdf417',    // Barcode‑Typ
-			text:        text,        // Dein BVBS‑Code
-			scaleX:      2,           // breit
-			scaleY:      3,           // hoch
-			height:      10,          // Stirrup‑Höhe
-			includetext: false        // kein Text unterm Barcode
-			});
+                        bwipjs.toCanvas(canvas, {
+                        bcid:        'pdf417',    // Barcode‑Typ
+                        text:        text,        // Dein BVBS‑Code
+                        scaleX:      3,           // breit
+                        scaleY:      4,           // hoch
+                        height:      15,          // Stirrup‑Höhe
+                        includetext: false        // kein Text unterm Barcode
+                        });
 			container.appendChild(canvas);
 			} catch (err) {
 			console.error('Barcode Label Fehler:', err);
