@@ -279,6 +279,12 @@
                                 </svg>
                                 <span data-i18n="ZPL anzeigen">ZPL anzeigen</span>
                             </button>
+                            <button id="editLabelLayoutButton" class="btn-secondary" style="margin-left:.5rem;">
+                                <svg viewBox="0 0 24 24" style="width:1.2em;height:1.2em;margin-right:.5em;">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.92h-.67v-.67L14.06 11l.67.67L5.92 20.17zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+                                </svg>
+                                <span data-i18n="Layout bearbeiten">Layout bearbeiten</span>
+                            </button>
                         </div>
                         <div id="labelPreviewContainer"
                             style="display: flex; justify-content: center; padding: 1rem;
@@ -303,7 +309,7 @@
                                         font-size: 16pt;
                                         font-weight: bold;
                                         ">
-                                        <span data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr"></span>
+                                        <span id="descPosnr" data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr"></span>
                                     </h3>
                                     <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
                                         <div id="labelKommNr"></div>
@@ -317,11 +323,11 @@
                                     font-size: 12pt;
                                     margin-bottom: 4mm;
                                     ">
-                                    <div data-i18n="Projekt:">Projekt:</div>
+                                    <div id="descProjekt" data-i18n="Projekt:">Projekt:</div>
                                     <div id="labelProjekt"></div>
-                                    <div data-i18n="Auftrag:">Auftrag:</div>
+                                    <div id="descAuftrag" data-i18n="Auftrag:">Auftrag:</div>
                                     <div id="labelAuftrag"></div>
-                                    <div data-i18n="Länge:">Länge:</div>
+                                    <div id="descLange" data-i18n="Länge:">Länge:</div>
                                     <div id="labelGesamtlange"></div>
                                 </div>
                                 <div id="labelBarcodeContainer" style="text-align: center; margin-top: 4mm;">
@@ -333,18 +339,18 @@
                             </div>
         <div id="printableLabel2" style="width: 100mm; border: 1px dashed #999; background: white; padding: 4mm; box-sizing: border-box; margin-left: 10mm;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm;">
-                <h3 style="margin: 0; font-size: 16pt; font-weight: bold;"><span data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr2"></span></h3>
+                <h3 style="margin: 0; font-size: 16pt; font-weight: bold;"><span id="descPosnr2" data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr2"></span></h3>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
                     <div id="labelKommNr2"></div>
                     <div id="labelBuegelname2"></div>
                 </div>
             </div>
             <div class="label-grid" style="display: grid; grid-template-columns: auto 1fr; gap: 1mm 3mm; font-size: 12pt; margin-bottom: 4mm;">
-                <div data-i18n="Projekt:">Projekt:</div>
+                <div id="descProjekt2" data-i18n="Projekt:">Projekt:</div>
                 <div id="labelProjekt2"></div>
-                <div data-i18n="Auftrag:">Auftrag:</div>
+                <div id="descAuftrag2" data-i18n="Auftrag:">Auftrag:</div>
                 <div id="labelAuftrag2"></div>
-                <div data-i18n="Länge:">Länge:</div>
+                <div id="descLange2" data-i18n="Länge:">Länge:</div>
                 <div id="labelGesamtlange2"></div>
             </div>
             <div id="labelBarcodeContainer2" style="text-align: center; margin-top: 4mm;"></div>

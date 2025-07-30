@@ -1057,9 +1057,21 @@
 			padding: 0.2rem 0.5rem;
 			}
 
-			.language-select select {
-			border: none;
-			background: transparent;
-			font-size: 0.9rem;
-			}
+                       .language-select select {
+                        border: none;
+                        background: transparent;
+                        font-size: 0.9rem;
+                        }
+
+                        /* Label layout editing */
+                        #printableLabel.label-edit-mode,
+                        #printableLabel2.label-edit-mode {
+                            position: relative;
+                        }
+
+                        .label-edit-item {
+                            outline: 1px dashed var(--primary-color);
+                            cursor: move;
+                            user-select: none;
+                        }
 

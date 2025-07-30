@@ -26,7 +26,11 @@ let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
 			let dimensioningMode = 'arrangementLength'; // 'arrangementLength' or 'totalZoneSpace'
 			
 			// Local storage key for templates
-			const LOCAL_STORAGE_TEMPLATES_KEY = 'bvbsKorbsTemplates';
+const LOCAL_STORAGE_TEMPLATES_KEY = 'bvbsKorbsTemplates';
+const LOCAL_STORAGE_LABEL_LAYOUT_KEY = 'labelLayoutConfig';
+const LABEL_ELEMENT_IDS = ['descPosnr','labelPosnr','labelKommNr','labelBuegelname','descProjekt','labelProjekt','descAuftrag','labelAuftrag','descLange','labelGesamtlange'];
+let labelLayout = {};
+let labelDesignMode = false;
 			
 			// Helper function to show/hide feedback messages
 			function showFeedback(elementId, message, type = 'info', duration = 3000) {
@@ -99,16 +103,106 @@ let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
 			}
 			
 			// Checks if the barcode library is loaded
-			function checkBarcodeLibraryStatus() {
-			    if (typeof bwipjs === 'undefined') {
-			        console.warn("bwip-js library not available");
-			        updateBarcodeDebugInfo("bwip-js Bibliothek nicht verfügbar");
-			        return false;
-			    }
-			    console.log("bwip-js library loaded successfully");
-			    updateBarcodeDebugInfo("bwip-js Bibliothek erfolgreich geladen");
-			    return true;
-			}
+                        function checkBarcodeLibraryStatus() {
+                            if (typeof bwipjs === 'undefined') {
+                                console.warn("bwip-js library not available");
+                                updateBarcodeDebugInfo("bwip-js Bibliothek nicht verfügbar");
+                                return false;
+                            }
+                            console.log("bwip-js library loaded successfully");
+                            updateBarcodeDebugInfo("bwip-js Bibliothek erfolgreich geladen");
+                            return true;
+                        }
+
+                        function loadLabelLayout() {
+                            const data = localStorage.getItem(LOCAL_STORAGE_LABEL_LAYOUT_KEY);
+                            if (data) {
+                                try { labelLayout = JSON.parse(data); } catch(e) { labelLayout = {}; }
+                            }
+                            LABEL_ELEMENT_IDS.forEach(id => {
+                                const el = document.getElementById(id);
+                                if (el && !labelLayout[id]) {
+                                    const fs = parseFloat(window.getComputedStyle(el).fontSize) || 12;
+                                    labelLayout[id] = { dx: 0, dy: 0, fontSize: fs };
+                                }
+                            });
+                        }
+
+                        function saveLabelLayout() {
+                            localStorage.setItem(LOCAL_STORAGE_LABEL_LAYOUT_KEY, JSON.stringify(labelLayout));
+                        }
+
+                        function applyLabelLayout() {
+                            LABEL_ELEMENT_IDS.forEach(id => {
+                                const el = document.getElementById(id);
+                                const layout = labelLayout[id];
+                                if (el && layout) {
+                                    el.style.transform = `translate(${layout.dx}px, ${layout.dy}px)`;
+                                    el.style.fontSize = layout.fontSize + 'pt';
+                                }
+                                const el2 = document.getElementById(id + '2');
+                                if (el2 && layout) {
+                                    el2.style.transform = `translate(${layout.dx}px, ${layout.dy}px)`;
+                                    el2.style.fontSize = layout.fontSize + 'pt';
+                                }
+                            });
+                        }
+
+                        function makeElementDraggable(el) {
+                            let startX, startY, origX, origY;
+                            const id = el.id.replace('2','');
+                            el.addEventListener('mousedown', (e) => {
+                                if (!labelDesignMode) return;
+                                startX = e.clientX; startY = e.clientY;
+                                const layout = labelLayout[id] || { dx:0, dy:0, fontSize: parseFloat(getComputedStyle(el).fontSize) || 12 };
+                                origX = layout.dx; origY = layout.dy;
+                                const onMove = (ev) => {
+                                    const dx = ev.clientX - startX;
+                                    const dy = ev.clientY - startY;
+                                    const newX = origX + dx;
+                                    const newY = origY + dy;
+                                    el.style.transform = `translate(${newX}px, ${newY}px)`;
+                                    if (labelLayout[id]) { labelLayout[id].dx = newX; labelLayout[id].dy = newY; }
+                                    const el2 = document.getElementById(id + '2');
+                                    if (el2) el2.style.transform = `translate(${newX}px, ${newY}px)`;
+                                };
+                                const onUp = () => {
+                                    document.removeEventListener('mousemove', onMove);
+                                    document.removeEventListener('mouseup', onUp);
+                                    saveLabelLayout();
+                                };
+                                document.addEventListener('mousemove', onMove);
+                                document.addEventListener('mouseup', onUp);
+                                e.preventDefault();
+                            });
+                            el.addEventListener('dblclick', () => {
+                                if (!labelDesignMode) return;
+                                const current = labelLayout[id]?.fontSize || parseFloat(getComputedStyle(el).fontSize) || 12;
+                                const input = prompt('Schriftgröße (pt)', current);
+                                if (input) {
+                                    const fs = parseFloat(input);
+                                    if (!isNaN(fs)) {
+                                        labelLayout[id].fontSize = fs;
+                                        el.style.fontSize = fs + 'pt';
+                                        const el2 = document.getElementById(id + '2');
+                                        if (el2) el2.style.fontSize = fs + 'pt';
+                                        saveLabelLayout();
+                                    }
+                                }
+                            });
+                        }
+
+                        function toggleLabelDesignMode() {
+                            labelDesignMode = !labelDesignMode;
+                            const labels = [document.getElementById('printableLabel'), document.getElementById('printableLabel2')];
+                            labels.forEach(l => { if (l) l.classList.toggle('label-edit-mode', labelDesignMode); });
+                            LABEL_ELEMENT_IDS.forEach(id => {
+                                const el = document.getElementById(id);
+                                const el2 = document.getElementById(id + '2');
+                                [el, el2].forEach(item => { if (item) item.classList.toggle('label-edit-item', labelDesignMode); });
+                            });
+                            if (!labelDesignMode) saveLabelLayout();
+                        }
 			
 			// Load templates from localStorage or default file
 			async function loadTemplatesFromFile() {
@@ -1251,15 +1345,24 @@ function updateLabelPreview(barcodeSvg) {
 			else {
 			labelImage.style.display = 'none';
 			labelText.textContent    = '';
-			labelText.style.display  = 'block';
-			}
-			}
+                        labelText.style.display  = 'block';
+                        }
+                        applyLabelLayout();
+                        }
 			
 			
 			// Initial setup on page load
 			document.addEventListener('DOMContentLoaded', () => {
-			    initCollapsibleHeaders();
-			    loadTemplatesFromFile();
+                            initCollapsibleHeaders();
+                            loadTemplatesFromFile();
+                            loadLabelLayout();
+                            applyLabelLayout();
+                            LABEL_ELEMENT_IDS.forEach(id => {
+                                const el = document.getElementById(id);
+                                if (el) makeElementDraggable(el);
+                                const el2 = document.getElementById(id + '2');
+                                if (el2) makeElementDraggable(el2);
+                            });
 			
 			    // Event listeners
                             document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
@@ -1317,6 +1420,7 @@ function updateLabelPreview(barcodeSvg) {
                                 window.print();
                             });
                             document.getElementById('showZplButton')?.addEventListener('click', () => openZplModal());
+                            document.getElementById('editLabelLayoutButton')?.addEventListener('click', () => toggleLabelDesignMode());
                             document.getElementById('openTemplateManagerButton')?.addEventListener('click', () => openTemplateManagerModal());
 			    document.getElementById('saveCurrentTemplateButton')?.addEventListener('click', () => saveCurrentTemplate());
 			    document.getElementById('downloadTemplatesButton')?.addEventListener('click', () => downloadTemplatesAsJson());
