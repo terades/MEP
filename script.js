@@ -15,7 +15,7 @@
 			const SVG_SINGLE_STIRRUP_FONT_SIZE = "13px";
 const NUM_ZONE_COLORS_AVAILABLE = 20;
 let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
-let zonesPerLabel = 16; // Anzahl der Zonen pro Label (aufteilbar)
+let zonesPerLabel = 16; // Zonenanzahl Zone 1 (aufteilbar)
 			
 			// Highlight classes
 			const HIGHLIGHT_COLOR_CLASS_STROKE = 'highlight-stroke';
@@ -1147,19 +1147,25 @@ function updateZonesPerLabel(value) {
 			        const posnr = document.getElementById('posnr').value;
 			        const gesamtlange = document.getElementById('gesamtlange').value;
 			        const anzahl = document.getElementById('anzahl').value;
-			        const langdrahtDurchmesser = document.getElementById('langdrahtDurchmesser').value;
-			        const anfangsueberstand = document.getElementById('anfangsueberstand').value;
-			        const endueberstand = document.getElementById('endueberstand').value;
-			        const buegelname = document.getElementById('buegelname').value.trim();
-			        const rezeptname = document.getElementById('rezeptname').value.trim();
-			
-                                const buildCode = (zonesArr, startOv, endOv) => {
+                                const langdrahtDurchmesser = document.getElementById('langdrahtDurchmesser').value;
+                                const anfangsueberstand = document.getElementById('anfangsueberstand').value;
+                                const endueberstand = document.getElementById('endueberstand').value;
+                                const buegelname1 = document.getElementById('buegelname1').value.trim();
+                                const buegelname2 = document.getElementById('buegelname2').value.trim();
+                                const rezeptname = document.getElementById('rezeptname').value.trim();
+
+                                if (zonesData.length > zonesPerLabel && !buegelname2) {
+                                    showFeedback('barcodeError', 'Fehler: Bügelname (s) - Zone 2 ist erforderlich.', 'error', 5000);
+                                    return;
+                                }
+
+                                const buildCode = (zonesArr, startOv, endOv, name) => {
                                     let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
                                     let pt = "PtGABBIE;";
                                     pt += `i${startOv};`;
                                     pt += `f${endOv};`;
                                     zonesArr.forEach(z => { pt += `d${z.dia};n${z.num};p${z.pitch};`; });
-                                    if (buegelname) pt += `s${buegelname};`;
+                                    if (name) pt += `s${name};`;
                                     if (rezeptname) pt += `r${rezeptname};`;
                                     if (pt.endsWith(';')) pt = pt.slice(0,-1);
                                     pt += "@";
@@ -1167,15 +1173,14 @@ function updateZonesPerLabel(value) {
                                     const cs = calculateChecksum(pre);
                                     return pre + cs + "@";
                                 };
-
-                                let finalBvbsCode = buildCode(zonesData, anfangsueberstand, endueberstand);
+                                let finalBvbsCode = buildCode(zonesData, anfangsueberstand, endueberstand, buegelname1);
                                 let finalBvbsCode2 = null;
                                 if (zonesData.length > zonesPerLabel) {
                                     const firstZones = zonesData.slice(0, zonesPerLabel);
                                     const secondZones = zonesData.slice(zonesPerLabel);
-                                    finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0);
+                                    finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0, buegelname1);
                                     const startOvSecond = zonesData[zonesPerLabel - 1]?.pitch || 0;
-                                    finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand);
+                                    finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand, buegelname2);
                                     document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n" + finalBvbsCode2 + "\r\n";
                                 } else {
                                     document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
@@ -1303,26 +1308,29 @@ function updateZonesPerLabel(value) {
 function updateLabelPreview(barcodeSvg) {
                         const projekt = document.getElementById('projekt').value || '-';
                         const KommNr  = document.getElementById('KommNr').value || '-';
-                        const buegelname = document.getElementById('buegelname').value || '-';
+                        const buegelname1 = document.getElementById('buegelname1').value || '-';
+                        const buegelname2 = document.getElementById('buegelname2').value || '-';
                         const auftrag = document.getElementById('auftrag').value || '-';
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
+                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(Boolean);
+
                         const suffixFirst = zonesData.length > zonesPerLabel ? '/1' : '';
                         const suffixSecond = zonesData.length > zonesPerLabel ? '/2' : '';
 
-                        const fillLabel = (idSuffix, suffix) => {
+                        const fillLabel = (idSuffix, suffix, name) => {
 
                             document.getElementById('labelProjekt' + idSuffix).textContent = projekt;
                             document.getElementById('labelKommNr' + idSuffix).textContent = KommNr;
-                            document.getElementById('labelBuegelname' + idSuffix).textContent = buegelname;
+                            document.getElementById('labelBuegelname' + idSuffix).textContent = name;
                             document.getElementById('labelAuftrag' + idSuffix).textContent = auftrag;
                             document.getElementById('labelGesamtlange' + idSuffix).textContent = gesamtlange;
 
                             document.getElementById('labelPosnr' + idSuffix).textContent = posnr + suffix;
                         };
 
-                        fillLabel('', suffixFirst);
+                        fillLabel('', suffixFirst, buegelname1);
 
                         const second = document.getElementById('printableLabel2');
                         if (second) {
@@ -1330,7 +1338,7 @@ function updateLabelPreview(barcodeSvg) {
                                 second.style.display = 'block';
                                 document.body.classList.add('two-page');
 
-                                fillLabel('2', suffixSecond);
+                                fillLabel('2', suffixSecond, buegelname2);
 
                             } else {
                                 second.style.display = 'none';
@@ -1340,24 +1348,40 @@ function updateLabelPreview(barcodeSvg) {
                             document.body.classList.remove('two-page');
                         }
 
-                        const labelImage = document.getElementById('labelBarcodeImage');
-                        const labelText  = document.getElementById('labelBarcodeText');
-                        const bvbsCode   = document.getElementById('outputBvbsCode').value.trim();
-			
-			if (barcodeSvg) {
-			labelImage.src         = `data:image/svg+xml;base64,${btoa(barcodeSvg)}`;
-			labelImage.style.display = 'block';
-			labelText.style.display  = 'none';
-			}
-			else if (bvbsCode) {
-			labelImage.style.display = 'none';
-			labelText.textContent    = bvbsCode;
-			labelText.style.display  = 'block';
-			}
-			else {
-			labelImage.style.display = 'none';
-			labelText.textContent    = '';
+                        const labelImage  = document.getElementById('labelBarcodeImage');
+                        const labelText   = document.getElementById('labelBarcodeText');
+                        const labelImage2 = document.getElementById('labelBarcodeImage2');
+                        const labelText2  = document.getElementById('labelBarcodeText2');
+
+                        if (barcodeSvg) {
+                        labelImage.src         = `data:image/svg+xml;base64,${btoa(barcodeSvg)}`;
+                        labelImage.style.display = 'block';
+                        labelText.style.display  = 'none';
+                        if (labelImage2 && labelText2) {
+                            labelImage2.style.display = 'none';
+                            labelText2.textContent = codes[1] || '';
+                            labelText2.style.display = codes[1] ? 'block' : 'none';
+                        }
+                        }
+                        else if (codes.length) {
+                        labelImage.style.display = 'none';
+                        labelText.textContent    = codes[0] || '';
                         labelText.style.display  = 'block';
+                        if (labelImage2 && labelText2) {
+                            labelImage2.style.display = 'none';
+                            labelText2.textContent = codes[1] || '';
+                            labelText2.style.display = codes[1] ? 'block' : 'none';
+                        }
+                        }
+                        else {
+                        labelImage.style.display = 'none';
+                        labelText.textContent    = '';
+                        labelText.style.display  = 'block';
+                        if (labelImage2 && labelText2) {
+                            labelImage2.style.display = 'none';
+                            labelText2.textContent = '';
+                            labelText2.style.display = 'none';
+                        }
                         }
                         applyLabelLayout();
                         }
