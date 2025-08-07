@@ -485,16 +485,20 @@
 			.zone-table-wrapper .full-width-table td .btn-delete-zone svg {
 			margin: 0;
 			}
-			.zone-table-wrapper .full-width-table tr.focused-zone-form,
-			#zoneSummaryTable tr.focused-zone-form {
-			background-color: #e6f2ff;
-			border-left: 3px solid var(--primary-color);
-			}
-			.stirrup-zone {
-			cursor: pointer;
-			transition: transform .2s ease-in-out, opacity .2s ease-in-out;
-			opacity: .8;
-			}
+.zone-table-wrapper .full-width-table tr.focused-zone-form,
+#zoneSummaryTable tr.focused-zone-form {
+    background-color: #e6f2ff;
+    border-left: 3px solid var(--primary-color);
+}
+.zone-table-wrapper .full-width-table tr.first-label-zone,
+#zoneSummaryTable td.first-label-zone {
+    background-color: rgba(var(--primary-color-rgb), .05);
+}
+.stirrup-zone {
+    cursor: pointer;
+    transition: transform .2s ease-in-out, opacity .2s ease-in-out;
+    opacity: .8;
+}
 			.stirrup-zone:hover {
 			transform: translateY(-2px);
 			opacity: 1;

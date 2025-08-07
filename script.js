@@ -15,6 +15,7 @@
 			const SVG_SINGLE_STIRRUP_FONT_SIZE = "13px";
 const NUM_ZONE_COLORS_AVAILABLE = 20;
 let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
+let zonesPerLabel = 16; // Anzahl der Zonen pro Label (aufteilbar)
 			
 			// Highlight classes
 			const HIGHLIGHT_COLOR_CLASS_STROKE = 'highlight-stroke';
@@ -380,7 +381,7 @@ let labelDesignMode = false;
                             const content = document.getElementById('zplCodeContent');
                             if (modal && content) {
                                 const zpl1 = generateZplForLabel('');
-                                const secondLabelVisible = zonesData.length > 16;
+                                const secondLabelVisible = zonesData.length > zonesPerLabel;
                                 const zpl2 = secondLabelVisible ? '\n\n' + generateZplForLabel('2') : '';
                                 content.textContent = zpl1 + zpl2;
                                 modal.classList.add('visible');
@@ -580,12 +581,15 @@ let labelDesignMode = false;
 			
 			    zonesData.forEach((zone, index) => {
 			        const displayIndex = index + 1;
-			        const row = tbody.insertRow();
-			        row.dataset.zoneId = zone.id;
-			        row.classList.add('zone-item');
-			        if (highlightedZoneDisplayIndex === displayIndex) {
-			            row.classList.add('focused-zone-form');
-			        }
+                                const row = tbody.insertRow();
+                                row.dataset.zoneId = zone.id;
+                                row.classList.add('zone-item');
+                                if (index < zonesPerLabel) {
+                                    row.classList.add('first-label-zone');
+                                }
+                                if (highlightedZoneDisplayIndex === displayIndex) {
+                                    row.classList.add('focused-zone-form');
+                                }
 			
 			        const zoneCell = row.insertCell();
 			        zoneCell.textContent = displayIndex;
@@ -728,13 +732,22 @@ let labelDesignMode = false;
                             if (btn) btn.disabled = zonesData.length >= maxZones;
                         }
 
-                        function updateMaxZones(value) {
-                            const parsed = parseInt(value, 10);
-                            if (Number.isInteger(parsed) && parsed >= 1) {
-                                maxZones = parsed;
-                            }
-                            updateAddZoneButtonState();
-                        }
+function updateMaxZones(value) {
+    const parsed = parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed >= 1) {
+        maxZones = parsed;
+    }
+    updateAddZoneButtonState();
+}
+
+function updateZonesPerLabel(value) {
+    const parsed = parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed >= 1) {
+        zonesPerLabel = parsed;
+    }
+    renderAllZones();
+    updateLabelPreview();
+}
 			
 			// Debounce function to prevent excessive updates while typing
 			function triggerPreviewUpdateDebounced() {
@@ -779,14 +792,17 @@ let labelDesignMode = false;
 			        row.appendChild(headerCell);
 			
 			        if (data[colIndex].length > 0) {
-			            data[colIndex].forEach((value, cellIndex) => {
-			                const cell = document.createElement('td');
-			                cell.textContent = value;
-			                if (highlightedZoneDisplayIndex === cellIndex + 1) {
-			                    cell.classList.add('focused-zone-form');
-			                }
-			                row.appendChild(cell);
-			            });
+                                    data[colIndex].forEach((value, cellIndex) => {
+                                        const cell = document.createElement('td');
+                                        cell.textContent = value;
+                                        if (highlightedZoneDisplayIndex === cellIndex + 1) {
+                                            cell.classList.add('focused-zone-form');
+                                        }
+                                        if (cellIndex < zonesPerLabel) {
+                                            cell.classList.add('first-label-zone');
+                                        }
+                                        row.appendChild(cell);
+                                    });
 			        } else {
 			            const cell = document.createElement('td');
 			            cell.textContent = "-";
@@ -1156,11 +1172,12 @@ let labelDesignMode = false;
 
                                 let finalBvbsCode = buildCode(zonesData, anfangsueberstand, endueberstand);
                                 let finalBvbsCode2 = null;
-                                if (zonesData.length > 16) {
-                                    const firstZones = zonesData.slice(0,16);
-                                    const secondZones = zonesData.slice(16);
+                                if (zonesData.length > zonesPerLabel) {
+                                    const firstZones = zonesData.slice(0, zonesPerLabel);
+                                    const secondZones = zonesData.slice(zonesPerLabel);
                                     finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0);
-                                    finalBvbsCode2 = buildCode(secondZones, zonesData[15].pitch, endueberstand);
+                                    const startOvSecond = zonesData[zonesPerLabel - 1]?.pitch || 0;
+                                    finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand);
                                     document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n" + finalBvbsCode2 + "\r\n";
                                 } else {
                                     document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
@@ -1293,8 +1310,8 @@ function updateLabelPreview(barcodeSvg) {
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
-                        const suffixFirst = zonesData.length > 16 ? '/1' : '';
-                        const suffixSecond = zonesData.length > 16 ? '/2' : '';
+                        const suffixFirst = zonesData.length > zonesPerLabel ? '/1' : '';
+                        const suffixSecond = zonesData.length > zonesPerLabel ? '/2' : '';
 
                         const fillLabel = (idSuffix, suffix) => {
 
@@ -1311,7 +1328,7 @@ function updateLabelPreview(barcodeSvg) {
 
                         const second = document.getElementById('printableLabel2');
                         if (second) {
-                            if (zonesData.length > 16) {
+                            if (zonesData.length > zonesPerLabel) {
                                 second.style.display = 'block';
                                 document.body.classList.add('two-page');
 
@@ -1367,6 +1384,11 @@ function updateLabelPreview(barcodeSvg) {
                             const maxZonesEl = document.getElementById('maxZonesInput');
                             if (maxZonesEl) {
                                 updateMaxZones(maxZonesEl.value);
+                            }
+                            document.getElementById('zonesPerLabelInput')?.addEventListener('input', (e) => updateZonesPerLabel(e.target.value));
+                            const zonesPerLabelEl = document.getElementById('zonesPerLabelInput');
+                            if (zonesPerLabelEl) {
+                                updateZonesPerLabel(zonesPerLabelEl.value);
                             }
                             document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();

@@ -121,6 +121,10 @@
                                 <label for="maxZonesInput" data-i18n="Max. Zonen">Max. Zonen</label>
                                 <input type="number" id="maxZonesInput" value="20" min="1" oninput="updateMaxZones(this.value)">
                             </div>
+                            <div class="form-group">
+                                <label for="zonesPerLabelInput" data-i18n="Zonen pro Label">Zonen pro Label</label>
+                                <input type="number" id="zonesPerLabelInput" value="16" min="1" oninput="updateZonesPerLabel(this.value)">
+                            </div>
                             <div class="zone-table-wrapper">
                                 <table id="zonesTable" class="full-width-table">
 									<thead>
