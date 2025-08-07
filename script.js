@@ -383,10 +383,22 @@ function loadLabelLayout() {
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
                             showFeedback('templateFeedback', i18n.t('lagen.json heruntergeladen! Bitte manuell in den Projektordner verschieben.'), 'info', 5000);
-                        }
+                          }
 
-                        // Trigger the hidden file input for importing templates
-                        function uploadTemplatesFromJson() {
+                          // Download a label as PNG using html2canvas
+                          function downloadLabelAsPng(labelId) {
+                              const label = document.getElementById(labelId);
+                              if (!label) return;
+                              html2canvas(label).then(canvas => {
+                                  const link = document.createElement('a');
+                                  link.href = canvas.toDataURL('image/png');
+                                  link.download = labelId + '.png';
+                                  link.click();
+                              });
+                          }
+
+                          // Trigger the hidden file input for importing templates
+                          function uploadTemplatesFromJson() {
                             const input = document.getElementById('templateFileInput');
                             if (input) {
                                 input.value = '';
@@ -1502,20 +1514,26 @@ function updateLabelPreview(barcodeSvg) {
 			            }
 			        }
 			    });
-			    document.getElementById('downloadSvgButton')?.addEventListener('click', () => {
-			        const svgElement = document.getElementById('cagePreviewSvg');
-			        if (!svgElement) return;
-			        const svgString = new XMLSerializer().serializeToString(svgElement);
-			        const blob = new Blob([svgString], { type: 'image/svg+xml' });
-			        const url = URL.createObjectURL(blob);
-			        const a = document.createElement('a');
-			        a.href = url;
-			        a.download = 'korb_vorschau.svg';
-			        document.body.appendChild(a);
-			        a.click();
-			        document.body.removeChild(a);
-			        URL.revokeObjectURL(url);
-			    });
+                            document.getElementById('downloadSvgButton')?.addEventListener('click', () => {
+                                const svgElement = document.getElementById('cagePreviewSvg');
+                                if (!svgElement) return;
+                                const svgString = new XMLSerializer().serializeToString(svgElement);
+                                const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'korb_vorschau.svg';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            });
+                            document.querySelectorAll('.download-label-btn')?.forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    const target = btn.getAttribute('data-target');
+                                    if (target) downloadLabelAsPng(target);
+                                });
+                            });
                             document.getElementById('printLabelButton')?.addEventListener('click', () => {
                                 if (document.getElementById('outputBvbsCode').value.trim() === '') {
                                     showFeedback('barcodeError', 'Bitte generieren Sie zuerst den Code, um das Label zu drucken.', 'warning', 5000);

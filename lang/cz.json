@@ -134,5 +134,6 @@
   "Templates aus localStorage geladen": "Šablony načteny z lokálního úložiště",
   "Abstand mm": "Rozteč mm",
   "ZPL anzeigen": "Zobrazit ZPL",
-  "ZPL Code": "ZPL kód"
+  "ZPL Code": "ZPL kód",
+  "Label als PNG speichern": "Uložit štítek jako PNG"
 }

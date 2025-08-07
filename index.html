@@ -8,7 +8,8 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/3.2.0/bwip-js.min.js"></script>
         <link rel="stylesheet" href="styles.css">
         <script src="i18n.js"></script>
-		<script src="script.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+                <script src="script.js" defer></script>
     </head>
     <body>
         <div class="app-header-wrapper">
@@ -296,57 +297,65 @@
                             </button>
                         </div>
                         <div id="labelPreviewContainer"
-                            style="display: flex; justify-content: center; padding: 1rem;
+                            style="display: flex; justify-content: center; gap: 10mm; padding: 1rem;
                             background-color: var(--light-bg-color);
                             border-radius: var(--border-radius);">
-                            <div id="printableLabel"
-                                style="
-                                width: 100mm;
-                                border: 1px dashed #999;
-                                background: white;
-                                padding: 4mm;
-                                box-sizing: border-box;
-                                ">
-                                <div style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: flex-start;
-                                    margin-bottom: 4mm;
+                            <div class="label-wrapper">
+                                <div id="printableLabel"
+                                    style="
+                                    width: 100mm;
+                                    border: 1px dashed #999;
+                                    background: white;
+                                    padding: 4mm;
+                                    box-sizing: border-box;
                                     ">
-                                    <h3 style="
-                                        margin: 0;
-                                        font-size: 16pt;
-                                        font-weight: bold;
+                                    <div style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: flex-start;
+                                        margin-bottom: 4mm;
                                         ">
-                                        <span id="descPosnr" data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr"></span>
-                                    </h3>
-                                    <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
-                                        <div id="labelKommNr"></div>
-                                        <div id="labelBuegelname"></div>
+                                        <h3 style="
+                                            margin: 0;
+                                            font-size: 16pt;
+                                            font-weight: bold;
+                                            ">
+                                            <span id="descPosnr" data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr"></span>
+                                        </h3>
+                                        <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
+                                            <div id="labelKommNr"></div>
+                                            <div id="labelBuegelname"></div>
+                                        </div>
+                                    </div>
+                                    <div class="label-grid" style="
+                                        display: grid;
+                                        grid-template-columns: auto 1fr;
+                                        gap: 1mm 3mm;
+                                        font-size: 12pt;
+                                        margin-bottom: 4mm;
+                                        ">
+                                        <div id="descProjekt" data-i18n="Projekt:">Projekt:</div>
+                                        <div id="labelProjekt"></div>
+                                        <div id="descAuftrag" data-i18n="Auftrag:">Auftrag:</div>
+                                        <div id="labelAuftrag"></div>
+                                        <div id="descLange" data-i18n="Länge:">Länge:</div>
+                                        <div id="labelGesamtlange"></div>
+                                    </div>
+                                    <div id="labelBarcodeContainer" style="text-align: center; margin-top: 4mm;">
+                                        </div>
+                                    <div id="labelBarcodeFallback" style="text-align: center; margin-top: 4mm;">
+                                        <img id="labelBarcodeImage" src="" alt="Barcode" style="display:none; max-width:100%; height:auto;">
+                                        <div id="labelBarcodeText" style="display:none; font-size:8pt; word-break:break-all; font-family:monospace; color:#333;"></div>
                                     </div>
                                 </div>
-                                <div class="label-grid" style="
-                                    display: grid;
-                                    grid-template-columns: auto 1fr;
-                                    gap: 1mm 3mm;
-                                    font-size: 12pt;
-                                    margin-bottom: 4mm;
-                                    ">
-                                    <div id="descProjekt" data-i18n="Projekt:">Projekt:</div>
-                                    <div id="labelProjekt"></div>
-                                    <div id="descAuftrag" data-i18n="Auftrag:">Auftrag:</div>
-                                    <div id="labelAuftrag"></div>
-                                    <div id="descLange" data-i18n="Länge:">Länge:</div>
-                                    <div id="labelGesamtlange"></div>
-                                </div>
-                                <div id="labelBarcodeContainer" style="text-align: center; margin-top: 4mm;">
-                                    </div>
-                                <div id="labelBarcodeFallback" style="text-align: center; margin-top: 4mm;">
-                                    <img id="labelBarcodeImage" src="" alt="Barcode" style="display:none; max-width:100%; height:auto;">
-                                    <div id="labelBarcodeText" style="display:none; font-size:8pt; word-break:break-all; font-family:monospace; color:#333;"></div>
-                                </div>
+                                <button type="button" class="label-save-btn download-label-btn" data-target="printableLabel" data-i18n-title="Label als PNG speichern" title="Label als PNG speichern">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"></path>
+                                    </svg>
+                                </button>
                             </div>
-        <div id="printableLabel2" style="width: 100mm; border: 1px dashed #999; background: white; padding: 4mm; box-sizing: border-box; margin-left: 10mm;">
+                            <div class="label-wrapper">
+                                <div id="printableLabel2" style="width: 100mm; border: 1px dashed #999; background: white; padding: 4mm; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm;">
                 <h3 style="margin: 0; font-size: 16pt; font-weight: bold;"><span id="descPosnr2" data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span id="labelPosnr2"></span></h3>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
@@ -368,7 +377,13 @@
                 <div id="labelBarcodeText2" style="display:none; font-size:8pt; word-break:break-all; font-family:monospace; color:#333;"></div>
             </div>
         </div>
-</div>
+                                <button type="button" class="label-save-btn download-label-btn" data-target="printableLabel2" data-i18n-title="Label als PNG speichern" title="Label als PNG speichern">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>

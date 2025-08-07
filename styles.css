@@ -642,11 +642,30 @@
                         height: auto;
                         margin: 0 auto;
                         }
-			.download-canvas-btn-container {
-			margin-top: .5rem;
-			text-align: right;
-			}
-			.zone-summary-table-container {
+.download-canvas-btn-container {
+                        margin-top: .5rem;
+                        text-align: right;
+                        }
+.label-wrapper {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        }
+.label-save-btn {
+                        margin-top: .25rem;
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        color: var(--secondary-color);
+                        }
+.label-save-btn:hover {
+                        color: var(--text-color);
+                        }
+.label-save-btn svg {
+                        width: 1.2em;
+                        height: 1.2em;
+                        }
+.zone-summary-table-container {
 			margin-top: 0;
 			padding: 0;
 			border: none;
