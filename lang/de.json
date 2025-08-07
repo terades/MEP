@@ -135,5 +135,10 @@
   "Abstand mm": "Abstand mm",
   "ZPL anzeigen": "ZPL-Code anzeigen",
   "ZPL Code": "ZPL-Code",
-  "Label als PNG speichern": "Label als PNG speichern"
+  "Label als PNG speichern": "Label als PNG speichern",
+  "Startzeitpunkt": "Startzeitpunkt",
+  "Freigeben": "Freigeben",
+  "Produktion": "Produktion",
+  "Generator": "Generator",
+  "Produktionsliste": "Produktionsliste"
 }

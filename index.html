@@ -27,9 +27,13 @@
                     <option value="cz">CZ</option>
                 </select>
                 </div>
+                <div class="nav-controls">
+                    <button id="showGeneratorBtn" class="btn-secondary" data-i18n="Generator">Generator</button>
+                    <button id="showProductionBtn" class="btn-secondary" data-i18n="Produktion">Produktion</button>
+                </div>
             </header>
         </div>
-        <div class="app-container">
+        <div id="generatorView" class="app-container">
             <div class="main-grid">
                 <div class="input-column card">
                     <div class="card-header">
@@ -68,6 +72,10 @@
                                 <label for="langdrahtDurchmesser" data-i18n="Längsdraht-Ø (d):">Längsdraht-Ø (d):</label>
                                 <input type="number" id="langdrahtDurchmesser" value="6" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 1, 'int', 'Längsdraht-Ø in mm (min. 1)');">
                                 <span class="input-feedback"></span>
+                            </div>
+                            <div class="form-group">
+                                <label for="startzeit" data-i18n="Startzeitpunkt">Startzeitpunkt</label>
+                                <input type="datetime-local" id="startzeit" oninput="triggerPreviewUpdateDebounced()">
                             </div>
                         </div>
                         <h3 class="section-title collapsible-header" data-i18n="PtGABBIE-Daten">PtGABBIE-Daten</h3>
@@ -384,9 +392,20 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="button-group" style="justify-content: flex-end; margin-top: 1rem;">
+                            <button type="button" id="releaseButton" class="btn-primary" data-i18n="Freigeben">Freigeben</button>
+                        </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div id="productionView" class="app-container" style="display:none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="Produktionsliste">Produktionsliste</h2>
+                </div>
+                <ul id="productionList" class="production-list"></ul>
             </div>
         </div>
         <footer style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">

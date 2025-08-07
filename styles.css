@@ -1098,9 +1098,27 @@
                             position: relative;
                         }
 
-                        .label-edit-item {
-                            outline: 1px dashed var(--primary-color);
-                            cursor: move;
-                            user-select: none;
-                        }
+.label-edit-item {
+    outline: 1px dashed var(--primary-color);
+    cursor: move;
+    user-select: none;
+}
+
+.nav-controls {
+    display: flex;
+    gap: .5rem;
+    margin-left: 1rem;
+}
+
+.production-list {
+    list-style: none;
+    padding: 1rem;
+    margin: 0;
+}
+
+.production-item {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
 

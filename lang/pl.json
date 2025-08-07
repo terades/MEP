@@ -135,5 +135,10 @@
   "Abstand mm": "Rozstaw  mm",
   "ZPL anzeigen": "Pokaż ZPL",
   "ZPL Code": "Kod ZPL",
-  "Label als PNG speichern": "Zapisz etykietę jako PNG"
+  "Label als PNG speichern": "Zapisz etykietę jako PNG",
+  "Startzeitpunkt": "Czas startu",
+  "Freigeben": "Zatwierdź",
+  "Produktion": "Produkcja",
+  "Generator": "Generator",
+  "Produktionsliste": "Lista produkcyjna"
 }
