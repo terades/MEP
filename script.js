@@ -967,7 +967,7 @@ function updateZonesPerLabel(value) {
                                     const pitch = zone.pitch;
                                     const dia = zone.dia;
 
-                                    const initialGap = index === 0 ? 0 : pitch;
+                                    const initialGap = pitch > 0 ? pitch : 0;
                                     const spacingLength = numStirrups > 1 && pitch > 0 ? (numStirrups - 1) * pitch : 0;
                                     const zoneLength = initialGap + spacingLength;
                                     stirrupZoneTotalLength += zoneLength;
