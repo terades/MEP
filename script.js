@@ -118,7 +118,7 @@ function checkBarcodeLibraryStatus() {
 function updateGenerateButtonState() {
     const generateBtn = document.getElementById('generateButton');
     const buegelname2El = document.getElementById('buegelname2');
-    const errorEl = document.getElementById('barcodeError');
+    const errorEl = document.getElementById('generateError');
     if (!generateBtn || !buegelname2El) return;
     const needSecond = zonesData.length > zonesPerLabel;
     const hasName = buegelname2El.value.trim().length > 0;
@@ -1178,7 +1178,7 @@ function updateZonesPerLabel(value) {
                                 const rezeptname = document.getElementById('rezeptname').value.trim();
 
                                 if (zonesData.length > zonesPerLabel && !buegelname2) {
-                                    showFeedback('barcodeError', 'Fehler: Bügelname (s) - Zone 2 ist erforderlich.', 'error', 5000);
+                                    updateGenerateButtonState();
                                     return;
                                 }
 
@@ -1447,11 +1447,13 @@ function updateLabelPreview(barcodeSvg) {
                             }
                         }
                         });
+
+                            document.getElementById('buegelname2')?.addEventListener('input', () => updateGenerateButtonState());
 			
 			
 			
 			
-			    document.getElementById('copyBvbsButton')?.addEventListener('click', async () => {
+                            document.getElementById('copyBvbsButton')?.addEventListener('click', async () => {
                                 const output = document.getElementById('outputBvbsCode').value
                                     .split(/\r?\n/)
                                     .filter(line => line.startsWith('BF2'))
@@ -1547,14 +1549,15 @@ function updateLabelPreview(barcodeSvg) {
                             renderAllZones();
                             updateAddZoneButtonState();
                             drawCagePreview();
-			    // 1) Label mit Feldern befüllen
-			    updateLabelPreview();
-			    // 2) echten Barcode erzeugen (SVG im PDF417‑Card und Canvas im Label)
-			    generateBvbsCodeAndBarcode();
+                            // 1) Label mit Feldern befüllen
+                            updateLabelPreview();
+                            // 2) echten Barcode erzeugen (SVG im PDF417‑Card und Canvas im Label)
+                            generateBvbsCodeAndBarcode();
+                            updateGenerateButtonState();
 			
 			    
 			    // Check library status after a short delay to ensure it's loaded
-			    setTimeout(() => {
+                            setTimeout(() => {
 			        updateBarcodeStatus();
 			        if (!checkBarcodeLibraryStatus()) {
 			            updateBarcodeDebugInfo('bwip-js Bibliothek nicht verfügbar');
