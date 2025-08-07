@@ -992,7 +992,7 @@ function updateZonesPerLabel(value) {
                                             let stirrupOffset = initialGap + j * pitch;
                                             const stirrupPos = zoneStart + stirrupOffset;
                                             const stirrupX = Math.round(PADDING_VISUAL + stirrupPos * scale);
-                                            if (stirrupPos <= totalLength - initialOverhang - finalOverhang + 1) {
+                                            if (stirrupPos <= totalLength - finalOverhang + 1) {
                                                 svgContent += `<line class="stirrup ${stirrupStrokeClass}" style="stroke-width:${highlightedStrokeWidth}px" x1="${stirrupX}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${stirrupX}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
                                             }
                                         }
