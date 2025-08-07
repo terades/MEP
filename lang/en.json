@@ -134,5 +134,6 @@
   "Templates aus localStorage geladen": "Templates loaded from localStorage",
   "Abstand mm": "Pitch mm",
   "ZPL anzeigen": "Show ZPL",
-  "ZPL Code": "ZPL Code"
+  "ZPL Code": "ZPL Code",
+  "Label als PNG speichern": "Save label as PNG"
 }

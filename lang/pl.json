@@ -134,5 +134,6 @@
   "Templates aus localStorage geladen": "Szablony załadowane z localStorage",
   "Abstand mm": "Rozstaw  mm",
   "ZPL anzeigen": "Pokaż ZPL",
-  "ZPL Code": "Kod ZPL"
+  "ZPL Code": "Kod ZPL",
+  "Label als PNG speichern": "Zapisz etykietę jako PNG"
 }
