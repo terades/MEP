@@ -104,7 +104,7 @@ let labelDesignMode = false;
 			}
 			
 			// Checks if the barcode library is loaded
-                        function checkBarcodeLibraryStatus() {
+function checkBarcodeLibraryStatus() {
                             if (typeof bwipjs === 'undefined') {
                                 console.warn("bwip-js library not available");
                                 updateBarcodeDebugInfo("bwip-js Bibliothek nicht verfügbar");
@@ -113,9 +113,31 @@ let labelDesignMode = false;
                             console.log("bwip-js library loaded successfully");
                             updateBarcodeDebugInfo("bwip-js Bibliothek erfolgreich geladen");
                             return true;
-                        }
+}
 
-                        function loadLabelLayout() {
+function updateGenerateButtonState() {
+    const generateBtn = document.getElementById('generateButton');
+    const buegelname2El = document.getElementById('buegelname2');
+    const errorEl = document.getElementById('barcodeError');
+    if (!generateBtn || !buegelname2El) return;
+    const needSecond = zonesData.length > zonesPerLabel;
+    const hasName = buegelname2El.value.trim().length > 0;
+    if (needSecond && !hasName) {
+        generateBtn.disabled = true;
+        if (errorEl) {
+            errorEl.textContent = 'Fehler: Bügelname (s) - Zone 2 ist erforderlich.';
+            errorEl.className = 'info-text error-message';
+        }
+    } else {
+        generateBtn.disabled = false;
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.className = 'info-text';
+        }
+    }
+}
+
+function loadLabelLayout() {
                             const data = localStorage.getItem(LOCAL_STORAGE_LABEL_LAYOUT_KEY);
                             if (data) {
                                 try { labelLayout = JSON.parse(data); } catch(e) { labelLayout = {}; }
@@ -1053,16 +1075,17 @@ function updateZonesPerLabel(value) {
 			        svgContent += '</g>';
 			        
 			        svgContent += '</g>';
-			        svgContainer.innerHTML = svgContent;
-			    } catch (e) {
-			        console.error("Fehler beim Zeichnen der SVG-Vorschau:", e);
-			        errorEl.textContent = "Fehler Vorschau (SVG): " + e.message;
-			        errorEl.classList.add('error');
-			        if (e && svgContent) {
-			            svgContainer.innerHTML = svgContent.endsWith("</g>") ? svgContent : svgContent + "</g>";
-			        }
-			    }
-			}
+                                svgContainer.innerHTML = svgContent;
+                            } catch (e) {
+                                console.error("Fehler beim Zeichnen der SVG-Vorschau:", e);
+                                errorEl.textContent = "Fehler Vorschau (SVG): " + e.message;
+                                errorEl.classList.add('error');
+                                if (e && svgContent) {
+                                    svgContainer.innerHTML = svgContent.endsWith("</g>") ? svgContent : svgContent + "</g>";
+                                }
+                            }
+                            updateGenerateButtonState();
+                        }
 			
 			// Calculate the BVBS checksum
 			function calculateChecksum(bvbsCode) {
@@ -1181,7 +1204,7 @@ function updateZonesPerLabel(value) {
                                     finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0, buegelname1);
                                     const startOvSecond = zonesData[zonesPerLabel - 1]?.pitch || 0;
                                     finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand, buegelname2);
-                                    document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n" + finalBvbsCode2 + "\r\n";
+                                    document.getElementById('outputBvbsCode').value = `Code 1:\n${finalBvbsCode}\n\nCode 2:\n${finalBvbsCode2}\n`;
                                 } else {
                                     document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
                                 }
@@ -1314,7 +1337,7 @@ function updateLabelPreview(barcodeSvg) {
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
-                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(Boolean);
+                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
 
                         const suffixFirst = zonesData.length > zonesPerLabel ? '/1' : '';
                         const suffixSecond = zonesData.length > zonesPerLabel ? '/2' : '';
@@ -1384,6 +1407,7 @@ function updateLabelPreview(barcodeSvg) {
                         }
                         }
                         applyLabelLayout();
+                        updateGenerateButtonState();
                         }
 			
 			
@@ -1415,7 +1439,7 @@ function updateLabelPreview(barcodeSvg) {
                             document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();
                         updateLabelPreview();
-                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
                         if (codes.length > 0) {
                             generateBarcodeToLabel(codes[0], '');
                             if (codes.length > 1) {
@@ -1428,7 +1452,10 @@ function updateLabelPreview(barcodeSvg) {
 			
 			
 			    document.getElementById('copyBvbsButton')?.addEventListener('click', async () => {
-			        const output = document.getElementById('outputBvbsCode').value;
+                                const output = document.getElementById('outputBvbsCode').value
+                                    .split(/\r?\n/)
+                                    .filter(line => line.startsWith('BF2'))
+                                    .join('\n');
 			        if (output) {
 			            try {
 			                await navigator.clipboard.writeText(output);
@@ -1509,7 +1536,7 @@ function updateLabelPreview(barcodeSvg) {
 			    });
 			// ganz unten im DOMContentLoaded-Callback
                         updateLabelPreview();
-                        const initialCodes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                        const initialCodes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
                         if (initialCodes.length > 0) {
                             generateBarcodeToLabel(initialCodes[0], '');
                             if (initialCodes.length > 1) {
@@ -1581,7 +1608,7 @@ function updateLabelPreview(barcodeSvg) {
                             const proj = getText('labelProjekt');
                             const auftrag = getText('labelAuftrag');
                             const laenge = getText('labelGesamtlange');
-                            const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(t => t);
+                            const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
                             const code = idSuffix === '2' ? (codes[1] || '') : (codes[0] || '');
 
                             let zpl = '^XA\n';
