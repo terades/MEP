@@ -368,22 +368,56 @@ function loadLabelLayout() {
 			    }
 			}
 			
-			// Download templates as a JSON file
-			function downloadTemplatesAsJson() {
-			    const json = JSON.stringify(templates, null, 2);
-			    const blob = new Blob([json], {
-			        type: 'application/json'
-			    });
-			    const url = URL.createObjectURL(blob);
-			    const a = document.createElement('a');
-			    a.href = url;
-			    a.download = 'lagen.json';
-			    document.body.appendChild(a);
-			    a.click();
-			    document.body.removeChild(a);
-			    URL.revokeObjectURL(url);
-			    showFeedback('templateFeedback', "lagen.json heruntergeladen! Bitte manuell in den Projektordner verschieben.", 'info', 5000);
-			}
+                        // Download templates as a JSON file
+                        function downloadTemplatesAsJson() {
+                            const json = JSON.stringify(templates, null, 2);
+                            const blob = new Blob([json], {
+                                type: 'application/json'
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'lagen.json';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            showFeedback('templateFeedback', i18n.t('lagen.json heruntergeladen! Bitte manuell in den Projektordner verschieben.'), 'info', 5000);
+                        }
+
+                        // Trigger the hidden file input for importing templates
+                        function uploadTemplatesFromJson() {
+                            const input = document.getElementById('templateFileInput');
+                            if (input) {
+                                input.value = '';
+                                input.click();
+                            }
+                        }
+
+                        // Handle uploaded template JSON
+                        function handleTemplateFileImport(event) {
+                            const file = event.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                try {
+                                    const data = JSON.parse(e.target.result);
+                                    if (Array.isArray(data)) {
+                                        templates = data;
+                                        saveTemplatesToLocalStorage();
+                                        populateTemplateDropdown();
+                                        renderTemplateListInModal();
+                                        showFeedback('templateFeedback', i18n.t('Templates importiert.'), 'success');
+                                    } else {
+                                        throw new Error('Invalid format');
+                                    }
+                                } catch (err) {
+                                    console.error(i18n.t('Fehler beim Import der Templates:'), err);
+                                    showFeedback('templateFeedback', i18n.t('Fehler: Ungültige Template-Datei.'), 'error', 5000);
+                                }
+                            };
+                            reader.readAsText(file);
+                        }
 			
 			// Open the template management modal
 			function openTemplateManagerModal() {

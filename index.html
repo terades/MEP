@@ -403,7 +403,11 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="button-group" style="justify-content: flex-end; margin-top: 1rem;">
+                    <div class="button-group" style="justify-content: space-between; margin-top: 1rem;">
+                        <div class="button-group">
+                            <button type="button" class="btn-secondary" onclick="uploadTemplatesFromJson()" data-i18n="Templates importieren">Templates importieren</button>
+                            <button type="button" class="btn-secondary" onclick="downloadTemplatesAsJson()" data-i18n="Templates exportieren">Templates exportieren</button>
+                        </div>
                         <button type="button" class="btn-secondary" id="deleteAllTemplatesButton" style="color: var(--danger-color); border-color: var(--danger-color);">
                             <svg viewBox="0 0 24 24" style="width: 1.1em; height: 1.1em; margin-right: .5em; fill: var(--danger-color);">
                                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12l1.41 1.41L13.41 14l2.12 2.12l-1.41 1.41L12 15.41l-2.12 2.12l-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/>
@@ -411,6 +415,7 @@
                             <span data-i18n="Alle Templates löschen">Alle Templates löschen</span>
                         </button>
                     </div>
+                    <input type="file" id="templateFileInput" accept="application/json" style="display:none" onchange="handleTemplateFileImport(event)">
                 </div>
                 <div class="modal-footer button-group" style="justify-content: flex-end;">
                     <button type="button" class="btn-secondary" onclick="closeTemplateManagerModal()" data-i18n="Schließen">Schließen</button>
