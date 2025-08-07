@@ -140,5 +140,16 @@
   "Freigeben": "Release",
   "Produktion": "Production",
   "Generator": "Generator",
-  "Produktionsliste": "Production List"
+  "Produktionsliste": "Production List",
+  "Filter": "Filter",
+  "Alle": "All",
+  "Offen": "Open",
+  "In Arbeit": "In Progress",
+  "Abgeschlossen": "Completed",
+  "Starten": "Start",
+  "Abschließen": "Complete",
+  "Status": "Status",
+  "Startzeit": "Start Time",
+  "Projekt": "Project",
+  "Bitte Startzeitpunkt angeben.": "Please provide start time."
 }

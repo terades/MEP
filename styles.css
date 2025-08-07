@@ -1122,3 +1122,27 @@
     padding-bottom: 1rem;
 }
 
+.production-controls {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.production-item.pending {
+    border-left: 4px solid var(--border-color);
+    padding-left: .5rem;
+}
+
+.production-item.in-progress {
+    border-left: 4px solid var(--warning-color);
+    padding-left: .5rem;
+    background-color: rgba(255,149,0,0.1);
+}
+
+.production-item.done {
+    border-left: 4px solid var(--success-color);
+    padding-left: .5rem;
+    background-color: rgba(52,199,89,0.1);
+    opacity: 0.7;
+}
+

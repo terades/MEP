@@ -16,7 +16,6 @@
 const NUM_ZONE_COLORS_AVAILABLE = 20;
 let maxZones = 20; // maximale Anzahl an Zonen, per UI anpassbar
 let zonesPerLabel = 16; // Zonenanzahl Zone 1 (aufteilbar)
-let productionList = [];
 			
 			// Highlight classes
 			const HIGHLIGHT_COLOR_CLASS_STROKE = 'highlight-stroke';
@@ -818,40 +817,7 @@ function updateZonesPerLabel(value) {
     updateLabelPreview();
 }
 
-function renderProductionList() {
-    const list = document.getElementById('productionList');
-    if (!list) return;
-    list.innerHTML = '';
-    productionList.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'production-item';
-        li.innerHTML = `<div><strong>Start:</strong> ${item.startTime}</div>
-                        <div><strong>Projekt:</strong> ${item.projekt}</div>
-                        <div><strong>Komm:</strong> ${item.komm}</div>
-                        <div><strong>Auftrag:</strong> ${item.auftrag}</div>
-                        <div><strong>Pos-Nr:</strong> ${item.posnr}</div>`;
-        const img = document.createElement('img');
-        img.src = item.labelImg;
-        img.style.maxWidth = '200px';
-        img.style.marginTop = '0.5rem';
-        li.appendChild(img);
-        list.appendChild(li);
-    });
-}
 
-function showGeneratorView() {
-    const gen = document.getElementById('generatorView');
-    const prod = document.getElementById('productionView');
-    if (gen) gen.style.display = 'block';
-    if (prod) prod.style.display = 'none';
-}
-
-function showProductionView() {
-    const gen = document.getElementById('generatorView');
-    const prod = document.getElementById('productionView');
-    if (gen) gen.style.display = 'none';
-    if (prod) prod.style.display = 'block';
-}
 
                         // Debounce function to prevent excessive updates while typing
                         function triggerPreviewUpdateDebounced() {
@@ -1589,30 +1555,6 @@ function updateLabelPreview(barcodeSvg) {
                                 console.clear();
                                 showFeedback('barcodeError', 'Debug-Log gelöscht.', 'info', 2000);
                             });
-
-                            document.getElementById('showGeneratorBtn')?.addEventListener('click', () => showGeneratorView());
-                            document.getElementById('showProductionBtn')?.addEventListener('click', () => showProductionView());
-                            document.getElementById('releaseButton')?.addEventListener('click', async () => {
-                                const startTime = document.getElementById('startzeit')?.value;
-                                if (!startTime) {
-                                    showFeedback('barcodeError', 'Bitte Startzeitpunkt angeben.', 'warning', 3000);
-                                    return;
-                                }
-                                const labelElement = document.getElementById('printableLabel');
-                                const canvas = await html2canvas(labelElement);
-                                const imgData = canvas.toDataURL('image/png');
-                                productionList.push({
-                                    startTime,
-                                    projekt: document.getElementById('projekt').value,
-                                    komm: document.getElementById('KommNr').value,
-                                    auftrag: document.getElementById('auftrag').value,
-                                    posnr: document.getElementById('posnr').value,
-                                    labelImg: imgData
-                                });
-                                renderProductionList();
-                                showProductionView();
-                            });
-
                             // Initial validation and rendering
                             const inputsToValidateOnLoad = [{
 			        id: 'gesamtlange',
@@ -1676,7 +1618,6 @@ function updateLabelPreview(barcodeSvg) {
                                     updateBarcodeDebugInfo('bwip-js Bibliothek erfolgreich geladen');
                                 }
                             }, 1000);
-                            showGeneratorView();
                         });
 			
 			
