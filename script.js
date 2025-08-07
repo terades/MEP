@@ -219,14 +219,10 @@ let labelDesignMode = false;
 			        if (!response.ok) {
 			            if (response.status === 404) {
 			                console.warn("lagen.json nicht gefunden oder leer, starte mit leeren Templates.");
-			                templates = [];
-			                populateTemplateDropdown();
-			                // Add some default zones if no template is found
-			                addZone(8, 2, 100);
-			                addZone(8, 2, 100);
-			                addZone(8, 2, 100);
-			                renderAllZones();
-			                return;
+                                        templates = [];
+                                        populateTemplateDropdown();
+                                        renderAllZones();
+                                        return;
 			            }
 			            throw new Error(`HTTP error! status: ${response.status}`);
 			        }
@@ -239,15 +235,11 @@ let labelDesignMode = false;
 			    } catch (e) {
 			        console.error("Konnte Templates nicht laden:", e);
 			        showFeedback('templateFeedback', "Fehler: Templates konnten nicht geladen werden.", 'error', 5000);
-			        templates = [];
-			        populateTemplateDropdown();
-			        // Add some default zones on error
-			        addZone(8, 2, 100);
-			        addZone(8, 2, 100);
-			        addZone(8, 2, 100);
-			        renderAllZones();
-			    }
-			}
+                                templates = [];
+                                populateTemplateDropdown();
+                                renderAllZones();
+                            }
+                        }
 			
 			// Save templates to localStorage
 			function saveTemplatesToLocalStorage() {
@@ -1475,27 +1467,6 @@ function updateLabelPreview(barcodeSvg) {
                                 generateBarcodeToLabel(initialCodes[1], '2');
                             }
                         }
-			
-			    // Set initial zones if none are loaded
-			    if (zonesData.length === 0) {
-			        const initialZones = [{
-			            id: nextZoneId++,
-			            dia: 8,
-			            num: 3,
-			            pitch: 150
-			        }, {
-			            id: nextZoneId++,
-			            dia: 8,
-			            num: 2,
-			            pitch: 150
-			        }, {
-			            id: nextZoneId++,
-			            dia: 8,
-			            num: 3,
-			            pitch: 150
-			        }];
-			        zonesData = initialZones;
-			    }
 			
                             renderAllZones();
                             updateAddZoneButtonState();
