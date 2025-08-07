@@ -140,5 +140,16 @@
   "Freigeben": "Freigeben",
   "Produktion": "Produktion",
   "Generator": "Generator",
-  "Produktionsliste": "Produktionsliste"
+  "Produktionsliste": "Produktionsliste",
+  "Filter": "Filter",
+  "Alle": "Alle",
+  "Offen": "Offen",
+  "In Arbeit": "In Arbeit",
+  "Abgeschlossen": "Abgeschlossen",
+  "Starten": "Starten",
+  "Abschließen": "Abschließen",
+  "Status": "Status",
+  "Startzeit": "Startzeit",
+  "Projekt": "Projekt",
+  "Bitte Startzeitpunkt angeben.": "Bitte Startzeitpunkt angeben."
 }

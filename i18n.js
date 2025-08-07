@@ -84,7 +84,7 @@ async function loadLanguage(lang) {
 
         // !!! WICHTIG !!!
         // Nach dem Laden einer neuen Sprache müssen alle Funktionen, die dynamische
-        // Textelemente in 'script.js' rendern, erneut aufgerufen werden.
+        // Textelemente in den Skripten rendern, erneut aufgerufen werden.
         // Dies stellt sicher, dass alle dynamisch generierten UI-Elemente
         // die neue Sprache übernehmen.
         // Die Funktionen müssen global verfügbar sein (z.B. nicht in einem lokalen Scope).
@@ -92,7 +92,8 @@ async function loadLanguage(lang) {
         if (typeof renderAllZones === 'function') renderAllZones();
         if (typeof drawCagePreview === 'function') drawCagePreview(); // Enthält die SVG-Texte mit Platzhaltern
         if (typeof updateLabelPreview === 'function') updateLabelPreview();
-        // Fügen Sie hier alle weiteren Funktionen aus script.js hinzu,
+        if (typeof renderProductionList === 'function') renderProductionList();
+        // Fügen Sie hier alle weiteren Funktionen aus den Skripten hinzu,
         // die UI-Elemente mit Text aktualisieren.
 
     } catch (error) {
@@ -164,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const templateNameInput = document.getElementById('templateName');
     if (templateNameInput) {
         // Die i18n.t-Funktion sollte zu diesem Zeitpunkt bereits global definiert sein,
-        // da script.js nach i18n.js geladen wird und i18n.js window.i18n.t direkt definiert.
+        // da die Skripte nach i18n.js geladen werden und i18n.js window.i18n.t direkt definiert.
         templateNameInput.placeholder = i18n.t('Neuer Template-Name...');
     }
 });

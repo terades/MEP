@@ -140,5 +140,16 @@
   "Freigeben": "Zatwierdź",
   "Produktion": "Produkcja",
   "Generator": "Generator",
-  "Produktionsliste": "Lista produkcyjna"
+  "Produktionsliste": "Lista produkcyjna",
+  "Filter": "Filtr",
+  "Alle": "Wszystkie",
+  "Offen": "Otwarte",
+  "In Arbeit": "W toku",
+  "Abgeschlossen": "Zakończone",
+  "Starten": "Start",
+  "Abschließen": "Zakończ",
+  "Status": "Status",
+  "Startzeit": "Czas startu",
+  "Projekt": "Projekt",
+  "Bitte Startzeitpunkt angeben.": "Podaj czas startu."
 }

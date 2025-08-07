@@ -140,5 +140,16 @@
   "Freigeben": "Uvolnit",
   "Produktion": "Výroba",
   "Generator": "Generátor",
-  "Produktionsliste": "Seznam výroby"
+  "Produktionsliste": "Seznam výroby",
+  "Filter": "Filtr",
+  "Alle": "Vše",
+  "Offen": "Otevřené",
+  "In Arbeit": "Probíhá",
+  "Abgeschlossen": "Dokončeno",
+  "Starten": "Start",
+  "Abschließen": "Dokončit",
+  "Status": "Stav",
+  "Startzeit": "Čas startu",
+  "Projekt": "Projekt",
+  "Bitte Startzeitpunkt angeben.": "Zadejte čas startu."
 }
