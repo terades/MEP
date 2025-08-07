@@ -135,5 +135,10 @@
   "Abstand mm": "Rozteč mm",
   "ZPL anzeigen": "Zobrazit ZPL",
   "ZPL Code": "ZPL kód",
-  "Label als PNG speichern": "Uložit štítek jako PNG"
+  "Label als PNG speichern": "Uložit štítek jako PNG",
+  "Startzeitpunkt": "Startovní čas",
+  "Freigeben": "Uvolnit",
+  "Produktion": "Výroba",
+  "Generator": "Generátor",
+  "Produktionsliste": "Seznam výroby"
 }
