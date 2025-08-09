@@ -697,14 +697,23 @@ function loadLabelLayout() {
 			        `;
 			
 			        const pitchCell = row.insertCell();
-			        pitchCell.setAttribute('data-label', 'Pitch (p)');
-			        pitchCell.innerHTML = `
-			            <div class="form-group">
-			                <label for="pitch-${zone.id}">Pitch (p):</label>
-			                <input type="number" id="pitch-${zone.id}" value="${zone.pitch}" min="1" oninput="updateZoneData(${zone.id}, 'pitch', this.value); validateNumberInput(this, 1, 'int', 'Pitch >= 1mm');" onfocus="setHighlightedZone(${displayIndex},true)" onblur="setHighlightedZone(${displayIndex},false)">
-			                <span class="input-feedback"></span>
-			            </div>
-			        `;
+                                pitchCell.setAttribute('data-label', 'Pitch (p)');
+                                pitchCell.innerHTML = `
+                                    <div class="form-group">
+                                        <label for="pitch-${zone.id}">Pitch (p):</label>
+                                        <input type="number" id="pitch-${zone.id}" value="${zone.pitch}" min="1" oninput="updateZoneData(${zone.id}, 'pitch', this.value); validateNumberInput(this, 1, 'int', 'Pitch >= 1mm');" onfocus="setHighlightedZone(${displayIndex},true)" onblur="setHighlightedZone(${displayIndex},false)">
+                                        <span class="input-feedback"></span>
+                                    </div>
+                                `;
+                                const pitchInput = pitchCell.querySelector('input');
+                                if (pitchInput) {
+                                    pitchInput.addEventListener('keydown', (e) => {
+                                        if (e.key === 'Tab' && !e.shiftKey && index === zonesData.length - 1) {
+                                            e.preventDefault();
+                                            addZone(8, 3, 150, true);
+                                        }
+                                    });
+                                }
 			
 			        const actionsCell = row.insertCell();
 			        actionsCell.setAttribute('data-label', 'Aktion');
@@ -737,28 +746,35 @@ function loadLabelLayout() {
 			}
 			
 			// Add a new zone to the list
-                        function addZone(dia = 8, num = 3, pitch = 150) {
+                        function addZone(dia = 8, num = 3, pitch = 150, focusNum = false) {
                             if (zonesData.length >= maxZones) {
                                 showFeedback('templateFeedback', 'Maximale Zonenanzahl erreicht.', 'warning', 3000);
                                 return;
                             }
+                            const newId = nextZoneId++;
                             zonesData.push({
-                                id: nextZoneId++,
+                                id: newId,
                                 dia: dia,
                                 num: num,
                                 pitch: pitch
                             });
                             renderAllZones();
                             updateAddZoneButtonState();
-			
-			    // Scroll to the new zone and briefly highlight it
-			    setTimeout(() => {
-			        const newRow = document.querySelector(`#zonesTable tr[data-zone-id="${nextZoneId - 1}"]`);
-			        if (newRow) {
-			            const tableWrapper = newRow.closest('.zone-table-wrapper');
-			            if (tableWrapper) {
-			                const wrapperRect = tableWrapper.getBoundingClientRect();
-			                const rowRect = newRow.getBoundingClientRect();
+                            if (focusNum) {
+                                const numInput = document.getElementById(`anzahlBUEGEL-${newId}`);
+                                if (numInput) {
+                                    numInput.focus();
+                                }
+                            }
+
+                            // Scroll to the new zone and briefly highlight it
+                            setTimeout(() => {
+                                const newRow = document.querySelector(`#zonesTable tr[data-zone-id="${newId}"]`);
+                                if (newRow) {
+                                    const tableWrapper = newRow.closest('.zone-table-wrapper');
+                                    if (tableWrapper) {
+                                        const wrapperRect = tableWrapper.getBoundingClientRect();
+                                        const rowRect = newRow.getBoundingClientRect();
 			                const isVisible = rowRect.top >= wrapperRect.top && rowRect.bottom <= wrapperRect.bottom;
 			                if (!isVisible) {
 			                    newRow.scrollIntoView({
