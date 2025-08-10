@@ -123,14 +123,20 @@ function persistSavedOrders() {
 function renderSavedOrdersList() {
     const list = document.getElementById('savedOrdersList');
     if (!list) return;
+    const filterText = document.getElementById('savedOrdersFilterInput')?.value.toLowerCase() || '';
     list.innerHTML = '';
-    if (savedOrders.length === 0) {
+    const ordersToShow = savedOrders.filter(order => {
+        if (!filterText) return true;
+        return [order.projekt, order.komm, order.auftrag, order.posnr]
+            .some(val => (val || '').toString().toLowerCase().includes(filterText));
+    });
+    if (ordersToShow.length === 0) {
         const li = document.createElement('li');
         li.textContent = i18n.t('Keine Aufträge gespeichert.');
         list.appendChild(li);
         return;
     }
-    savedOrders.forEach(order => {
+    ordersToShow.forEach(order => {
         const li = document.createElement('li');
         li.className = 'production-item';
         li.innerHTML = `<div><strong>${i18n.t('Projekt')}:</strong> ${order.projekt}</div>
@@ -169,7 +175,9 @@ function saveCurrentOrder() {
         langdrahtDurchmesser: document.getElementById('langdrahtDurchmesser')?.value || '',
         anfangsueberstand: document.getElementById('anfangsueberstand')?.value || '',
         endueberstand: document.getElementById('endueberstand')?.value || '',
-        zonesData: zonesData
+        maxZones: maxZones,
+        zonesPerLabel: zonesPerLabel,
+        zonesData: JSON.parse(JSON.stringify(zonesData))
     };
     const idx = savedOrders.findIndex(o => o.id === order.id);
     if (idx >= 0) {
@@ -195,7 +203,11 @@ function loadOrderIntoForm(id) {
     document.getElementById('langdrahtDurchmesser').value = order.langdrahtDurchmesser;
     document.getElementById('anfangsueberstand').value = order.anfangsueberstand;
     document.getElementById('endueberstand').value = order.endueberstand;
-    zonesData = order.zonesData || [];
+    document.getElementById('maxZonesInput').value = order.maxZones || maxZones;
+    updateMaxZones(document.getElementById('maxZonesInput').value);
+    document.getElementById('zonesPerLabelInput').value = order.zonesPerLabel || zonesPerLabel;
+    updateZonesPerLabel(document.getElementById('zonesPerLabelInput').value);
+    zonesData = JSON.parse(JSON.stringify(order.zonesData || []));
     renderAllZones();
     updateAddZoneButtonState();
     triggerPreviewUpdateDebounced();
@@ -210,8 +222,13 @@ function deleteSavedOrder(id) {
 }
 
 function openSavedOrdersModal() {
+    const filterEl = document.getElementById('savedOrdersFilterInput');
+    if (filterEl) {
+        filterEl.value = '';
+    }
     renderSavedOrdersList();
     document.getElementById('savedOrdersModal')?.classList.add('visible');
+    filterEl?.focus();
 }
 
 function closeSavedOrdersModal() {
@@ -1690,6 +1707,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('saveOrderButton')?.addEventListener('click', () => saveCurrentOrder());
     document.getElementById('openSavedOrdersButton')?.addEventListener('click', () => openSavedOrdersModal());
+    document.getElementById('savedOrdersFilterInput')?.addEventListener('input', () => renderSavedOrdersList());
     document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();
                         updateLabelPreview();
