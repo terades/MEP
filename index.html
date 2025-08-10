@@ -242,13 +242,24 @@
                             <h2 class="card-title" data-i18n="Generierter BVBS Code">Generierter BVBS Code</h2>
                         </div>
                         <div class="output-area">
-                            <textarea id="outputBvbsCode" readonly></textarea>
-                            <button type="button" class="btn-success" id="copyBvbsButton" title="Kopieren">
-                                <svg viewBox="0 0 24 24">
-                                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                                </svg>
-                                <span data-i18n="Kopieren">Kopieren</span>
-                            </button>
+                            <div class="bvbs-output-field">
+                                <textarea id="outputBvbsCode1" readonly></textarea>
+                                <button type="button" class="btn-success copy-bvbs-btn" data-target="outputBvbsCode1" title="Kopieren">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                                    </svg>
+                                    <span data-i18n="Kopieren">Kopieren</span>
+                                </button>
+                            </div>
+                            <div class="bvbs-output-field" id="bvbsOutputField2" style="display:none;">
+                                <textarea id="outputBvbsCode2" readonly></textarea>
+                                <button type="button" class="btn-success copy-bvbs-btn" data-target="outputBvbsCode2" title="Kopieren">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                                    </svg>
+                                    <span data-i18n="Kopieren">Kopieren</span>
+                                </button>
+                            </div>
                         </div>
                         <span id="copyFeedback" class="copy-feedback-text" style="text-align: right; display: block;"></span>
                     </div>
