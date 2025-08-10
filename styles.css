@@ -710,6 +710,7 @@ select {
 
 .bvbs-output-field textarea {
     flex: 1;
+    height: 5rem;
 }
 			/* Damit das Canvas im Label immer maximal 100% breit ist */
                         #labelBarcodeContainer canvas,
