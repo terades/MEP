@@ -155,12 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('burgerMenu')?.addEventListener('click', () => {
-        document.getElementById('navMenu')?.classList.toggle('open');
-    });
-    document.querySelectorAll('#navMenu button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.getElementById('navMenu')?.classList.remove('open');
-        });
+        document.body.classList.toggle('sidebar-open');
     });
     showGeneratorView();
 });
