@@ -1313,9 +1313,9 @@ function updateZonesPerLabel(value) {
                                 }
 
                                 svgContent += '<g class="total-length-dimension-group">';
-                                const totalDimStart = PADDING_VISUAL + initialOverhang * scale;
-                                const totalDimEnd = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
-                                svgContent += buildDimensionLineSvg(totalDimStart, height - PADDING_VISUAL + 10, totalDimEnd, height - PADDING_VISUAL + 10, `Gesamtlänge L = ${effectiveLength}mm`, 0, 'dim-text-total', 'dim-line-default', 'center');
+                                const totalDimStart = PADDING_VISUAL;
+                                const totalDimEnd = PADDING_VISUAL + totalLength * scale;
+                                svgContent += buildDimensionLineSvg(totalDimStart, height - PADDING_VISUAL + 10, totalDimEnd, height - PADDING_VISUAL + 10, `Gesamtlänge L = ${totalLength}mm`, 0, 'dim-text-total', 'dim-line-default', 'center');
                                 svgContent += '</g>';
 			        
 			        svgContent += '</g>';
@@ -1422,7 +1422,7 @@ function updateZonesPerLabel(value) {
                                 const langdrahtDurchmesser = document.getElementById('langdrahtDurchmesser').value;
                                 const anfangsueberstand = document.getElementById('anfangsueberstand').value;
                                 const endueberstand = document.getElementById('endueberstand').value;
-                                const effektiveGesamtlange = Math.max(0, parseFloat(rawGesamtlange) - parseFloat(anfangsueberstand) - parseFloat(endueberstand));
+                                const gesamtlangeVal = parseFloat(rawGesamtlange) || 0;
                                 const buegelname1 = document.getElementById('buegelname1').value.trim();
                                 const buegelname2 = document.getElementById('buegelname2').value.trim();
                                 const rezeptname = document.getElementById('rezeptname').value.trim();
@@ -1433,7 +1433,7 @@ function updateZonesPerLabel(value) {
                                 }
 
                                 const buildCode = (zonesArr, startOv, endOv, name) => {
-                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${effektiveGesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
+                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlangeVal}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
                                     let pt = "PtGABBIE;";
                                     pt += `i${startOv};`;
                                     pt += `f${endOv};`;
@@ -1597,10 +1597,7 @@ function updateLabelPreview(barcodeSvg) {
                         const buegelname2 = document.getElementById('buegelname2').value || '-';
                         const auftrag = document.getElementById('auftrag').value || '-';
                         const total = parseFloat(document.getElementById('gesamtlange').value) || 0;
-                        const startOv = parseFloat(document.getElementById('anfangsueberstand').value) || 0;
-                        const endOv = parseFloat(document.getElementById('endueberstand').value) || 0;
-                        const effektive = Math.max(0, total - startOv - endOv);
-                        const gesamtlange = effektive + ' mm';
+                        const gesamtlange = total + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
                         const codes = getBvbsCodes();
