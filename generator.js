@@ -1,6 +1,9 @@
 let zonesData = [];
 let templates = [];
 let nextZoneId = 0;
+let savedOrders = [];
+let currentSavedOrderId = null;
+const LOCAL_STORAGE_SAVED_ORDERS_KEY = 'bvbsSavedOrders';
 
 function getEffectiveZoneNum(zone, index) {
     return index === 0 ? zone.num + 1 : zone.num;
@@ -90,11 +93,138 @@ let labelDesignMode = false;
 			    console.log(`[Barcode Debug] ${message}`);
 			}
 			
-                        function getBvbsCodes() {
-                            const code1 = document.getElementById('outputBvbsCode1')?.value.trim();
-                            const code2 = document.getElementById('outputBvbsCode2')?.value.trim();
-                            return [code1, code2].filter(code => code && code.startsWith('BF2'));
-                        }
+function getBvbsCodes() {
+    const code1 = document.getElementById('outputBvbsCode1')?.value.trim();
+    const code2 = document.getElementById('outputBvbsCode2')?.value.trim();
+    return [code1, code2].filter(code => code && code.startsWith('BF2'));
+}
+
+// Saved orders management
+function loadSavedOrders() {
+    const data = localStorage.getItem(LOCAL_STORAGE_SAVED_ORDERS_KEY);
+    if (data) {
+        try {
+            savedOrders = JSON.parse(data);
+        } catch (e) {
+            console.error('Could not parse saved orders', e);
+            savedOrders = [];
+        }
+    }
+}
+
+function persistSavedOrders() {
+    try {
+        localStorage.setItem(LOCAL_STORAGE_SAVED_ORDERS_KEY, JSON.stringify(savedOrders));
+    } catch (e) {
+        console.error('Could not store saved orders', e);
+    }
+}
+
+function renderSavedOrdersList() {
+    const list = document.getElementById('savedOrdersList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (savedOrders.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = i18n.t('Keine Aufträge gespeichert.');
+        list.appendChild(li);
+        return;
+    }
+    savedOrders.forEach(order => {
+        const li = document.createElement('li');
+        li.className = 'production-item';
+        li.innerHTML = `<div><strong>${i18n.t('Projekt')}:</strong> ${order.projekt}</div>
+                        <div><strong>Komm:</strong> ${order.komm}</div>
+                        <div><strong>${i18n.t('Auftrag')}:</strong> ${order.auftrag}</div>
+                        <div><strong>Pos-Nr:</strong> ${order.posnr}</div>`;
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'button-group';
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'btn-secondary';
+        loadBtn.textContent = i18n.t('Laden');
+        loadBtn.addEventListener('click', () => {
+            loadOrderIntoForm(order.id);
+            closeSavedOrdersModal();
+        });
+        btnGroup.appendChild(loadBtn);
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-secondary';
+        delBtn.textContent = i18n.t('Löschen');
+        delBtn.addEventListener('click', () => deleteSavedOrder(order.id));
+        btnGroup.appendChild(delBtn);
+        li.appendChild(btnGroup);
+        list.appendChild(li);
+    });
+}
+
+function saveCurrentOrder() {
+    const order = {
+        id: currentSavedOrderId || Date.now(),
+        projekt: document.getElementById('projekt')?.value || '',
+        komm: document.getElementById('KommNr')?.value || '',
+        auftrag: document.getElementById('auftrag')?.value || '',
+        posnr: document.getElementById('posnr')?.value || '',
+        gesamtlange: document.getElementById('gesamtlange')?.value || '',
+        anzahl: document.getElementById('anzahl')?.value || '',
+        langdrahtDurchmesser: document.getElementById('langdrahtDurchmesser')?.value || '',
+        anfangsueberstand: document.getElementById('anfangsueberstand')?.value || '',
+        endueberstand: document.getElementById('endueberstand')?.value || '',
+        zonesData: zonesData
+    };
+    const idx = savedOrders.findIndex(o => o.id === order.id);
+    if (idx >= 0) {
+        savedOrders[idx] = order;
+    } else {
+        savedOrders.push(order);
+    }
+    currentSavedOrderId = order.id;
+    persistSavedOrders();
+    renderSavedOrdersList();
+    showFeedback('templateFeedback', i18n.t('Auftrag gespeichert.'), 'success', 2000);
+}
+
+function loadOrderIntoForm(id) {
+    const order = savedOrders.find(o => o.id === id);
+    if (!order) return;
+    document.getElementById('projekt').value = order.projekt;
+    document.getElementById('KommNr').value = order.komm;
+    document.getElementById('auftrag').value = order.auftrag;
+    document.getElementById('posnr').value = order.posnr;
+    document.getElementById('gesamtlange').value = order.gesamtlange;
+    document.getElementById('anzahl').value = order.anzahl;
+    document.getElementById('langdrahtDurchmesser').value = order.langdrahtDurchmesser;
+    document.getElementById('anfangsueberstand').value = order.anfangsueberstand;
+    document.getElementById('endueberstand').value = order.endueberstand;
+    zonesData = order.zonesData || [];
+    renderAllZones();
+    updateAddZoneButtonState();
+    triggerPreviewUpdateDebounced();
+    currentSavedOrderId = id;
+}
+
+function deleteSavedOrder(id) {
+    savedOrders = savedOrders.filter(o => o.id !== id);
+    if (currentSavedOrderId === id) currentSavedOrderId = null;
+    persistSavedOrders();
+    renderSavedOrdersList();
+}
+
+function openSavedOrdersModal() {
+    renderSavedOrdersList();
+    document.getElementById('savedOrdersModal')?.classList.add('visible');
+}
+
+function closeSavedOrdersModal() {
+    document.getElementById('savedOrdersModal')?.classList.remove('visible');
+}
+
+function deleteCurrentSavedOrder() {
+    if (currentSavedOrderId) {
+        deleteSavedOrder(currentSavedOrderId);
+        currentSavedOrderId = null;
+    }
+}
+window.deleteCurrentSavedOrder = deleteCurrentSavedOrder;
 
                         // Updates the barcode status text
                         function updateBarcodeStatus() {
@@ -1531,31 +1661,36 @@ function updateLabelPreview(barcodeSvg) {
 			
 			
 			// Initial setup on page load
-			document.addEventListener('DOMContentLoaded', () => {
-                            initCollapsibleHeaders();
-                            loadTemplatesFromFile();
-                            loadLabelLayout();
-                            applyLabelLayout();
-                            LABEL_ELEMENT_IDS.forEach(id => {
+document.addEventListener('DOMContentLoaded', () => {
+    initCollapsibleHeaders();
+    loadTemplatesFromFile();
+    loadLabelLayout();
+    applyLabelLayout();
+    LABEL_ELEMENT_IDS.forEach(id => {
                                 const el = document.getElementById(id);
                                 if (el) makeElementDraggable(el);
                                 const el2 = document.getElementById(id + '2');
-                                if (el2) makeElementDraggable(el2);
-                            });
+        if (el2) makeElementDraggable(el2);
+    });
+
+    loadSavedOrders();
+    renderSavedOrdersList();
 			
 			    // Event listeners
-                            document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
+    document.getElementById('addZoneButton')?.addEventListener('click', () => addZone());
                             document.getElementById('maxZonesInput')?.addEventListener('input', (e) => updateMaxZones(e.target.value));
                             const maxZonesEl = document.getElementById('maxZonesInput');
                             if (maxZonesEl) {
                                 updateMaxZones(maxZonesEl.value);
                             }
-                            document.getElementById('zonesPerLabelInput')?.addEventListener('input', (e) => updateZonesPerLabel(e.target.value));
+    document.getElementById('zonesPerLabelInput')?.addEventListener('input', (e) => updateZonesPerLabel(e.target.value));
                             const zonesPerLabelEl = document.getElementById('zonesPerLabelInput');
-                            if (zonesPerLabelEl) {
-                                updateZonesPerLabel(zonesPerLabelEl.value);
-                            }
-                            document.getElementById('generateButton').addEventListener('click', () => {
+    if (zonesPerLabelEl) {
+        updateZonesPerLabel(zonesPerLabelEl.value);
+    }
+    document.getElementById('saveOrderButton')?.addEventListener('click', () => saveCurrentOrder());
+    document.getElementById('openSavedOrdersButton')?.addEventListener('click', () => openSavedOrdersModal());
+    document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();
                         updateLabelPreview();
                         const codes = getBvbsCodes();

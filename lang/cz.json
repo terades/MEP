@@ -157,5 +157,11 @@
   "Bemerkung": "Poznámka",
   "Bearbeiten": "Upravit",
   "Passwort eingeben": "Zadejte heslo",
-  "Falsches Passwort": "Špatné heslo"
+  "Falsches Passwort": "Špatné heslo",
+  "Auftrag speichern": "Uložit zakázku",
+  "Gespeicherte Aufträge": "Uložené zakázky",
+  "Laden": "Načíst",
+  "Löschen": "Smazat",
+  "Keine Aufträge gespeichert.": "Žádné uložené zakázky.",
+  "Auftrag gespeichert.": "Zakázka uložena."
 }

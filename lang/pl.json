@@ -157,5 +157,11 @@
   "Bemerkung": "Notatka",
   "Bearbeiten": "Edytuj",
   "Passwort eingeben": "Wprowadź hasło",
-  "Falsches Passwort": "Nieprawidłowe hasło"
+  "Falsches Passwort": "Nieprawidłowe hasło",
+  "Auftrag speichern": "Zapisz zlecenie",
+  "Gespeicherte Aufträge": "Zapisane zlecenia",
+  "Laden": "Wczytaj",
+  "Löschen": "Usuń",
+  "Keine Aufträge gespeichert.": "Brak zapisanych zleceń.",
+  "Auftrag gespeichert.": "Zlecenie zapisane."
 }

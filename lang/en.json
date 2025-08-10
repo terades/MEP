@@ -157,5 +157,11 @@
   "Bemerkung": "Note",
   "Bearbeiten": "Edit",
   "Passwort eingeben": "Enter password",
-  "Falsches Passwort": "Wrong password"
+  "Falsches Passwort": "Wrong password",
+  "Auftrag speichern": "Save order",
+  "Gespeicherte Aufträge": "Saved orders",
+  "Laden": "Load",
+  "Löschen": "Delete",
+  "Keine Aufträge gespeichert.": "No orders saved.",
+  "Auftrag gespeichert.": "Order saved."
 }
