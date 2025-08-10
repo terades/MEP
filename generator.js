@@ -1224,8 +1224,8 @@ function updateZonesPerLabel(value) {
 
                                     if (numStirrups > 0) {
                                         const zoneStartScaled = PADDING_VISUAL + zoneStart * scale;
-                                        if (zoneLength > 0) {
-                                            svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneLength * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
+                                        if (zoneWidth > 0) {
+                                            svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneWidth * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                         }
                                         for (let j = 0; j < numStirrups; j++) {
                                             const stirrupPos = zoneStart + j * pitch;
@@ -1269,7 +1269,7 @@ function updateZonesPerLabel(value) {
                                         if (numStirrups > 1 && pitch > 0) {
                                             const pitchStartScaled = PADDING_VISUAL + zoneStart * scale;
                                             const pitchEndScaled = pitchStartScaled + pitch * scale;
-                                            if (pitchEndScaled <= zoneStartScaled + (zoneLength * scale) + 1.1 && pitch * scale > 5) {
+                                            if (pitchEndScaled <= zoneStartScaled + (zoneWidth * scale) + 1.1 && pitch * scale > 5) {
                                                 svgContent += buildDimensionLineSvg(pitchStartScaled, dimLineYPitch, pitchEndScaled, dimLineYPitch, `p=${pitch}`, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'left');
                                             }
                                         }
