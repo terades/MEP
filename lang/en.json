@@ -152,5 +152,6 @@
   "Status": "Status",
   "Startzeit": "Start Time",
   "Projekt": "Project",
-  "Bitte Startzeitpunkt angeben.": "Please provide start time."
+  "Bitte Startzeitpunkt angeben.": "Please provide start time.",
+  "Laufzeit": "Elapsed Time"
 }

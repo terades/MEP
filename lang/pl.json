@@ -152,5 +152,6 @@
   "Status": "Status",
   "Startzeit": "Czas startu",
   "Projekt": "Projekt",
-  "Bitte Startzeitpunkt angeben.": "Podaj czas startu."
+  "Bitte Startzeitpunkt angeben.": "Podaj czas startu.",
+  "Laufzeit": "Czas trwania"
 }

@@ -46,6 +46,14 @@ function statusClass(status) {
     }
 }
 
+function formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
 function renderProductionList() {
     const list = document.getElementById('productionList');
     if (!list) return;
@@ -66,11 +74,13 @@ function renderProductionList() {
     items.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = `production-item ${statusClass(item.status)}`;
+        const duration = item.startTimestamp ? ((item.status === 'done' ? item.endTimestamp : Date.now()) - item.startTimestamp) : null;
         li.innerHTML = `<div><strong>${i18n.t('Startzeit')}:</strong> ${item.startTime}</div>
                         <div><strong>${i18n.t('Projekt')}:</strong> ${item.projekt}</div>
                         <div><strong>Komm:</strong> ${item.komm}</div>
                         <div><strong>${i18n.t('Auftrag')}:</strong> ${item.auftrag}</div>
                         <div><strong>Pos-Nr:</strong> ${item.posnr}</div>
+                        ${duration !== null ? `<div><strong>${i18n.t('Laufzeit')}:</strong> ${formatDuration(duration)}</div>` : ''}
                         <div><strong>${i18n.t('Status')}:</strong> ${i18n.t(statusKey(item.status))}</div>`;
         const img = document.createElement('img');
         img.src = item.labelImg;
@@ -87,6 +97,7 @@ function renderProductionList() {
             startBtn.textContent = i18n.t('Starten');
             startBtn.addEventListener('click', () => {
                 item.status = 'inProgress';
+                item.startTimestamp = Date.now();
                 renderProductionList();
             });
             btnGroup.appendChild(startBtn);
@@ -97,6 +108,7 @@ function renderProductionList() {
             doneBtn.textContent = i18n.t('Abschließen');
             doneBtn.addEventListener('click', () => {
                 item.status = 'done';
+                item.endTimestamp = Date.now();
                 renderProductionList();
             });
             btnGroup.appendChild(doneBtn);
@@ -157,5 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('burgerMenu')?.addEventListener('click', () => {
         document.body.classList.toggle('sidebar-open');
     });
+    setInterval(() => {
+        if (productionList.some(p => p.status === 'inProgress')) {
+            renderProductionList();
+        }
+    }, 1000);
     showGeneratorView();
 });
