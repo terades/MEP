@@ -158,25 +158,23 @@ function applyTranslations() {
  * Sie löst das Neuladen der entsprechenden Sprachdatei aus.
  * @param {string} lang - Der Sprachcode ('de', 'en', 'pl', 'cz').
  */
-function setLanguage(lang) {
-    loadLanguage(lang);
+async function setLanguage(lang) {
+    await loadLanguage(lang);
 }
 
 // Initialisierung der Sprachlogik beim vollständigen Laden des DOM.
 // Dies stellt sicher, dass alle HTML-Elemente vorhanden sind, bevor Übersetzungen angewendet werden.
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // Versuche, die zuletzt gewählte Sprache aus dem localStorage zu laden.
     // Wenn keine Sprache gespeichert ist, verwende Deutsch ('de') als Standard.
     const lang = localStorage.getItem("language") || "de";
-    loadLanguage(lang); // Lade die entsprechende Sprachdatei.
+    await loadLanguage(lang); // Lade die entsprechende Sprachdatei.
 
     const languageSelect = document.getElementById('languageSelect');
     if (languageSelect) {
         languageSelect.addEventListener('change', (e) => {
             setLanguage(e.target.value);
-            updateLanguageFlag();
         });
-        updateLanguageFlag();
     }
 
     // Dies ist ein spezieller Fall, falls das placeholder-Attribut nicht direkt

@@ -1249,21 +1249,6 @@ body.sidebar-open .nav-menu-bottom .app-version {
 			}
 		}
 
-			.language-select {
-			position: absolute;
-			top: 1rem;
-			right: 1rem;
-			background: var(--background-color);
-			border-radius: 4px;
-			padding: 0.2rem 0.5rem;
-			}
-
-                       .language-select select {
-                        border: none;
-                        background: transparent;
-                        font-size: 0.9rem;
-                        }
-
                         /* Label layout editing */
                         #printableLabel.label-edit-mode,
                         #printableLabel2.label-edit-mode {
