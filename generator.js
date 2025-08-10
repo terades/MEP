@@ -1128,9 +1128,9 @@ function updateZonesPerLabel(value) {
                                 });
                                 svgContent += '</g>';
 			
-			        const finalOverhangCalculated = totalLength - initialOverhang - stirrupZoneTotalLength;
-			        const finalOverhangScaledStart = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
-			        const finalOverhangScaledEnd = PADDING_VISUAL + totalLength * scale;
+                                const finalOverhangCalculated = totalLength - initialOverhang - stirrupZoneTotalLength;
+                                const finalOverhangScaledStart = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
+                                const finalOverhangScaledEnd = PADDING_VISUAL + totalLength * scale;
 			
 			        if (stirrupZoneTotalLength < totalLength - initialOverhang - finalOverhang - 0.1) {
 			            const leerraumStart = PADDING_VISUAL + (initialOverhang + stirrupZoneTotalLength) * scale;
@@ -1151,18 +1151,20 @@ function updateZonesPerLabel(value) {
                                     svgContent += '</g>';
                                 }
 			
-			        let remainingSpace = totalLength - initialOverhang - finalOverhang;
-			        if (Math.abs(stirrupZoneTotalLength - remainingSpace) > 0.1 && stirrupZoneTotalLength < remainingSpace) {
-			            errorEl.textContent = `Warnung: Leerraum (${(remainingSpace - stirrupZoneTotalLength).toFixed(1)}mm).`;
-			            errorEl.classList.add('warning');
-			        } else if (stirrupZoneTotalLength > remainingSpace + 0.1) {
-			            errorEl.textContent = `Fehler: Bügelzonen (${stirrupZoneTotalLength.toFixed(1)}mm) > Platz (${remainingSpace.toFixed(1)}mm)!`;
-			            errorEl.classList.add('error');
-			        }
-			        
-			        svgContent += '<g class="total-length-dimension-group">';
-			        svgContent += buildDimensionLineSvg(PADDING_VISUAL, height - PADDING_VISUAL + 10, PADDING_VISUAL + totalLength * scale, height - PADDING_VISUAL + 10, `Gesamtlänge L = ${totalLength}mm`, 0, 'dim-text-total', 'dim-line-default', 'center');
-			        svgContent += '</g>';
+                                const effectiveLength = totalLength - initialOverhang - finalOverhang;
+                                if (Math.abs(stirrupZoneTotalLength - effectiveLength) > 0.1 && stirrupZoneTotalLength < effectiveLength) {
+                                    errorEl.textContent = `Warnung: Leerraum (${(effectiveLength - stirrupZoneTotalLength).toFixed(1)}mm).`;
+                                    errorEl.classList.add('warning');
+                                } else if (stirrupZoneTotalLength > effectiveLength + 0.1) {
+                                    errorEl.textContent = `Fehler: Bügelzonen (${stirrupZoneTotalLength.toFixed(1)}mm) > Platz (${effectiveLength.toFixed(1)}mm)!`;
+                                    errorEl.classList.add('error');
+                                }
+
+                                svgContent += '<g class="total-length-dimension-group">';
+                                const totalDimStart = PADDING_VISUAL + initialOverhang * scale;
+                                const totalDimEnd = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
+                                svgContent += buildDimensionLineSvg(totalDimStart, height - PADDING_VISUAL + 10, totalDimEnd, height - PADDING_VISUAL + 10, `Gesamtlänge L = ${effectiveLength}mm`, 0, 'dim-text-total', 'dim-line-default', 'center');
+                                svgContent += '</g>';
 			        
 			        svgContent += '</g>';
                                 svgContainer.innerHTML = svgContent;
@@ -1263,11 +1265,12 @@ function updateZonesPerLabel(value) {
 			        const KommNr = document.getElementById('KommNr').value;
 			        const auftrag = document.getElementById('auftrag').value;
 			        const posnr = document.getElementById('posnr').value;
-			        const gesamtlange = document.getElementById('gesamtlange').value;
-			        const anzahl = document.getElementById('anzahl').value;
+                                const rawGesamtlange = document.getElementById('gesamtlange').value;
+                                const anzahl = document.getElementById('anzahl').value;
                                 const langdrahtDurchmesser = document.getElementById('langdrahtDurchmesser').value;
                                 const anfangsueberstand = document.getElementById('anfangsueberstand').value;
                                 const endueberstand = document.getElementById('endueberstand').value;
+                                const effektiveGesamtlange = Math.max(0, parseFloat(rawGesamtlange) - parseFloat(anfangsueberstand) - parseFloat(endueberstand));
                                 const buegelname1 = document.getElementById('buegelname1').value.trim();
                                 const buegelname2 = document.getElementById('buegelname2').value.trim();
                                 const rezeptname = document.getElementById('rezeptname').value.trim();
@@ -1278,7 +1281,7 @@ function updateZonesPerLabel(value) {
                                 }
 
                                 const buildCode = (zonesArr, startOv, endOv, name) => {
-                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
+                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${effektiveGesamtlange}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
                                     let pt = "PtGABBIE;";
                                     pt += `i${startOv};`;
                                     pt += `f${endOv};`;
@@ -1438,7 +1441,11 @@ function updateLabelPreview(barcodeSvg) {
                         const buegelname1 = document.getElementById('buegelname1').value || '-';
                         const buegelname2 = document.getElementById('buegelname2').value || '-';
                         const auftrag = document.getElementById('auftrag').value || '-';
-                        const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
+                        const total = parseFloat(document.getElementById('gesamtlange').value) || 0;
+                        const startOv = parseFloat(document.getElementById('anfangsueberstand').value) || 0;
+                        const endOv = parseFloat(document.getElementById('endueberstand').value) || 0;
+                        const effektive = Math.max(0, total - startOv - endOv);
+                        const gesamtlange = effektive + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
                         const codes = getBvbsCodes();
