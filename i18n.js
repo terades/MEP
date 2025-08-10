@@ -3,7 +3,17 @@
 let translations = {};
 // Die aktuelle Sprache wird aus dem localStorage geladen oder auf 'de' als Standard gesetzt.
 // Dies ist wichtig für den Initialzustand und falls keine Sprache explizit gesetzt wurde.
-let currentLang = localStorage.getItem("language") || "de"; 
+let currentLang = localStorage.getItem("language") || "de";
+
+function updateLanguageFlag() {
+    const select = document.getElementById("languageSelect");
+    if (!select) return;
+    const option = select.options[select.selectedIndex];
+    const flag = option.getAttribute("data-flag");
+    if (flag) {
+        select.style.backgroundImage = `url(${flag})`;
+    }
+}
 
 /**
  * Helferfunktion zum Abrufen von Übersetzungen im JavaScript-Code.
@@ -80,6 +90,7 @@ async function loadLanguage(lang) {
         const select = document.getElementById("languageSelect");
         if (select) {
             select.value = lang;
+            updateLanguageFlag();
         }
 
         // !!! WICHTIG !!!
@@ -157,6 +168,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Wenn keine Sprache gespeichert ist, verwende Deutsch ('de') als Standard.
     const lang = localStorage.getItem("language") || "de";
     loadLanguage(lang); // Lade die entsprechende Sprachdatei.
+
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+        languageSelect.addEventListener('change', updateLanguageFlag);
+        updateLanguageFlag();
+    }
 
     // Dies ist ein spezieller Fall, falls das placeholder-Attribut nicht direkt
     // über data-i18n-placeholder im HTML gesetzt ist oder dynamisch initialisiert werden muss.
