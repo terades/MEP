@@ -2,7 +2,7 @@
     /* Modern Color Palette */
     --primary-color: #4A90E2; /* A modern, friendly blue */
     --primary-hover-color: #357ABD;
-    --secondary-color: #50E3C2; /* A vibrant accent color */
+    --secondary-color: #363a39; /* A vibrant accent color */
     --success-color: #7ED321;
     --danger-color: #D0021B;
     --warning-color: #F5A623;
@@ -36,7 +36,7 @@
 
     /* SVG Zone Colors */
     --svg-zone-color-0: #4A90E2;
-    --svg-zone-color-1: #50E3C2;
+    --svg-zone-color-1: #363a39;
     --svg-zone-color-2: #F5A623;
     --svg-zone-color-3: #BD10E0;
     --svg-zone-color-4: #4A4A4A;
@@ -46,7 +46,7 @@
     --svg-zone-color-8: #9013FE;
     --svg-zone-color-9: #B8E986;
     --svg-zone-color-10: #4A90E2;
-    --svg-zone-color-11: #50E3C2;
+    --svg-zone-color-11: #363a39;
     --svg-zone-color-12: #F5A623;
     --svg-zone-color-13: #BD10E0;
     --svg-zone-color-14: #4A4A4A;
