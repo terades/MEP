@@ -28,35 +28,35 @@
                         <img id="appLogo" src="./gb.png" alt="Firmenlogo">
                     </div>
                 </div>
-                <nav id="navMenu" class="nav-menu">
-                    <div class="nav-menu-items">
-                        <button id="showGeneratorBtn">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M11 21h-1l1-7H5.6L13 3h1l-1 7h6.5L11 21z" />
-                            </svg>
-                            <span data-i18n="Generator">Generator</span>
-                        </button>
-                        <button id="showProductionBtn">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M3 3h18v2H3V3zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
-                            </svg>
-                            <span data-i18n="Produktion">Produktion</span>
-                        </button>
-                    </div>
-                    <div class="nav-menu-bottom">
-                        <div class="language-select">
-                            <select id="languageSelect" onchange="setLanguage(this.value)">
-                                <option value="de">🇩🇪 DE</option>
-                                <option value="en">🇬🇧 EN</option>
-                                <option value="pl">🇵🇱 PL</option>
-                                <option value="cz">🇨🇿 CZ</option>
-                            </select>
-                        </div>
-                        <div class="app-version">v1.0.0</div>
-                    </div>
-                </nav>
             </header>
         </div>
+        <nav id="navMenu" class="nav-menu">
+            <div class="nav-menu-items">
+                <button id="showGeneratorBtn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M11 21h-1l1-7H5.6L13 3h1l-1 7h6.5L11 21z" />
+                    </svg>
+                    <span data-i18n="Generator">Generator</span>
+                </button>
+                <button id="showProductionBtn">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M3 3h18v2H3V3zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
+                    </svg>
+                    <span data-i18n="Produktion">Produktion</span>
+                </button>
+            </div>
+            <div class="nav-menu-bottom">
+                <div class="language-select">
+                    <select id="languageSelect" onchange="setLanguage(this.value)">
+                        <option value="de">🇩🇪 DE</option>
+                        <option value="en">🇬🇧 EN</option>
+                        <option value="pl">🇵🇱 PL</option>
+                        <option value="cz">🇨🇿 CZ</option>
+                    </select>
+                </div>
+                <div class="app-version">v1.0.0</div>
+            </div>
+        </nav>
         <div id="generatorView" class="app-container">
             <div class="main-grid">
                 <div class="input-column card">

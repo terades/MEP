@@ -33,6 +33,7 @@
     --page-content-width: 95vw;
     --page-content-max-pixel-width: 1600px;
     --page-side-padding: 2rem;
+    --header-height: 55px;
 
     /* Sidebar */
     --sidebar-width: 60px;
@@ -225,8 +226,6 @@ select {
     top: 0;
     z-index: 1000;
     box-sizing: border-box;
-    padding-left: var(--sidebar-width);
-    transition: padding-left 0.3s ease;
 }
 .app-header {
     width: var(--page-content-width);
@@ -235,7 +234,7 @@ select {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 55px;
+    height: var(--header-height);
     padding: 0 var(--page-side-padding);
     box-sizing: border-box;
     position: relative;
@@ -350,7 +349,7 @@ body.sidebar-open {
 }
 .nav-menu {
     position: fixed;
-    top: 0;
+    top: var(--header-height);
     bottom: 0;
     left: 0;
     width: var(--sidebar-width);
