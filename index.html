@@ -179,12 +179,18 @@
                     <div class="card preview-card">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h2 class="card-title" style="margin-bottom: 0;" data-i18n="Visuelle Vorschau Korb">Visuelle Vorschau Korb</h2>
-                            <div id="dimensionModeToggleContainer">
-                                <label for="dimensioningToggle" data-i18n="Bemaßung Zonenlänge:">Bemaßung Zonenlänge:</label>
-                                <select id="dimensioningToggle" onchange="toggleDimensioningMode(this.value)">
-                                    <option value="arrangementLength" selected data-i18n="(n-1) x Pitch">(n-1) x Pitch</option>
-                                    <option value="totalZoneSpace" data-i18n="n x Pitch">n x Pitch</option>
-                                </select>
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <div id="overhangToggleContainer">
+                                    <label for="overhangToggle" data-i18n="Überstände anzeigen:">Überstände anzeigen:</label>
+                                    <input type="checkbox" id="overhangToggle" onchange="toggleOverhangVisibility(this.checked)">
+                                </div>
+                                <div id="dimensionModeToggleContainer">
+                                    <label for="dimensioningToggle" data-i18n="Bemaßung Zonenlänge:">Bemaßung Zonenlänge:</label>
+                                    <select id="dimensioningToggle" onchange="toggleDimensioningMode(this.value)">
+                                        <option value="arrangementLength" selected data-i18n="(n-1) x Pitch">(n-1) x Pitch</option>
+                                        <option value="totalZoneSpace" data-i18n="n x Pitch">n x Pitch</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div id="visualPreviewContainer">
