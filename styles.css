@@ -318,8 +318,8 @@ select {
 }
 .language-select select {
     background-color: transparent;
-    color: var(--header-text-color);
-    border: 1px solid var(--header-text-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
 }
 
 .burger-menu {
@@ -336,20 +336,50 @@ select {
     fill: var(--header-text-color);
 }
 .nav-menu {
-    position: absolute;
-    top: 55px;
+    position: fixed;
+    top: 0;
+    bottom: 0;
     left: 0;
-    right: 0;
+    width: 220px;
     background: #f0f0f0;
     box-shadow: var(--shadow-md);
     padding: 1rem;
-    display: none;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+}
+.nav-menu.open {
+    transform: translateX(0);
+}
+.nav-menu-items {
+    display: flex;
     flex-direction: column;
     gap: .5rem;
 }
-  .nav-menu.open {
-      display: flex;
-  }
+.nav-menu button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: .5rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    cursor: pointer;
+}
+.nav-menu button:hover {
+    background-color: var(--light-bg-color);
+}
+.nav-menu-bottom {
+    margin-top: auto;
+}
+.nav-menu .app-version {
+    font-size: .75rem;
+    opacity: 0.6;
+    margin-top: 0.5rem;
+}
 @media (max-width: 768px) {
     .app-header {
         padding: 0 calc(var(--page-side-padding) / 1.5);
