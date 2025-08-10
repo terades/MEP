@@ -166,9 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProductionList();
     });
 
-    document.getElementById('burgerMenu')?.addEventListener('click', () => {
-        document.body.classList.toggle('sidebar-open');
-    });
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.textContent = document.body.classList.contains('sidebar-open') ? '<' : '>';
+        sidebarToggle.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-open');
+            sidebarToggle.textContent = document.body.classList.contains('sidebar-open') ? '<' : '>';
+        });
+    }
     setInterval(() => {
         if (productionList.some(p => p.status === 'inProgress')) {
             renderProductionList();
