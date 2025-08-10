@@ -80,6 +80,7 @@ function renderProductionList() {
                         <div><strong>Komm:</strong> ${item.komm}</div>
                         <div><strong>${i18n.t('Auftrag')}:</strong> ${item.auftrag}</div>
                         <div><strong>Pos-Nr:</strong> ${item.posnr}</div>
+                        <div><strong>${i18n.t('Bemerkung')}:</strong> ${item.note || ''}</div>
                         ${duration !== null ? `<div><strong>${i18n.t('Laufzeit')}:</strong> ${formatDuration(duration)}</div>` : ''}
                         <div><strong>${i18n.t('Status')}:</strong> ${i18n.t(statusKey(item.status))}</div>`;
         const img = document.createElement('img');
@@ -91,6 +92,17 @@ function renderProductionList() {
         li.appendChild(img);
         const btnGroup = document.createElement('div');
         btnGroup.className = 'button-group';
+        const noteBtn = document.createElement('button');
+        noteBtn.className = 'btn-secondary';
+        noteBtn.textContent = i18n.t('Bemerkung');
+        noteBtn.addEventListener('click', () => {
+            const newNote = prompt(i18n.t('Bemerkung'), item.note || '');
+            if (newNote !== null) {
+                item.note = newNote;
+                renderProductionList();
+            }
+        });
+        btnGroup.appendChild(noteBtn);
         if (item.status === 'pending') {
             const startBtn = document.createElement('button');
             startBtn.className = 'btn-secondary';
@@ -126,6 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (input) {
             input.value = new Date().toISOString().slice(0,16);
         }
+        const note = document.getElementById('releaseNote');
+        if (note) note.value = '';
         const err = document.getElementById('releaseModalError');
         if (err) err.textContent = '';
         openReleaseModal();
@@ -146,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             komm: document.getElementById('KommNr').value,
             auftrag: document.getElementById('auftrag').value,
             posnr: document.getElementById('posnr').value,
+            note: document.getElementById('releaseNote')?.value || '',
             labelImg: imgData,
             status: 'pending'
         });
