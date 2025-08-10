@@ -1,6 +1,10 @@
-			let zonesData = [];
-			let templates = [];
-			let nextZoneId = 0;
+let zonesData = [];
+let templates = [];
+let nextZoneId = 0;
+
+function getEffectiveZoneNum(zone, index) {
+    return index === 0 ? zone.num + 1 : zone.num;
+}
 			
 			// Visual constants for SVG rendering
 			const STIRRUP_HEIGHT_VISUAL = 50;
@@ -473,15 +477,16 @@ function loadLabelLayout() {
 			    if (!zones || zones.length === 0) {
 			        return "Keine Zonen definiert.";
 			    }
-			    const summary = zones.map(zone => {
-			        if (zone.num === 1) {
-			            return `Ø${zone.dia}(1x)`;
-			        } else if (zone.num > 1) {
-			            return `Ø${zone.dia}(${zone.num}x${zone.pitch})`;
-			        } else {
-			            return `Ø${zone.dia}(0x)`;
-			        }
-			    });
+                            const summary = zones.map((zone, idx) => {
+                                const effectiveNum = getEffectiveZoneNum(zone, idx);
+                                if (effectiveNum === 1) {
+                                    return `Ø${zone.dia}(1x)`;
+                                } else if (effectiveNum > 1) {
+                                    return `Ø${zone.dia}(${effectiveNum}x${zone.pitch})`;
+                                } else {
+                                    return `Ø${zone.dia}(0x)`;
+                                }
+                            });
 			    return `${zones.length} Zone(n): ${summary.join(', ')}`;
 			}
 			
@@ -900,7 +905,7 @@ function updateZonesPerLabel(value) {
                                 if (colIndex === 0) {
                                     zonesData.forEach((zone, index) => values.push(index + 1));
                                 } else if (colIndex === 1) {
-                                    zonesData.forEach(zone => values.push(zone.num));
+                                    zonesData.forEach((zone, i) => values.push(getEffectiveZoneNum(zone, i)));
                                 } else {
                                     zonesData.forEach(zone => values.push(zone.pitch));
                                 }
@@ -1052,7 +1057,7 @@ function updateZonesPerLabel(value) {
                                 zonesData.forEach((zone, index) => {
                                     const zoneStart = currentPositionMm;
                                     const displayIndex = index + 1;
-                                    const numStirrups = zone.num;
+                                    const numStirrups = getEffectiveZoneNum(zone, index);
                                     const pitch = zone.pitch;
                                     const dia = zone.dia;
 
@@ -1285,7 +1290,10 @@ function updateZonesPerLabel(value) {
                                     let pt = "PtGABBIE;";
                                     pt += `i${startOv};`;
                                     pt += `f${endOv};`;
-                                    zonesArr.forEach(z => { pt += `d${z.dia};n${z.num};p${z.pitch};`; });
+                                    zonesArr.forEach((z, idx) => {
+                                        const effectiveNum = getEffectiveZoneNum(z, idx);
+                                        pt += `d${z.dia};n${effectiveNum};p${z.pitch};`;
+                                    });
                                     if (name) pt += `s${name};`;
                                     if (rezeptname) pt += `r${rezeptname};`;
                                     if (pt.endsWith(';')) pt = pt.slice(0,-1);
