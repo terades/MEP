@@ -1191,6 +1191,9 @@ select {
     list-style: none;
     padding: 1rem;
     margin: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--light-bg-color);
 }
 
 .production-item {
@@ -1203,6 +1206,11 @@ select {
     display: flex;
     gap: .5rem;
     flex-wrap: wrap;
+    padding: .75rem;
+    background-color: var(--light-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
 }
 
 .production-item.pending {
