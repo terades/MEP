@@ -20,6 +20,16 @@ function showProductionView() {
     renderProductionList();
 }
 
+function openReleaseModal() {
+    const modal = document.getElementById('releaseModal');
+    if (modal) modal.classList.add('visible');
+}
+
+function closeReleaseModal() {
+    const modal = document.getElementById('releaseModal');
+    if (modal) modal.classList.remove('visible');
+}
+
 function statusKey(status) {
     switch (status) {
         case 'inProgress': return 'In Arbeit';
@@ -99,10 +109,20 @@ function renderProductionList() {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('showGeneratorBtn')?.addEventListener('click', () => showGeneratorView());
     document.getElementById('showProductionBtn')?.addEventListener('click', () => showProductionView());
-    document.getElementById('releaseButton')?.addEventListener('click', async () => {
-        const startTime = document.getElementById('startzeit')?.value;
+    document.getElementById('releaseButton')?.addEventListener('click', () => {
+        const input = document.getElementById('releaseStartzeit');
+        if (input) {
+            input.value = new Date().toISOString().slice(0,16);
+        }
+        const err = document.getElementById('releaseModalError');
+        if (err) err.textContent = '';
+        openReleaseModal();
+    });
+
+    document.getElementById('confirmReleaseButton')?.addEventListener('click', async () => {
+        const startTime = document.getElementById('releaseStartzeit')?.value;
         if (!startTime) {
-            showFeedback('barcodeError', i18n.t('Bitte Startzeitpunkt angeben.'), 'warning', 3000);
+            showFeedback('releaseModalError', i18n.t('Bitte Startzeitpunkt angeben.'), 'warning', 3000);
             return;
         }
         const labelElement = document.getElementById('printableLabel');
@@ -117,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             labelImg: imgData,
             status: 'pending'
         });
+        closeReleaseModal();
         renderProductionList();
         showProductionView();
     });
