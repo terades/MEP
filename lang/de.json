@@ -157,5 +157,11 @@
   "Bemerkung": "Bemerkung",
   "Bearbeiten": "Bearbeiten",
   "Passwort eingeben": "Passwort eingeben",
-  "Falsches Passwort": "Falsches Passwort"
+  "Falsches Passwort": "Falsches Passwort",
+  "Auftrag speichern": "Auftrag speichern",
+  "Gespeicherte Aufträge": "Gespeicherte Aufträge",
+  "Laden": "Laden",
+  "Löschen": "Löschen",
+  "Keine Aufträge gespeichert.": "Keine Aufträge gespeichert.",
+  "Auftrag gespeichert.": "Auftrag gespeichert."
 }

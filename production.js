@@ -189,6 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
             labelImg: imgData,
             status: 'pending'
         });
+        if (window.deleteCurrentSavedOrder) {
+            window.deleteCurrentSavedOrder();
+        }
         closeReleaseModal();
         renderProductionList();
         showProductionView();
