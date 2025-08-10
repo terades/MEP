@@ -324,21 +324,29 @@ select {
     border-color: var(--header-text-color);
     color: var(--header-text-color);
 }
+.language-select {
+    display: flex;
+    justify-content: center;
+}
+
 .language-select select {
     background-color: transparent;
     color: var(--text-color);
     border: 1px solid var(--border-color);
-    padding-left: 2rem;
+    padding: .25rem .5rem .25rem 1.8rem;
     background-repeat: no-repeat;
     background-position: .3rem center;
-    background-size: 1.5rem auto;
+    background-size: 1.2rem auto;
+    font-size: .875rem;
+    width: 100%;
+    max-width: 120px;
 }
 
 .language-select option {
-    padding-left: 2rem;
+    padding-left: 1.8rem;
     background-repeat: no-repeat;
     background-position: .3rem center;
-    background-size: 1.5rem auto;
+    background-size: 1.2rem auto;
 }
 
 .language-select option[value="de"] { background-image: url('flags/de.svg'); }
@@ -346,18 +354,16 @@ select {
 .language-select option[value="pl"] { background-image: url('flags/pl.svg'); }
 .language-select option[value="cz"] { background-image: url('flags/cz.svg'); }
 
-.burger-menu {
+.sidebar-toggle {
     background: none;
     border: none;
     cursor: pointer;
-    padding: .25rem;
+    padding: .5rem;
     display: flex;
     align-items: center;
-}
-.burger-menu svg {
-    width: 24px;
-    height: 24px;
-    fill: var(--header-text-color);
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--text-color);
 }
 
 body.sidebar-open {
@@ -396,14 +402,16 @@ body.sidebar-open {
     justify-content: center;
 }
 .nav-menu span,
-.nav-menu-bottom {
+.nav-menu-bottom .language-select,
+.nav-menu-bottom .app-version {
     display: none;
 }
 body.sidebar-open .nav-menu button {
     justify-content: flex-start;
 }
 body.sidebar-open .nav-menu span,
-body.sidebar-open .nav-menu-bottom {
+body.sidebar-open .nav-menu-bottom .language-select,
+body.sidebar-open .nav-menu-bottom .app-version {
     display: block;
 }
 .nav-menu button:hover {
@@ -411,6 +419,10 @@ body.sidebar-open .nav-menu-bottom {
 }
 .nav-menu-bottom {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
 }
 .nav-menu .app-version {
     font-size: .75rem;
