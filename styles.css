@@ -908,19 +908,23 @@ body.sidebar-open .nav-menu-bottom .app-version {
 			opacity: 1;
 			visibility: visible;
 			}
-			.modal-content {
-			background-color: var(--card-bg-color);
-			padding: 1.5rem;
-			border-radius: var(--border-radius);
-			box-shadow: var(--shadow-lg);
-			width: 90%;
-			max-width: 700px;
-			max-height: 90vh;
-			overflow-y: auto;
-			position: relative;
-			transform: translateY(-20px);
-			transition: transform .3s ease-in-out;
-			}
+                        .modal-content {
+                        background-color: var(--card-bg-color);
+                        padding: 1.5rem;
+                        border-radius: var(--border-radius);
+                        box-shadow: var(--shadow-lg);
+                        width: 90%;
+                        max-width: 700px;
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        position: relative;
+                        transform: translateY(-20px);
+                        transition: transform .3s ease-in-out;
+                        }
+                        #savedOrdersModal .modal-content {
+                        max-width: 1000px;
+                        width: 95%;
+                        }
 			.modal-overlay.visible .modal-content {
 			transform: translateY(0);
 			}
