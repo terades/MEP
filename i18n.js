@@ -92,6 +92,7 @@ async function loadLanguage(lang) {
             select.value = lang;
             updateLanguageFlag();
         }
+        document.documentElement.lang = lang;
 
         // !!! WICHTIG !!!
         // Nach dem Laden einer neuen Sprache müssen alle Funktionen, die dynamische
@@ -171,7 +172,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const languageSelect = document.getElementById('languageSelect');
     if (languageSelect) {
-        languageSelect.addEventListener('change', updateLanguageFlag);
+        languageSelect.addEventListener('change', (e) => {
+            setLanguage(e.target.value);
+            updateLanguageFlag();
+        });
         updateLanguageFlag();
     }
 
