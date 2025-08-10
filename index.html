@@ -15,23 +15,31 @@
     <body>
         <div class="app-header-wrapper">
             <header class="app-header">
-                <h1 class="app-title" data-i18n="Modern BVBS Korb Generator (MEP)">BVBS Korb Generator (MEP)</h1>
-                <div class="logo-area">
-                    <img id="appLogo" src="./gb.png" alt="Firmenlogo">
+                <div class="left-section">
+                    <button id="burgerMenu" class="burger-menu" aria-label="Menü">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+                        </svg>
+                    </button>
+                    <h1 class="app-title" data-i18n="Modern BVBS Korb Generator (MEP)">BVBS Korb Generator (MEP)</h1>
                 </div>
-                
-                <div class="language-select">
-                <select id="languageSelect" onchange="setLanguage(this.value)">
-                    <option value="de">DE</option>
-                    <option value="en">EN</option>
-                    <option value="pl">PL</option>
-                    <option value="cz">CZ</option>
-                </select>
+                <div class="right-section">
+                    <div class="language-select">
+                        <select id="languageSelect" onchange="setLanguage(this.value)">
+                            <option value="de">🇩🇪 DE</option>
+                            <option value="en">🇬🇧 EN</option>
+                            <option value="pl">🇵🇱 PL</option>
+                            <option value="cz">🇨🇿 CZ</option>
+                        </select>
+                    </div>
+                    <div class="logo-area">
+                        <img id="appLogo" src="./gb.png" alt="Firmenlogo">
+                    </div>
                 </div>
-                <div class="nav-controls">
+                <nav id="navMenu" class="nav-menu">
                     <button id="showGeneratorBtn" class="btn-secondary" data-i18n="Generator">Generator</button>
                     <button id="showProductionBtn" class="btn-secondary" data-i18n="Produktion">Produktion</button>
-                </div>
+                </nav>
             </header>
         </div>
         <div id="generatorView" class="app-container">
