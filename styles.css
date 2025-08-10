@@ -696,11 +696,21 @@ select {
 			height: auto;
 			opacity: 1;
 			}
-			.output-area {
-			display: flex;
-			align-items: center;
-			gap: .5rem;
-			}
+                        .output-area {
+                        display: flex;
+                        flex-direction: column;
+                        gap: .5rem;
+                        }
+
+.bvbs-output-field {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.bvbs-output-field textarea {
+    flex: 1;
+}
 			/* Damit das Canvas im Label immer maximal 100% breit ist */
                         #labelBarcodeContainer canvas,
                         #labelBarcodeContainer2 canvas {

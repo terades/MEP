@@ -85,23 +85,29 @@ let labelDesignMode = false;
 			    console.log(`[Barcode Debug] ${message}`);
 			}
 			
-			// Updates the barcode status text
-			function updateBarcodeStatus() {
-			    const statusEl = document.getElementById('barcodeStatus');
-			    const barcodeContainer = document.getElementById('barcodeSvgContainer');
-			    const bvbsCode = document.getElementById('outputBvbsCode')?.value?.trim() || '';
-			    if (!statusEl) return;
-			    if (barcodeContainer && barcodeContainer.querySelector('svg') && !barcodeContainer.classList.contains('hidden')) {
-			        statusEl.textContent = 'Barcode generiert';
-			        statusEl.style.color = 'var(--success-color)';
-			    } else if (bvbsCode && bvbsCode.length > 10) {
-			        statusEl.textContent = 'Code generiert, Barcode fehlt';
-			        statusEl.style.color = 'var(--warning-color)';
-			    } else {
-			        statusEl.textContent = 'Bereit zur Generierung';
-			        statusEl.style.color = 'var(--text-muted-color)';
-			    }
-			}
+                        function getBvbsCodes() {
+                            const code1 = document.getElementById('outputBvbsCode1')?.value.trim();
+                            const code2 = document.getElementById('outputBvbsCode2')?.value.trim();
+                            return [code1, code2].filter(code => code && code.startsWith('BF2'));
+                        }
+
+                        // Updates the barcode status text
+                        function updateBarcodeStatus() {
+                            const statusEl = document.getElementById('barcodeStatus');
+                            const barcodeContainer = document.getElementById('barcodeSvgContainer');
+                            const bvbsCodes = getBvbsCodes();
+                            if (!statusEl) return;
+                            if (barcodeContainer && barcodeContainer.querySelector('svg') && !barcodeContainer.classList.contains('hidden')) {
+                                statusEl.textContent = 'Barcode generiert';
+                                statusEl.style.color = 'var(--success-color)';
+                            } else if (bvbsCodes.length > 0) {
+                                statusEl.textContent = 'Code generiert, Barcode fehlt';
+                                statusEl.style.color = 'var(--warning-color)';
+                            } else {
+                                statusEl.textContent = 'Bereit zur Generierung';
+                                statusEl.style.color = 'var(--text-muted-color)';
+                            }
+                        }
 			
 			// Checks if the barcode library is loaded
 function checkBarcodeLibraryStatus() {
@@ -842,61 +848,71 @@ function updateZonesPerLabel(value) {
 			}
 			
 			// Render the summary table of zones
-			function renderZoneSummaryTable() {
-			    const tbody = document.querySelector("#zoneSummaryTable tbody");
-			    if (!tbody) return;
-			
-			    tbody.innerHTML = ''; // Clear old content
-			
-			    if (zonesData.length === 0) {
-			        const emptyRow = document.createElement('tr');
-			        const emptyCell = document.createElement('td');
-			        emptyCell.textContent = "Keine Zonen definiert.";
-			        emptyCell.colSpan = 2; // Span across two columns
-			        emptyRow.appendChild(emptyCell);
-			        tbody.appendChild(emptyRow);
-			        return;
-			    }
-			
-			    const headerLabels = ["Zone", "Anzahl (n)", "Abstand (p)"];
-			    const data = [
-			        [], // Zone numbers
-			        [], // Number of stirrups per zone
-			        [] // Pitch per zone
-			    ];
-			
-			    zonesData.forEach((zone, index) => {
-			        data[0].push(index + 1);
-			        data[1].push(zone.num);
-			        data[2].push(zone.pitch);
-			    });
-			
-			    headerLabels.forEach((label, colIndex) => {
-			        const row = document.createElement('tr');
-			        const headerCell = document.createElement('th');
-			        headerCell.textContent = label;
-			        row.appendChild(headerCell);
-			
-			        if (data[colIndex].length > 0) {
-                                    data[colIndex].forEach((value, cellIndex) => {
-                                        const cell = document.createElement('td');
-                                        cell.textContent = value;
-                                        if (highlightedZoneDisplayIndex === cellIndex + 1) {
-                                            cell.classList.add('focused-zone-form');
-                                        }
-                                        if (cellIndex < zonesPerLabel) {
-                                            cell.classList.add('first-label-zone');
-                                        }
-                                        row.appendChild(cell);
-                                    });
-			        } else {
-			            const cell = document.createElement('td');
-			            cell.textContent = "-";
-			            row.appendChild(cell);
-			        }
-			        tbody.appendChild(row);
-			    });
-			}
+                        function renderZoneSummaryTable() {
+                            const tbody = document.querySelector("#zoneSummaryTable tbody");
+                            if (!tbody) return;
+
+                            tbody.innerHTML = ''; // Clear old content
+
+                            if (zonesData.length === 0) {
+                                const emptyRow = document.createElement('tr');
+                                const emptyCell = document.createElement('td');
+                                emptyCell.textContent = "Keine Zonen definiert.";
+                                emptyCell.colSpan = 2; // Span across two columns
+                                emptyRow.appendChild(emptyCell);
+                                tbody.appendChild(emptyRow);
+                                return;
+                            }
+
+                            const headerLabels = ["Zone", "Anzahl (n)", "Abstand (p)"];
+                            const firstGroup = zonesData.slice(0, zonesPerLabel);
+                            const secondGroup = zonesData.slice(zonesPerLabel);
+
+                            if (secondGroup.length > 0) {
+                                const groupRow = document.createElement('tr');
+                                const emptyTh = document.createElement('th');
+                                groupRow.appendChild(emptyTh);
+                                const g1 = document.createElement('th');
+                                g1.textContent = 'Code 1';
+                                g1.colSpan = firstGroup.length;
+                                groupRow.appendChild(g1);
+                                const g2 = document.createElement('th');
+                                g2.textContent = 'Code 2';
+                                g2.colSpan = secondGroup.length;
+                                groupRow.appendChild(g2);
+                                tbody.appendChild(groupRow);
+                            }
+
+                            headerLabels.forEach((label, colIndex) => {
+                                const row = document.createElement('tr');
+                                const headerCell = document.createElement('th');
+                                headerCell.textContent = label;
+                                row.appendChild(headerCell);
+
+                                const values = [];
+                                if (colIndex === 0) {
+                                    zonesData.forEach((zone, index) => values.push(index + 1));
+                                } else if (colIndex === 1) {
+                                    zonesData.forEach(zone => values.push(zone.num));
+                                } else {
+                                    zonesData.forEach(zone => values.push(zone.pitch));
+                                }
+
+                                values.forEach((value, cellIndex) => {
+                                    const cell = document.createElement('td');
+                                    cell.textContent = value;
+                                    if (highlightedZoneDisplayIndex === cellIndex + 1) {
+                                        cell.classList.add('focused-zone-form');
+                                    }
+                                    if (cellIndex < zonesPerLabel) {
+                                        cell.classList.add('first-label-zone');
+                                    }
+                                    row.appendChild(cell);
+                                });
+
+                                tbody.appendChild(row);
+                            });
+                        }
 			
 			
 			// Build an SVG dimension line group
@@ -1162,12 +1178,17 @@ function updateZonesPerLabel(value) {
 			
 			// Main function to generate BVBS code and trigger barcode creation
 			function generateBvbsCodeAndBarcode() {
-			    const errorEl = document.getElementById('barcodeError');
-			    errorEl.textContent = '';
-			    document.getElementById('outputBvbsCode').value = '';
-			    const barcodeContainer = document.getElementById('barcodeSvgContainer');
-			    barcodeContainer.innerHTML = '';
-			    barcodeContainer.classList.add('hidden');
+                            const errorEl = document.getElementById('barcodeError');
+                            errorEl.textContent = '';
+                            const output1 = document.getElementById('outputBvbsCode1');
+                            const output2 = document.getElementById('outputBvbsCode2');
+                            const outputField2 = document.getElementById('bvbsOutputField2');
+                            if (output1) output1.value = '';
+                            if (output2) output2.value = '';
+                            if (outputField2) outputField2.style.display = 'none';
+                            const barcodeContainer = document.getElementById('barcodeSvgContainer');
+                            barcodeContainer.innerHTML = '';
+                            barcodeContainer.classList.add('hidden');
 			
 			    let isValid = true;
 			    // Validate all form fields before generation
@@ -1268,9 +1289,17 @@ function updateZonesPerLabel(value) {
                                     finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0, buegelname1);
                                     const startOvSecond = zonesData[zonesPerLabel - 1]?.pitch || 0;
                                     finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand, buegelname2);
-                                    document.getElementById('outputBvbsCode').value = `Code 1:\n${finalBvbsCode}\n\nCode 2:\n${finalBvbsCode2}\n`;
-                                } else {
-                                    document.getElementById('outputBvbsCode').value = finalBvbsCode + "\r\n";
+                                }
+                                const out1 = document.getElementById('outputBvbsCode1');
+                                const out2 = document.getElementById('outputBvbsCode2');
+                                const field2 = document.getElementById('bvbsOutputField2');
+                                if (out1) out1.value = finalBvbsCode;
+                                if (finalBvbsCode2 && out2 && field2) {
+                                    out2.value = finalBvbsCode2;
+                                    field2.style.display = 'flex';
+                                } else if (out2 && field2) {
+                                    out2.value = '';
+                                    field2.style.display = 'none';
                                 }
 
                                 updateBarcodeDebugInfo(`Generated BVBS code: ${finalBvbsCode}`);
@@ -1289,8 +1318,9 @@ function updateZonesPerLabel(value) {
 			
 			    } catch (e) {
 			        console.error("Error in generateBvbsCodeAndBarcode:", e);
-			        updateBarcodeDebugInfo(`Fehler bei Code-Generierung: ${e.message}`);
-			        document.getElementById('outputBvbsCode').value = "Fehler: " + e.message;
+                                updateBarcodeDebugInfo(`Fehler bei Code-Generierung: ${e.message}`);
+                                const outErr = document.getElementById('outputBvbsCode1');
+                                if (outErr) outErr.value = 'Fehler: ' + e.message;
 			        showFeedback('barcodeError', "Fehler: " + e.message, 'error', 5000);
 			        barcodeContainer.innerHTML = '';
 			        barcodeContainer.classList.add('hidden');
@@ -1401,7 +1431,7 @@ function updateLabelPreview(barcodeSvg) {
                         const gesamtlange = (document.getElementById('gesamtlange').value || '-') + ' mm';
                         const posnr = document.getElementById('posnr').value || '-';
 
-                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
+                        const codes = getBvbsCodes();
 
                         const suffixFirst = zonesData.length > zonesPerLabel ? '/1' : '';
                         const suffixSecond = zonesData.length > zonesPerLabel ? '/2' : '';
@@ -1503,7 +1533,7 @@ function updateLabelPreview(barcodeSvg) {
                             document.getElementById('generateButton').addEventListener('click', () => {
                         generateBvbsCodeAndBarcode();
                         updateLabelPreview();
-                        const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
+                        const codes = getBvbsCodes();
                         if (codes.length > 0) {
                             generateBarcodeToLabel(codes[0], '');
                             if (codes.length > 1) {
@@ -1517,21 +1547,21 @@ function updateLabelPreview(barcodeSvg) {
 			
 			
 			
-                            document.getElementById('copyBvbsButton')?.addEventListener('click', async () => {
-                                const output = document.getElementById('outputBvbsCode').value
-                                    .split(/\r?\n/)
-                                    .filter(line => line.startsWith('BF2'))
-                                    .join('\n');
-			        if (output) {
-			            try {
-			                await navigator.clipboard.writeText(output);
-			                showFeedback('copyFeedback', 'Code in die Zwischenablage kopiert!', 'success', 3000);
-			            } catch (err) {
-			                console.error('Fehler beim Kopieren: ', err);
-			                showFeedback('copyFeedback', 'Fehler beim Kopieren.', 'error', 3000);
-			            }
-			        }
-			    });
+                            document.querySelectorAll('.copy-bvbs-btn')?.forEach(btn => {
+                                btn.addEventListener('click', async () => {
+                                    const target = btn.getAttribute('data-target');
+                                    const output = document.getElementById(target)?.value.trim();
+                                    if (output) {
+                                        try {
+                                            await navigator.clipboard.writeText(output);
+                                            showFeedback('copyFeedback', 'Code in die Zwischenablage kopiert!', 'success', 3000);
+                                        } catch (err) {
+                                            console.error('Fehler beim Kopieren: ', err);
+                                            showFeedback('copyFeedback', 'Fehler beim Kopieren.', 'error', 3000);
+                                        }
+                                    }
+                                });
+                            });
                             document.getElementById('downloadSvgButton')?.addEventListener('click', () => {
                                 const svgElement = document.getElementById('cagePreviewSvg');
                                 if (!svgElement) return;
@@ -1553,7 +1583,7 @@ function updateLabelPreview(barcodeSvg) {
                                 });
                             });
                             document.getElementById('printLabelButton')?.addEventListener('click', () => {
-                                if (document.getElementById('outputBvbsCode').value.trim() === '') {
+                                if (getBvbsCodes().length === 0) {
                                     showFeedback('barcodeError', 'Bitte generieren Sie zuerst den Code, um das Label zu drucken.', 'warning', 5000);
                                     return;
                                 }
@@ -1607,7 +1637,7 @@ function updateLabelPreview(barcodeSvg) {
 			    });
 			// ganz unten im DOMContentLoaded-Callback
                         updateLabelPreview();
-                        const initialCodes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
+                        const initialCodes = getBvbsCodes();
                         if (initialCodes.length > 0) {
                             generateBarcodeToLabel(initialCodes[0], '');
                             if (initialCodes.length > 1) {
@@ -1680,7 +1710,7 @@ function updateLabelPreview(barcodeSvg) {
                             const proj = getText('labelProjekt');
                             const auftrag = getText('labelAuftrag');
                             const laenge = getText('labelGesamtlange');
-                            const codes = document.getElementById('outputBvbsCode').value.trim().split(/\r?\n/).filter(line => line.startsWith('BF2'));
+                            const codes = getBvbsCodes();
                             const code = idSuffix === '2' ? (codes[1] || '') : (codes[0] || '');
 
                             let zpl = '^XA\n';
