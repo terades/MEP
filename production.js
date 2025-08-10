@@ -4,6 +4,7 @@ let productionList = [];
 let productionFilterText = '';
 let productionSortKey = 'startTime';
 let productionStatusFilter = 'all';
+const EDIT_PASSWORD = 'mep';
 
 function showGeneratorView() {
     const gen = document.getElementById('generatorView');
@@ -92,6 +93,30 @@ function renderProductionList() {
         li.appendChild(img);
         const btnGroup = document.createElement('div');
         btnGroup.className = 'button-group';
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-secondary';
+        editBtn.textContent = i18n.t('Bearbeiten');
+        editBtn.addEventListener('click', () => {
+            const pwd = prompt(i18n.t('Passwort eingeben'));
+            if (pwd !== EDIT_PASSWORD) {
+                alert(i18n.t('Falsches Passwort'));
+                return;
+            }
+            const newStart = prompt(i18n.t('Startzeit'), item.startTime);
+            if (newStart !== null) item.startTime = newStart;
+            const newProjekt = prompt(i18n.t('Projekt'), item.projekt);
+            if (newProjekt !== null) item.projekt = newProjekt;
+            const newKomm = prompt('Komm', item.komm);
+            if (newKomm !== null) item.komm = newKomm;
+            const newAuftrag = prompt(i18n.t('Auftrag'), item.auftrag);
+            if (newAuftrag !== null) item.auftrag = newAuftrag;
+            const newPosnr = prompt('Pos-Nr', item.posnr);
+            if (newPosnr !== null) item.posnr = newPosnr;
+            const newNote = prompt(i18n.t('Bemerkung'), item.note || '');
+            if (newNote !== null) item.note = newNote;
+            renderProductionList();
+        });
+        btnGroup.appendChild(editBtn);
         const noteBtn = document.createElement('button');
         noteBtn.className = 'btn-secondary';
         noteBtn.textContent = i18n.t('Bemerkung');

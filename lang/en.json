@@ -154,5 +154,8 @@
   "Projekt": "Project",
   "Bitte Startzeitpunkt angeben.": "Please provide start time.",
   "Laufzeit": "Elapsed Time",
-  "Bemerkung": "Note"
+  "Bemerkung": "Note",
+  "Bearbeiten": "Edit",
+  "Passwort eingeben": "Enter password",
+  "Falsches Passwort": "Wrong password"
 }

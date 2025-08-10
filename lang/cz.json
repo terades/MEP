@@ -154,5 +154,8 @@
   "Projekt": "Projekt",
   "Bitte Startzeitpunkt angeben.": "Zadejte čas startu.",
   "Laufzeit": "Doba trvání",
-  "Bemerkung": "Poznámka"
+  "Bemerkung": "Poznámka",
+  "Bearbeiten": "Upravit",
+  "Passwort eingeben": "Zadejte heslo",
+  "Falsches Passwort": "Špatné heslo"
 }
