@@ -328,7 +328,23 @@ select {
     background-color: transparent;
     color: var(--text-color);
     border: 1px solid var(--border-color);
+    padding-left: 2rem;
+    background-repeat: no-repeat;
+    background-position: .3rem center;
+    background-size: 1.5rem auto;
 }
+
+.language-select option {
+    padding-left: 2rem;
+    background-repeat: no-repeat;
+    background-position: .3rem center;
+    background-size: 1.5rem auto;
+}
+
+.language-select option[value="de"] { background-image: url('flags/de.svg'); }
+.language-select option[value="en"] { background-image: url('flags/gb.svg'); }
+.language-select option[value="pl"] { background-image: url('flags/pl.svg'); }
+.language-select option[value="cz"] { background-image: url('flags/cz.svg'); }
 
 .burger-menu {
     background: none;
