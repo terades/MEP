@@ -78,7 +78,7 @@ function renderProductionList() {
         const duration = item.startTimestamp ? ((item.status === 'done' ? item.endTimestamp : Date.now()) - item.startTimestamp) : null;
         li.innerHTML = `<div><strong>${i18n.t('Startzeit')}:</strong> ${item.startTime}</div>
                         <div><strong>${i18n.t('Projekt')}:</strong> ${item.projekt}</div>
-                        <div><strong>Komm:</strong> ${item.komm}</div>
+                        <div><strong>Komm:</strong> <span class="komm-number">${item.komm}</span></div>
                         <div><strong>${i18n.t('Auftrag')}:</strong> ${item.auftrag}</div>
                         <div><strong>Pos-Nr:</strong> ${item.posnr}</div>
                         <div><strong>${i18n.t('Bemerkung')}:</strong> ${item.note || ''}</div>
