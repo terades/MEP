@@ -1205,7 +1205,7 @@ function updateZonesPerLabel(value) {
                                     const pitch = zone.pitch;
                                     const dia = zone.dia;
 
-                                    const zoneLength = numStirrups > 0 && pitch > 0 ? (numStirrups + 1) * pitch : 0;
+                                    const zoneLength = numStirrups > 0 && pitch > 0 ? numStirrups * pitch : 0;
                                     stirrupZoneTotalLength += zoneLength;
 
                                     const isHighlighted = highlightedZoneDisplayIndex === displayIndex;
@@ -1239,8 +1239,8 @@ function updateZonesPerLabel(value) {
                                         let dimText = '';
 
                                         if (dimensioningMode === 'totalZoneSpace' && numStirrups > 0 && pitch > 0) {
-                                            dimLength = (numStirrups + 1) * pitch;
-                                            dimText = `${numStirrups + 1}x${pitch}=${dimLength}`;
+                                            dimLength = numStirrups * pitch;
+                                            dimText = `${numStirrups}x${pitch}=${dimLength}`;
                                             const dimEndScaled = PADDING_VISUAL + (zoneStart + dimLength) * scale;
                                             if (dimLength > 0) {
                                                 svgContent += buildDimensionLineSvg(zoneStartScaled, dimLineY, dimEndScaled, dimLineY, dimText, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'center');
