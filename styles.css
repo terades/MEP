@@ -1282,6 +1282,11 @@ body.sidebar-open .nav-menu-bottom .app-version {
     padding-bottom: 1rem;
 }
 
+.production-item .komm-number {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
 .production-controls {
     display: flex;
     gap: .5rem;

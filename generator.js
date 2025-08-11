@@ -140,7 +140,7 @@ function renderSavedOrdersList() {
         const li = document.createElement('li');
         li.className = 'production-item';
         li.innerHTML = `<div><strong>${i18n.t('Projekt')}:</strong> ${order.projekt}</div>
-                        <div><strong>Komm:</strong> ${order.komm}</div>
+                        <div><strong>Komm:</strong> <span class="komm-number">${order.komm}</span></div>
                         <div><strong>${i18n.t('Auftrag')}:</strong> ${order.auftrag}</div>
                         <div><strong>Pos-Nr:</strong> ${order.posnr}</div>`;
         const btnGroup = document.createElement('div');
