@@ -133,12 +133,12 @@
                             <hr style="margin: 1rem 0;">
                             <div class="form-group">
                                 <label for="anfangsueberstand" data-i18n="Anfangsüberst. (i):">Anfangsüberst. (i):</label>
-                                <input type="number" id="anfangsueberstand" value="50" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 0, 'int', 'Anfangsüberstand in mm (min. 0)');">
+                                <input type="number" id="anfangsueberstand" value="0" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 0, 'int', 'Anfangsüberstand in mm (min. 0)');">
                                 <span class="input-feedback"></span>
                             </div>
                             <div class="form-group">
                                 <label for="endueberstand" data-i18n="Endüberstand (f):">Endüberstand (f):</label>
-                                <input type="number" id="endueberstand" value="50" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 0, 'int', 'Endüberstand in mm (min. 0)');">
+                                <input type="number" id="endueberstand" value="0" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 0, 'int', 'Endüberstand in mm (min. 0)');">
                                 <span class="input-feedback"></span>
                             </div>
                             <h4 style="font-size: .95rem; font-weight: 600; margin-top: 1rem; margin-bottom: .5rem; color: var(--heading-color);" data-i18n="Bügelzonen">Bügelzonen</h4>
