@@ -1164,8 +1164,8 @@ function updateZonesPerLabel(value) {
 			            return;
 			        }
 			
-			        const initialOverhang = parseFloat(document.getElementById('anfangsueberstand').value) || 0;
-			        const finalOverhang = parseFloat(document.getElementById('endueberstand').value) || 0;
+                                const initialOverhang = 0;
+                                const finalOverhang = 0;
 			        const drawingWidth = width - 2 * PADDING_VISUAL;
 			        if (drawingWidth <= 0) {
 			            svgContainer.innerHTML = svgContent + '</g>';
@@ -1184,31 +1184,28 @@ function updateZonesPerLabel(value) {
 			        svgContent += `<line class="main-bar" x1="${startX}" y1="${barYBottom}" x2="${endX}" y2="${barYBottom}"/>`;
 			        svgContent += '</g>';
 			
-			        let currentPositionMm = initialOverhang;
-			        let stirrupZoneTotalLength = 0;
-			        const dimY = centerY + STIRRUP_HEIGHT_VISUAL / 2 + DIM_LINE_OFFSET_BELOW;
-			        const dimYInter = dimY + 25;
-			        const dimYPitch = centerY - STIRRUP_HEIGHT_VISUAL / 2 - DIM_LINE_OFFSET_ABOVE;
-			
-                                if (showOverhangs) {
-                                    svgContent += '<g class="initial-overhang-group">';
-                                    const initialOverhangScaled = PADDING_VISUAL + initialOverhang * scale;
-                                    svgContent += `<rect class="overhang-rect" x="${Math.round(PADDING_VISUAL)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.max(0, Math.round(initialOverhang * scale))}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
-                                    if (initialOverhang > 0) {
-                                        svgContent += buildDimensionLineSvg(PADDING_VISUAL, dimY, initialOverhangScaled, dimY, `i=${initialOverhang}mm`, 0, 'dim-text-overhang', 'dim-line-default', 'center');
-                                    }
-                                    svgContent += '</g>';
+                                let currentPositionMm = 0;
+                                let stirrupZoneTotalLength = 0;
+                                const dimY = centerY + STIRRUP_HEIGHT_VISUAL / 2 + DIM_LINE_OFFSET_BELOW;
+                                const dimYPitch = centerY - STIRRUP_HEIGHT_VISUAL / 2 - DIM_LINE_OFFSET_ABOVE;
+
+                                // draw standard stirrup at position 0
+                                if (zonesData.length > 0) {
+                                    const firstDia = zonesData[0].dia;
+                                    let strokeWidthStd = Math.max(1, Math.min(3.5, firstDia / 3));
+                                    const xStd = Math.round(PADDING_VISUAL);
+                                    svgContent += `<line class="stirrup" style="stroke-width:${strokeWidthStd}px;stroke:#000" x1="${xStd}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${xStd}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
                                 }
-			
+
                                 svgContent += '<g class="stirrup-zones-group">';
                                 zonesData.forEach((zone, index) => {
                                     const zoneStart = currentPositionMm;
                                     const displayIndex = index + 1;
-                                    const numStirrups = getEffectiveZoneNum(zone, index);
+                                    const numStirrups = zone.num;
                                     const pitch = zone.pitch;
                                     const dia = zone.dia;
 
-                                    const zoneLength = numStirrups > 0 && pitch > 0 ? (numStirrups - 1) * pitch : 0;
+                                    const zoneLength = numStirrups > 0 && pitch > 0 ? (numStirrups + 1) * pitch : 0;
                                     stirrupZoneTotalLength += zoneLength;
 
                                     const isHighlighted = highlightedZoneDisplayIndex === displayIndex;
@@ -1226,13 +1223,12 @@ function updateZonesPerLabel(value) {
                                         if (zoneLength > 0) {
                                             svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneLength * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                         }
-                                        for (let j = 0; j < numStirrups; j++) {
+                                        for (let j = 1; j <= numStirrups; j++) {
                                             const stirrupPos = zoneStart + j * pitch;
                                             const stirrupX = Math.round(PADDING_VISUAL + stirrupPos * scale);
-                                            if (stirrupPos <= totalLength - finalOverhang + 1) {
-                                                const isFirstStirrup = index === 0 && j === 0;
-                                                const strokeClass = isFirstStirrup ? '' : stirrupStrokeClass;
-                                                const strokeStyle = `stroke-width:${highlightedStrokeWidth}px${isFirstStirrup ? ';stroke:#000' : ''}`;
+                                            if (stirrupPos <= totalLength + 1) {
+                                                const strokeClass = stirrupStrokeClass;
+                                                const strokeStyle = `stroke-width:${highlightedStrokeWidth}px`;
                                                 svgContent += `<line class="stirrup ${strokeClass}" style="${strokeStyle}" x1="${stirrupX}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${stirrupX}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
                                             }
                                         }
@@ -1243,30 +1239,22 @@ function updateZonesPerLabel(value) {
                                         let dimText = '';
 
                                         if (dimensioningMode === 'totalZoneSpace' && numStirrups > 0 && pitch > 0) {
-                                            dimLength = numStirrups * pitch;
-                                            dimText = `${numStirrups}x${pitch}=${dimLength}`;
+                                            dimLength = (numStirrups + 1) * pitch;
+                                            dimText = `${numStirrups + 1}x${pitch}=${dimLength}`;
                                             const dimEndScaled = PADDING_VISUAL + (zoneStart + dimLength) * scale;
                                             if (dimLength > 0) {
                                                 svgContent += buildDimensionLineSvg(zoneStartScaled, dimLineY, dimEndScaled, dimLineY, dimText, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'center');
                                             }
-                                        } else if (numStirrups > 1 && pitch > 0) {
-                                            dimLength = (numStirrups - 1) * pitch;
-                                            dimText = `${numStirrups-1}x${pitch}=${dimLength}`;
+                                        } else if (numStirrups > 0 && pitch > 0) {
+                                            dimLength = numStirrups * pitch;
+                                            dimText = `${numStirrups}x${pitch}=${dimLength}`;
                                             const dimEndScaled = PADDING_VISUAL + (zoneStart + dimLength) * scale;
                                             svgContent += buildDimensionLineSvg(zoneStartScaled, dimLineY, dimEndScaled, dimLineY, dimText, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'center');
-                                        } else if (numStirrups === 1) {
-                                            // Special case for a single stirrup
-                                            const stirrupScaled = PADDING_VISUAL + zoneStart * scale;
-                                            let textX = stirrupScaled + (5 * scale > 7 ? 5 * scale : 7);
-                                            if (stirrupScaled + 30 > width - PADDING_VISUAL) {
-                                                textX = stirrupScaled - 15;
-                                            }
-                                            svgContent += `<text class="dim-text-single-stirrup ${stirrupFillClass}" x="${Math.round(textX)}" y="${Math.round(dimLineY - 5)}" text-anchor="middle">1xØ${dia}</text>`;
                                         }
 
                                         // Pitch dimension for multi-stirrup zones
                                         if (numStirrups > 1 && pitch > 0) {
-                                            const pitchStartScaled = PADDING_VISUAL + zoneStart * scale;
+                                            const pitchStartScaled = PADDING_VISUAL + (zoneStart + pitch) * scale;
                                             const pitchEndScaled = pitchStartScaled + pitch * scale;
                                             if (pitchEndScaled <= zoneStartScaled + (zoneLength * scale) + 1.1 && pitch * scale > 5) {
                                                 svgContent += buildDimensionLineSvg(pitchStartScaled, dimLineYPitch, pitchEndScaled, dimLineYPitch, `p=${pitch}`, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'left');
@@ -1278,31 +1266,16 @@ function updateZonesPerLabel(value) {
                                     svgContent += `</g>`;
                                 });
                                 svgContent += '</g>';
-			
-                                const finalOverhangCalculated = totalLength - initialOverhang - stirrupZoneTotalLength;
-                                const finalOverhangScaledStart = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
-                                const finalOverhangScaledEnd = PADDING_VISUAL + totalLength * scale;
-			
-			        if (stirrupZoneTotalLength < totalLength - initialOverhang - finalOverhang - 0.1) {
-			            const leerraumStart = PADDING_VISUAL + (initialOverhang + stirrupZoneTotalLength) * scale;
-			            const leerraumEnd = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
-			            svgContent += '<g class="leerraum-visual-group">';
-			            svgContent += `<rect class="leerraum-fill" x="${Math.round(leerraumStart)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(leerraumEnd - leerraumStart)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
-			            svgContent += '</g>';
-			        }
-			
-                                if (showOverhangs) {
-                                    svgContent += '<g class="final-overhang-group">';
-                                    const endOverhangStart = PADDING_VISUAL + (totalLength - finalOverhang) * scale;
-                                    const endOverhangEnd = PADDING_VISUAL + totalLength * scale;
-                                    svgContent += `<rect class="overhang-rect" x="${Math.round(endOverhangStart)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.max(0, Math.round(finalOverhang * scale))}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
-                                    if (finalOverhang > 0) {
-                                        svgContent += buildDimensionLineSvg(finalOverhangScaledStart, dimY, finalOverhangScaledEnd, dimY, `f=${finalOverhang}mm`, 0, 'dim-text-overhang', 'dim-line-default', 'right');
-                                    }
+
+                                if (stirrupZoneTotalLength < totalLength - 0.1) {
+                                    const leerraumStart = PADDING_VISUAL + stirrupZoneTotalLength * scale;
+                                    const leerraumEnd = PADDING_VISUAL + totalLength * scale;
+                                    svgContent += '<g class="leerraum-visual-group">';
+                                    svgContent += `<rect class="leerraum-fill" x="${Math.round(leerraumStart)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(leerraumEnd - leerraumStart)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                     svgContent += '</g>';
                                 }
-			
-                                const effectiveLength = totalLength - initialOverhang - finalOverhang;
+
+                                const effectiveLength = totalLength;
                                 if (Math.abs(stirrupZoneTotalLength - effectiveLength) > 0.1 && stirrupZoneTotalLength < effectiveLength) {
                                     errorEl.textContent = `Warnung: Leerraum (${(effectiveLength - stirrupZoneTotalLength).toFixed(1)}mm).`;
                                     errorEl.classList.add('warning');
