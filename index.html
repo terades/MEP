@@ -544,6 +544,23 @@
                                     <input type="text" id="bf2dRemark">
                                 </div>
                             </div>
+                            <div class="bf2d-storage-controls">
+                                <div class="form-group">
+                                    <label for="bf2dShapeName" data-i18n="Biegeform-Name">Biegeform-Name</label>
+                                    <input type="text" id="bf2dShapeName" data-i18n-placeholder="Biegeform-Name eingeben…" placeholder="Biegeform-Name eingeben…">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dSavedForms" data-i18n="Gespeicherte Biegeformen">Gespeicherte Biegeformen</label>
+                                    <select id="bf2dSavedForms" disabled>
+                                        <option value="" data-i18n="Gespeicherte Biegeform auswählen…">Gespeicherte Biegeform auswählen…</option>
+                                    </select>
+                                </div>
+                                <div class="bf2d-storage-actions button-group">
+                                    <button type="button" id="bf2dSaveShapeButton" class="btn-secondary" data-i18n="Speichern">Speichern</button>
+                                    <button type="button" id="bf2dLoadShapeButton" class="btn-secondary" data-i18n="Laden" disabled>Laden</button>
+                                    <button type="button" id="bf2dDeleteShapeButton" class="btn-danger" data-i18n="Löschen" disabled>Löschen</button>
+                                </div>
+                            </div>
                             <div class="bf2d-summary-grid">
                                 <div class="bf2d-summary-item">
                                     <span class="bf2d-summary-label" data-i18n="Gesamtlänge">Gesamtlänge</span>
