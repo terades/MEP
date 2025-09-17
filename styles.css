@@ -79,9 +79,9 @@ body {
     margin: 0;
     background-color: var(--body-bg-color);
     color: var(--text-color);
-    line-height: 1.55;
+    line-height: 1.6;
     font-weight: 400;
-    font-size: 15px;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -124,7 +124,6 @@ body.sidebar-open {
 #generateButton:hover {
     background-color: var(--primary-hover-color);
     border-color: var(--primary-hover-color);
-    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
                         #generateButton:disabled {
@@ -144,7 +143,6 @@ body.sidebar-open {
     color: var(--primary-color);
     background-color: var(--light-bg-color);
     border-color: var(--primary-color);
-    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 			.btn-success {
@@ -182,8 +180,8 @@ textarea,
 select {
     display: block;
     width: 100%;
-    padding: .75rem 1rem; /* Increased padding */
-    font-size: 1rem; /* Larger font size */
+    padding: .75rem 1rem;
+    font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
     color: var(--text-color);
@@ -217,8 +215,8 @@ select {
 			flex: 0 0 130px;
 			padding-right: 1rem;
 			text-align: right;
-			font-weight: 500;
-			color: var(--text-muted-color);
+			font-weight: 600;
+			color: var(--text-color);
 			}
 			.form-group input,
 			.form-group select {
@@ -261,7 +259,7 @@ select {
     justify-content: space-between;
     align-items: center;
     height: var(--header-height);
-    padding: 0 var(--page-side-padding);
+    padding: 0 1.5rem;
     box-sizing: border-box;
     position: relative;
     gap: 1.5rem;
@@ -273,9 +271,9 @@ select {
     gap: 1.25rem;
 }
 .app-header .app-title {
-    font-size: 1.6rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: var(--header-text-color);
+    color: var(--heading-color);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -332,7 +330,7 @@ select {
     width: 100%;
     max-width: var(--page-content-max-pixel-width);
     margin: 0 auto 2rem auto;
-    padding: 0 var(--page-side-padding);
+    padding: 0 1.5rem;
     box-sizing: border-box;
 }
 
@@ -358,15 +356,12 @@ select {
 }
 			.main-grid {
 			display: grid;
-			/* Erste Spalte min. 300px, max. 450px, zweite nimmt Rest */
-			grid-template-columns: minmax(300px, 450px) 1fr;
-			gap: 1.5rem;
+			grid-template-columns: minmax(400px, 1fr) 2fr;
+			gap: 2rem;
 			}
 			/* Die .input-column braucht kein flex mehr, das Grid übernimmt */
 			.input-column {
-			/* Optional: zwinge sie in der Spanne zwischen 300 und 400 */
 			min-width: 400px;
-			max-width: 450px;
 			}
 			/* Damit der rechte Bereich bei Überbreite scrollt */
 			.preview-column {
@@ -698,35 +693,17 @@ body:not(.sidebar-open) .sidebar-scroll {
     background-color: var(--card-bg-color);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow-md);
-    padding: 1.5rem; /* Increased padding */
-    margin-bottom: 2rem; /* Increased margin */
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    height: 100%;
-    max-height: calc(100vh - 120px); /* Adjusted for new header */
-    overflow: hidden;
     transition: all 0.3s ease;
 }
 
 .card:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
-			.card.preview-card {
-			flex: none;
-			min-height: unset;
-			max-height: unset;
-			height: auto;
-			}
-			.card:not(.preview-card) {
-			flex: unset !important;
-			height: auto !important;
-			max-height: none !important;
-			min-height: 0 !important;
-			}
 			#zoneTable input {
 			padding: 4px 6px;
 			font-size: 14px;
@@ -743,13 +720,13 @@ body:not(.sidebar-open) .sidebar-scroll {
 			flex-shrink: 0;
 			}
 			.card-title {
-			font-size: 1.1rem;
+			font-size: 1.25rem;
 			font-weight: 600;
 			margin: 0;
 			color: var(--heading-color);
 			}
 			h3.section-title {
-			font-size: 1rem;
+			font-size: 1.1rem;
 			font-weight: 600;
 			margin-top: 1rem;
 			margin-bottom: .6rem;
