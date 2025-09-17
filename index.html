@@ -18,6 +18,7 @@
             }
         </script>
         <script src="generator.js" defer></script>
+        <script src="bf2d-configurator.js" defer></script>
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
     </head>
@@ -42,6 +43,12 @@
                             <path d="M11 21h-1l1-7H5.6L13 3h1l-1 7h6.5L11 21z" />
                         </svg>
                         <span class="sidebar-text" data-i18n="Generator">Generator</span>
+                    </button>
+                    <button id="showBf2dBtn" class="sidebar-link" data-view-target="bf2dView" data-i18n-title="Biegeformen" title="Biegeformen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 5h8l4 4h4v2h-4l-4-4H4v10H2V5c0-1.1.9-2 2-2h10l4 4h4v2h-4l-4-4H4" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Biegeformen">Biegeformen</span>
                     </button>
                     <button id="showProductionBtn" class="sidebar-link" data-view-target="productionView" data-i18n-title="Produktion" title="Produktion">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -497,6 +504,131 @@
                 </div>
             </div>
         </div>
+                <div id="bf2dView" class="app-container" style="display:none;">
+                    <div class="bf2d-layout">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="BF2D Konfigurator">BF2D Konfigurator</h2>
+                            </div>
+                            <div class="bf2d-form-grid">
+                                <div class="form-group">
+                                    <label for="bf2dProject" data-i18n="Projekt">Projekt</label>
+                                    <input type="text" id="bf2dProject" value="Projekt A">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dOrder" data-i18n="Auftrag">Auftrag</label>
+                                    <input type="text" id="bf2dOrder" value="A-001">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dPosition" data-i18n="Pos.-Nr.">Pos.-Nr.</label>
+                                    <input type="text" id="bf2dPosition" value="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dDiameter" data-i18n="Durchmesser (mm)">Durchmesser (mm)</label>
+                                    <input type="number" id="bf2dDiameter" value="12" min="1" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dQuantity" data-i18n="Stückzahl">Stückzahl</label>
+                                    <input type="number" id="bf2dQuantity" value="1" min="1" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dSteelGrade" data-i18n="Stahlsorte">Stahlsorte</label>
+                                    <input type="text" id="bf2dSteelGrade" value="B500B">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bf2dRemark" data-i18n="Bemerkung">Bemerkung</label>
+                                    <input type="text" id="bf2dRemark">
+                                </div>
+                            </div>
+                            <div class="bf2d-summary-grid">
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Gesamtlänge">Gesamtlänge</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryTotalLength">0 mm</span>
+                                </div>
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Gerade Länge">Gerade Länge</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryStraightLength">0 mm</span>
+                                </div>
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Bogenlänge">Bogenlänge</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryArcLength">0 mm</span>
+                                </div>
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Maß (BxH)">Maß (BxH)</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryDimensions">0 × 0 mm</span>
+                                </div>
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Gewicht pro Stab">Gewicht pro Stab</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryWeight">0 kg</span>
+                                </div>
+                                <div class="bf2d-summary-item">
+                                    <span class="bf2d-summary-label" data-i18n="Gesamtgewicht">Gesamtgewicht</span>
+                                    <span class="bf2d-summary-value" id="bf2dSummaryTotalWeight">0 kg</span>
+                                </div>
+                            </div>
+                            <div id="bf2dStatus" class="info-text" aria-live="polite"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="Segmenteditor">Segmenteditor</h2>
+                                <div class="button-group" style="justify-content: flex-end;">
+                                    <button type="button" id="bf2dAddSegmentButton" class="btn-secondary">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 5v6H6v2h6v6h2v-6h6v-2h-6V5z" />
+                                        </svg>
+                                        <span data-i18n="Segment hinzufügen">Segment hinzufügen</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="bf2d-segment-table-wrapper">
+                                <table class="full-width-table bf2d-segment-table">
+                                    <thead>
+                                        <tr>
+                                            <th data-i18n="Abschnitt">Abschnitt</th>
+                                            <th data-i18n="Länge (mm)">Länge (mm)</th>
+                                            <th data-i18n="Biegewinkel (°)">Biegewinkel (°)</th>
+                                            <th data-i18n="Richtung">Richtung</th>
+                                            <th data-i18n="Radius (mm)">Radius (mm)</th>
+                                            <th data-i18n="Aktionen">Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bf2dSegmentsBody"></tbody>
+                                </table>
+                            </div>
+                            <ul id="bf2dErrorList" class="bf2d-error-list"></ul>
+                        </div>
+                        <div class="card preview-card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="SVG Vorschau">SVG Vorschau</h2>
+                            </div>
+                            <div class="bf2d-preview-container">
+                                <svg id="bf2dPreviewSvg" role="img" aria-label="BF2D Vorschau"></svg>
+                            </div>
+                            <p id="bf2dPreviewNote" class="info-text" aria-live="polite"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="BVBS-ABS Datensatz">BVBS-ABS Datensatz</h2>
+                                <div class="button-group" style="justify-content: flex-end;">
+                                    <button type="button" id="bf2dCopyButton" class="btn-secondary">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                                        </svg>
+                                        <span data-i18n="Datensatz kopieren">Datensatz kopieren</span>
+                                    </button>
+                                    <button type="button" id="bf2dDownloadButton" class="btn-primary">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M5 20h14v-2H5v2zm7-18-5 5h3v6h4V7h3l-5-5z" />
+                                        </svg>
+                                        <span data-i18n="Datensatz herunterladen">Datensatz herunterladen</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="bf2dDatasetOutput" readonly spellcheck="false"></textarea>
+                            <div id="bf2dDatasetStatus" class="info-text" aria-live="polite"></div>
+                        </div>
+                    </div>
+                </div>
                 <div id="productionView" class="app-container" style="display:none;">
                     <div class="card">
                         <div class="card-header">
