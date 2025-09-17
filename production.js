@@ -6,11 +6,25 @@ let productionSortKey = 'startTime';
 let productionStatusFilter = 'all';
 const EDIT_PASSWORD = 'mep';
 
+function setActiveNavigation(view) {
+    document.body.dataset.activeView = view;
+    document.querySelectorAll('.sidebar-link[data-view-target]').forEach(btn => {
+        const isActive = btn.dataset.viewTarget === view;
+        btn.classList.toggle('active', isActive);
+        if (isActive) {
+            btn.setAttribute('aria-current', 'page');
+        } else {
+            btn.removeAttribute('aria-current');
+        }
+    });
+}
+
 function showGeneratorView() {
     const gen = document.getElementById('generatorView');
     const prod = document.getElementById('productionView');
     if (gen) gen.style.display = 'block';
     if (prod) prod.style.display = 'none';
+    setActiveNavigation('generatorView');
 }
 
 function showProductionView() {
@@ -18,7 +32,15 @@ function showProductionView() {
     const prod = document.getElementById('productionView');
     if (gen) gen.style.display = 'none';
     if (prod) prod.style.display = 'block';
+    setActiveNavigation('productionView');
     renderProductionList();
+}
+
+function openGeneratorAndClick(buttonId) {
+    showGeneratorView();
+    requestAnimationFrame(() => {
+        document.getElementById(buttonId)?.click();
+    });
 }
 
 function openReleaseModal() {
@@ -156,8 +178,75 @@ function renderProductionList() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('showGeneratorBtn')?.addEventListener('click', () => showGeneratorView());
-    document.getElementById('showProductionBtn')?.addEventListener('click', () => showProductionView());
+    const updateSidebarState = () => {
+        const isOpen = document.body.classList.contains('sidebar-open');
+        const labelKey = isOpen ? 'Menü einklappen' : 'Menü ausklappen';
+        const label = typeof i18n !== 'undefined' ? i18n.t(labelKey) : labelKey;
+        document.querySelectorAll('[data-sidebar-toggle]').forEach(toggle => {
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            toggle.setAttribute('aria-label', label);
+        });
+    };
+
+    const closeSidebarOnSmallScreens = () => {
+        if (window.matchMedia('(max-width: 900px)').matches) {
+            if (document.body.classList.contains('sidebar-open')) {
+                document.body.classList.remove('sidebar-open');
+                updateSidebarState();
+            }
+        }
+    };
+
+    document.querySelectorAll('[data-sidebar-toggle]').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-open');
+            updateSidebarState();
+        });
+    });
+
+    const wideSidebarQuery = window.matchMedia('(min-width: 1200px)');
+    const handleWideSidebarChange = event => {
+        if (event.matches) {
+            document.body.classList.add('sidebar-open');
+        } else {
+            document.body.classList.remove('sidebar-open');
+        }
+        updateSidebarState();
+    };
+    if (wideSidebarQuery.matches) {
+        document.body.classList.add('sidebar-open');
+    }
+    updateSidebarState();
+    if (typeof wideSidebarQuery.addEventListener === 'function') {
+        wideSidebarQuery.addEventListener('change', handleWideSidebarChange);
+    } else if (typeof wideSidebarQuery.addListener === 'function') {
+        wideSidebarQuery.addListener(handleWideSidebarChange);
+    }
+
+    document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
+        showGeneratorView();
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('showProductionBtn')?.addEventListener('click', () => {
+        showProductionView();
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
+        openGeneratorAndClick('releaseButton');
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('quickSavedOrdersButton')?.addEventListener('click', () => {
+        openGeneratorAndClick('openSavedOrdersButton');
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('quickSvgButton')?.addEventListener('click', () => {
+        openGeneratorAndClick('downloadSvgButton');
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('quickPrintLabelButton')?.addEventListener('click', () => {
+        openGeneratorAndClick('printLabelButton');
+        closeSidebarOnSmallScreens();
+    });
     document.getElementById('releaseButton')?.addEventListener('click', () => {
         const input = document.getElementById('releaseStartzeit');
         if (input) {
@@ -209,14 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProductionList();
     });
 
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    if (sidebarToggle) {
-        sidebarToggle.textContent = document.body.classList.contains('sidebar-open') ? '<' : '>';
-        sidebarToggle.addEventListener('click', () => {
-            document.body.classList.toggle('sidebar-open');
-            sidebarToggle.textContent = document.body.classList.contains('sidebar-open') ? '<' : '>';
-        });
-    }
     setInterval(() => {
         if (productionList.some(p => p.status === 'inProgress')) {
             renderProductionList();

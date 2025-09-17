@@ -13,36 +13,63 @@
         <script src="production.js" defer></script>
     </head>
     <body>
-        <div class="app-header-wrapper">
-            <header class="app-header">
-                <div class="left-section">
-                    <h1 class="app-title" data-i18n="Modern BVBS Korb Generator (MEP)">BVBS Korb Generator (MEP)</h1>
+        <aside id="appSidebar" class="app-sidebar" aria-label="Hauptnavigation">
+            <div class="sidebar-top">
+                <div class="sidebar-brand">
+                    <span class="sidebar-logo">MEP</span>
+                    <span class="sidebar-brand-text">BVBS Suite</span>
                 </div>
-                <div class="right-section">
-                    <div class="logo-area">
-                        <img id="appLogo" src="./gb.png" alt="Firmenlogo">
-                    </div>
-                </div>
-            </header>
-        </div>
-        <nav id="navMenu" class="nav-menu">
-            <div class="nav-menu-items">
-                <button id="showGeneratorBtn">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M11 21h-1l1-7H5.6L13 3h1l-1 7h6.5L11 21z" />
+                <button type="button" class="sidebar-toggle sidebar-toggle--inline" data-sidebar-toggle aria-expanded="false" aria-label="Menü ausklappen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M9 5l7 7-7 7" />
                     </svg>
-                    <span data-i18n="Generator">Generator</span>
-                </button>
-                <button id="showProductionBtn">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M3 3h18v2H3V3zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
-                    </svg>
-                    <span data-i18n="Produktion">Produktion</span>
                 </button>
             </div>
-            <div class="nav-menu-bottom">
-                <div class="app-version">v1.0.0</div>
-                <button id="sidebarToggle" class="sidebar-toggle" aria-label="Sidebar umschalten">&gt;</button>
+            <div class="sidebar-scroll">
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title" data-i18n="Arbeitsbereiche">Arbeitsbereiche</p>
+                    <button id="showGeneratorBtn" class="sidebar-link" data-view-target="generatorView" data-i18n-title="Generator" title="Generator">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M11 21h-1l1-7H5.6L13 3h1l-1 7h6.5L11 21z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Generator">Generator</span>
+                    </button>
+                    <button id="showProductionBtn" class="sidebar-link" data-view-target="productionView" data-i18n-title="Produktion" title="Produktion">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 3h18v2H3V3zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Produktion">Produktion</span>
+                    </button>
+                </div>
+                <div class="sidebar-section">
+                    <p class="sidebar-section-title" data-i18n="Schnellaktionen">Schnellaktionen</p>
+                    <button id="quickReleaseButton" class="sidebar-link sidebar-link--action" data-i18n-title="Freigeben" title="Freigeben">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3l7 7h-4v7h-6v-7H5l7-7z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Freigeben">Freigeben</span>
+                    </button>
+                    <button id="quickSavedOrdersButton" class="sidebar-link" data-i18n-title="Gespeicherte Aufträge" title="Gespeicherte Aufträge">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M10 4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Gespeicherte Aufträge">Gespeicherte Aufträge</span>
+                    </button>
+                    <button id="quickSvgButton" class="sidebar-link" data-i18n-title="Vorschau als SVG" title="Vorschau als SVG">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm3 3h6v6H9z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Vorschau als SVG">Vorschau als SVG</span>
+                    </button>
+                    <button id="quickPrintLabelButton" class="sidebar-link" data-i18n-title="Label drucken" title="Label drucken">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 2h12v4H6V2zm12 6H6c-2.21 0-4 1.79-4 4v6h4v4h12v-4h4v-6c0-2.21-1.79-4-4-4zm-2 12H8v-5h8v5z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Label drucken">Label drucken</span>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-footer">
                 <div class="language-select">
                     <select id="languageSelect">
                         <option value="de" data-flag="flags/de.svg">DE</option>
@@ -51,9 +78,33 @@
                         <option value="cz" data-flag="flags/cz.svg">CZ</option>
                     </select>
                 </div>
+                <div class="app-version">v1.0.0</div>
             </div>
-        </nav>
-        <div id="generatorView" class="app-container">
+        </aside>
+        <div class="app-main">
+            <div class="app-header-wrapper">
+                <header class="app-header">
+                    <div class="left-section">
+                        <button id="sidebarToggle" class="sidebar-toggle" type="button" data-sidebar-toggle aria-expanded="false" aria-label="Menü ausklappen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <div class="title-group">
+                            <h1 class="app-title" data-i18n="Modern BVBS Korb Generator (MEP)">BVBS Korb Generator (MEP)</h1>
+                            <p class="app-subtitle" data-i18n="Digitale Fertigung im Blick">Digitale Fertigung im Blick</p>
+                        </div>
+                    </div>
+                    <div class="right-section">
+                        <span class="header-badge" data-i18n="Feature-Optimierungen aktiv">Feature-Optimierungen aktiv</span>
+                        <div class="logo-area">
+                            <img id="appLogo" src="./gb.png" alt="Firmenlogo">
+                        </div>
+                    </div>
+                </header>
+            </div>
+            <main class="app-content">
+                <div id="generatorView" class="app-container">
             <div class="main-grid">
                 <div class="input-column card">
                     <div class="card-header">
@@ -399,30 +450,33 @@
                 </div>
             </div>
         </div>
-        <div id="productionView" class="app-container" style="display:none;">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title" data-i18n="Produktionsliste">Produktionsliste</h2>
+                <div id="productionView" class="app-container" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title" data-i18n="Produktionsliste">Produktionsliste</h2>
+                        </div>
+                        <div class="production-controls">
+                            <input type="text" id="productionFilter" data-i18n-placeholder="Filter" placeholder="Filter">
+                            <select id="productionStatusFilter">
+                                <option value="all" data-i18n="Alle">Alle</option>
+                                <option value="pending" data-i18n="Offen">Offen</option>
+                                <option value="inProgress" data-i18n="In Arbeit">In Arbeit</option>
+                                <option value="done" data-i18n="Abgeschlossen">Abgeschlossen</option>
+                            </select>
+                            <select id="productionSort">
+                                <option value="startTime" data-i18n="Startzeit">Startzeit</option>
+                                <option value="projekt" data-i18n="Projekt">Projekt</option>
+                            </select>
+                        </div>
+                        <ul id="productionList" class="production-list"></ul>
+                    </div>
                 </div>
-                <div class="production-controls">
-                    <input type="text" id="productionFilter" data-i18n-placeholder="Filter" placeholder="Filter">
-                    <select id="productionStatusFilter">
-                        <option value="all" data-i18n="Alle">Alle</option>
-                        <option value="pending" data-i18n="Offen">Offen</option>
-                        <option value="inProgress" data-i18n="In Arbeit">In Arbeit</option>
-                        <option value="done" data-i18n="Abgeschlossen">Abgeschlossen</option>
-                    </select>
-                    <select id="productionSort">
-                        <option value="startTime" data-i18n="Startzeit">Startzeit</option>
-                        <option value="projekt" data-i18n="Projekt">Projekt</option>
-                    </select>
+            </main>
+            <footer class="app-footer">
+                <div class="app-footer-inner">
+                    <p data-i18n="Modern BVBS Korb Generator © 2025">Modern BVBS Korb Generator &copy; 2025</p>
                 </div>
-                <ul id="productionList" class="production-list"></ul>
-            </div>
-        </div>
-        <footer style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <p style="font-size: .8rem; color: var(--text-muted-color);" data-i18n="Modern BVBS Korb Generator © 2025">Modern BVBS Korb Generator &copy; 2025</p>
-        </footer>
+            </footer>
         </div>
         <div id="releaseModal" class="modal-overlay">
             <div class="modal-content card">
