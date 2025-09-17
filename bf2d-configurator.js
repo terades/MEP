@@ -19,6 +19,34 @@
     let segmentIdCounter = 0;
     let rollDiameterAuto = true;
 
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const dimensionPreferences = {
+        showLengths: true,
+        showRadii: true
+    };
+    const DIMENSION_CONFIG = Object.freeze({
+        lengthOffsetPx: 16,
+        lengthTextGapPx: 10,
+        lengthTextExtraGapPx: 18,
+        lengthArrowClearancePx: 6,
+        minLengthTextSpanPx: 50,
+        approxCharWidthPx: 6.5,
+        radiusInnerOffsetPx: 14,
+        radiusTextOffsetPx: 10,
+        angleTextOffsetPx: 24,
+        minArcTextWidthPx: 48
+    });
+    const DIMENSION_ARROW_MARKER_ID = 'bf2d-dim-arrow';
+
+    function createSvgElement(tagName, attributes = {}) {
+        const element = document.createElementNS(SVG_NS, tagName);
+        Object.entries(attributes).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+            element.setAttribute(key, String(value));
+        });
+        return element;
+    }
+
     function getRollRadius() {
         const rollDiameter = Number(state.meta.rollDiameter);
         if (!Number.isFinite(rollDiameter) || rollDiameter <= 0) {
@@ -246,6 +274,24 @@
         const downloadBtn = document.getElementById('bf2dDownloadButton');
         if (downloadBtn) {
             downloadBtn.addEventListener('click', downloadDataset);
+        }
+
+        const lengthToggle = document.getElementById('bf2dShowLengths');
+        if (lengthToggle) {
+            lengthToggle.checked = dimensionPreferences.showLengths;
+            lengthToggle.addEventListener('change', () => {
+                dimensionPreferences.showLengths = lengthToggle.checked;
+                updateOutputs();
+            });
+        }
+
+        const radiusToggle = document.getElementById('bf2dShowRadii');
+        if (radiusToggle) {
+            radiusToggle.checked = dimensionPreferences.showRadii;
+            radiusToggle.addEventListener('change', () => {
+                dimensionPreferences.showRadii = radiusToggle.checked;
+                updateOutputs();
+            });
         }
     }
 
@@ -494,15 +540,37 @@
         let orientation = 0;
         let current = { x: 0, y: 0 };
         const mathPoints = [{ x: 0, y: 0 }];
+        const legs = [];
+        const bends = [];
 
         segments.forEach((segment, index) => {
             const length = Math.max(0, Number(segment.length) || 0);
             const dir = { x: Math.cos(orientation), y: Math.sin(orientation) };
+            const startPoint = { ...current };
             current = {
                 x: current.x + dir.x * length,
                 y: current.y + dir.y * length
             };
-            mathPoints.push({ ...current });
+            const endPoint = { ...current };
+            mathPoints.push(endPoint);
+
+            const screenStart = { x: startPoint.x, y: -startPoint.y };
+            const screenEnd = { x: endPoint.x, y: -endPoint.y };
+            const dx = screenEnd.x - screenStart.x;
+            const dy = screenEnd.y - screenStart.y;
+            const screenSegmentLength = Math.hypot(dx, dy);
+            const screenOrientation = screenSegmentLength > 0 ? Math.atan2(dy, dx) : 0;
+
+            legs.push({
+                index,
+                length,
+                start: startPoint,
+                end: endPoint,
+                screenStart,
+                screenEnd,
+                orientation,
+                screenOrientation
+            });
 
             const isLast = index === segments.length - 1;
             let signedAngleRad = 0;
@@ -512,12 +580,13 @@
                 signedAngleRad = (angleDeg * Math.PI / 180) * sign;
                 const radius = Number(segment.radius) || 0;
                 if (angleDeg > 0 && radius > 0) {
+                    const arcStart = { ...endPoint };
                     const leftNormal = { x: -dir.y, y: dir.x };
                     const center = {
-                        x: current.x + leftNormal.x * radius * sign,
-                        y: current.y + leftNormal.y * radius * sign
+                        x: arcStart.x + leftNormal.x * radius * sign,
+                        y: arcStart.y + leftNormal.y * radius * sign
                     };
-                    const startAngle = Math.atan2(current.y - center.y, current.x - center.x);
+                    const startAngle = Math.atan2(arcStart.y - center.y, arcStart.x - center.x);
                     const steps = Math.max(6, Math.ceil(Math.abs(angleDeg) / 10));
                     for (let step = 1; step <= steps; step++) {
                         const theta = startAngle + signedAngleRad * (step / steps);
@@ -527,7 +596,45 @@
                         };
                         mathPoints.push(arcPoint);
                     }
-                    current = { ...mathPoints[mathPoints.length - 1] };
+                    const arcEnd = { ...mathPoints[mathPoints.length - 1] };
+                    current = arcEnd;
+
+                    const screenCenter = { x: center.x, y: -center.y };
+                    const screenArcStart = { x: arcStart.x, y: -arcStart.y };
+                    const screenArcEnd = { x: arcEnd.x, y: -arcEnd.y };
+
+                    const startVector = {
+                        x: screenArcStart.x - screenCenter.x,
+                        y: screenArcStart.y - screenCenter.y
+                    };
+                    const endVector = {
+                        x: screenArcEnd.x - screenCenter.x,
+                        y: screenArcEnd.y - screenCenter.y
+                    };
+                    const startVectorLength = Math.hypot(startVector.x, startVector.y) || 1;
+                    const endVectorLength = Math.hypot(endVector.x, endVector.y) || 1;
+                    const startUnit = {
+                        x: startVector.x / startVectorLength,
+                        y: startVector.y / startVectorLength
+                    };
+                    const endUnit = {
+                        x: endVector.x / endVectorLength,
+                        y: endVector.y / endVectorLength
+                    };
+                    const cross = startUnit.x * endUnit.y - startUnit.y * endUnit.x;
+
+                    bends.push({
+                        index,
+                        angleDeg,
+                        angleRad: Math.abs(signedAngleRad),
+                        radius,
+                        screenCenter,
+                        startUnit,
+                        endUnit,
+                        screenStart: screenArcStart,
+                        screenEnd: screenArcEnd,
+                        sweepDir: cross < 0 ? -1 : 1
+                    });
                 }
             }
             orientation += signedAngleRad;
@@ -583,7 +690,9 @@
             viewBox,
             width,
             height,
-            screenPoints
+            screenPoints,
+            legs,
+            bends
         };
     }
 
@@ -614,6 +723,303 @@
         });
     }
 
+    function computeSvgScale(svg, viewBox) {
+        if (!svg || !viewBox) {
+            return { unitPerPx: 1, pxPerUnit: 1 };
+        }
+        const rect = typeof svg.getBoundingClientRect === 'function' ? svg.getBoundingClientRect() : null;
+        const widthPx = (rect?.width || svg.clientWidth || 0);
+        const heightPx = (rect?.height || svg.clientHeight || 0);
+        const viewWidth = Number.isFinite(viewBox.width) && viewBox.width > 0 ? viewBox.width : 1;
+        const viewHeight = Number.isFinite(viewBox.height) && viewBox.height > 0 ? viewBox.height : 1;
+
+        let pxPerUnitX = Number.isFinite(viewWidth) && viewWidth > 0 && widthPx > 0 ? widthPx / viewWidth : Number.POSITIVE_INFINITY;
+        let pxPerUnitY = Number.isFinite(viewHeight) && viewHeight > 0 && heightPx > 0 ? heightPx / viewHeight : Number.POSITIVE_INFINITY;
+        let pxPerUnit = Math.min(pxPerUnitX, pxPerUnitY);
+
+        if (!Number.isFinite(pxPerUnit) || pxPerUnit <= 0) {
+            const fallbackWidthPx = widthPx > 0 ? widthPx : 800;
+            pxPerUnit = viewWidth > 0 ? fallbackWidthPx / viewWidth : 1;
+        }
+        if (!Number.isFinite(pxPerUnit) || pxPerUnit <= 0) {
+            pxPerUnit = 1;
+        }
+        return { pxPerUnit, unitPerPx: 1 / pxPerUnit };
+    }
+
+    function createDimensionMarkerDefs() {
+        const defs = createSvgElement('defs');
+        const marker = createSvgElement('marker', {
+            id: DIMENSION_ARROW_MARKER_ID,
+            orient: 'auto-start-reverse',
+            markerWidth: '6',
+            markerHeight: '6',
+            refX: '4',
+            refY: '3',
+            markerUnits: 'strokeWidth'
+        });
+        const markerPath = createSvgElement('path', {
+            d: 'M0 0 L6 3 L0 6 Z',
+            fill: 'var(--text-color)'
+        });
+        marker.appendChild(markerPath);
+        defs.appendChild(marker);
+        return defs;
+    }
+
+    function addLengthDimension(group, leg, config) {
+        const length = Number(leg.length);
+        if (!Number.isFinite(length) || length <= 0) return;
+
+        const start = leg.screenStart;
+        const end = leg.screenEnd;
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const segmentLength = Math.hypot(dx, dy);
+        if (!Number.isFinite(segmentLength) || segmentLength <= 1e-6) return;
+
+        const unitPerPx = config.unitPerPx;
+        const pxPerUnit = config.pxPerUnit;
+        const strokeWidth = config.strokeWidth;
+        const charWidthUnits = config.charWidthUnits;
+
+        const offsetUnits = DIMENSION_CONFIG.lengthOffsetPx * unitPerPx;
+        const textGapUnits = DIMENSION_CONFIG.lengthTextGapPx * unitPerPx;
+        const extraGapUnits = DIMENSION_CONFIG.lengthTextExtraGapPx * unitPerPx;
+        const arrowClearanceUnits = DIMENSION_CONFIG.lengthArrowClearancePx * unitPerPx;
+
+        const ux = dx / segmentLength;
+        const uy = dy / segmentLength;
+        const nx = -uy;
+        const ny = ux;
+
+        const dimStart = {
+            x: start.x + nx * offsetUnits,
+            y: start.y + ny * offsetUnits
+        };
+        const dimEnd = {
+            x: end.x + nx * offsetUnits,
+            y: end.y + ny * offsetUnits
+        };
+
+        const extensionStart = createSvgElement('line', {
+            class: 'bf2d-dimension-extension',
+            x1: start.x.toFixed(2),
+            y1: start.y.toFixed(2),
+            x2: dimStart.x.toFixed(2),
+            y2: dimStart.y.toFixed(2),
+            'stroke-width': strokeWidth.toFixed(2)
+        });
+        const extensionEnd = createSvgElement('line', {
+            class: 'bf2d-dimension-extension',
+            x1: end.x.toFixed(2),
+            y1: end.y.toFixed(2),
+            x2: dimEnd.x.toFixed(2),
+            y2: dimEnd.y.toFixed(2),
+            'stroke-width': strokeWidth.toFixed(2)
+        });
+        group.appendChild(extensionStart);
+        group.appendChild(extensionEnd);
+
+        const dimensionLine = createSvgElement('line', {
+            class: 'bf2d-dimension-line',
+            x1: dimStart.x.toFixed(2),
+            y1: dimStart.y.toFixed(2),
+            x2: dimEnd.x.toFixed(2),
+            y2: dimEnd.y.toFixed(2),
+            'stroke-width': strokeWidth.toFixed(2),
+            'marker-start': `url(#${DIMENSION_ARROW_MARKER_ID})`,
+            'marker-end': `url(#${DIMENSION_ARROW_MARKER_ID})`
+        });
+        group.appendChild(dimensionLine);
+
+        const label = `${formatDisplayNumber(length)} mm`;
+        const dimensionLength = Math.hypot(dimEnd.x - dimStart.x, dimEnd.y - dimStart.y);
+        const availableForText = dimensionLength - 2 * arrowClearanceUnits;
+        const textWidthEstimate = label.length * charWidthUnits;
+        const dimensionLengthPx = dimensionLength * pxPerUnit;
+        let textOffset = textGapUnits;
+        if (availableForText < textWidthEstimate || dimensionLengthPx < DIMENSION_CONFIG.minLengthTextSpanPx) {
+            textOffset += extraGapUnits;
+        }
+
+        const midpoint = {
+            x: (dimStart.x + dimEnd.x) / 2,
+            y: (dimStart.y + dimEnd.y) / 2
+        };
+        const textPosition = {
+            x: midpoint.x + nx * textOffset,
+            y: midpoint.y + ny * textOffset
+        };
+
+        let angleDeg = Math.atan2(dimEnd.y - dimStart.y, dimEnd.x - dimStart.x) * 180 / Math.PI;
+        if (angleDeg > 90 || angleDeg < -90) {
+            angleDeg += 180;
+        }
+
+        const textGroup = createSvgElement('g', {
+            transform: `translate(${textPosition.x.toFixed(2)} ${textPosition.y.toFixed(2)}) rotate(${angleDeg.toFixed(2)})`
+        });
+        const textElement = createSvgElement('text', {
+            class: 'bf2d-dimension-text',
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle',
+            'font-size': config.fontSize.toFixed(2)
+        });
+        textElement.textContent = label;
+        textGroup.appendChild(textElement);
+        group.appendChild(textGroup);
+    }
+
+    function addBendDimension(group, bend, config) {
+        const angleDeg = Number(bend.angleDeg);
+        const angleRad = Number(bend.angleRad);
+        const radius = Number(bend.radius);
+        if (!Number.isFinite(angleDeg) || angleDeg <= 0 || !Number.isFinite(angleRad) || angleRad <= 0 || !Number.isFinite(radius) || radius < 0) {
+            return;
+        }
+
+        const unitPerPx = config.unitPerPx;
+        const pxPerUnit = config.pxPerUnit;
+        const strokeWidth = config.strokeWidth;
+        const baseFontSize = config.fontSize;
+
+        let dimensionRadius = radius - DIMENSION_CONFIG.radiusInnerOffsetPx * unitPerPx;
+        if (!Number.isFinite(dimensionRadius) || dimensionRadius <= 0) {
+            dimensionRadius = Math.max(radius * 0.6, 24 * unitPerPx);
+        }
+
+        const center = bend.screenCenter;
+        const startUnit = bend.startUnit;
+        const endUnit = bend.endUnit;
+        const sweepDir = bend.sweepDir;
+
+        const dimensionStart = {
+            x: center.x + startUnit.x * dimensionRadius,
+            y: center.y + startUnit.y * dimensionRadius
+        };
+        const dimensionEnd = {
+            x: center.x + endUnit.x * dimensionRadius,
+            y: center.y + endUnit.y * dimensionRadius
+        };
+
+        const sweepFlag = sweepDir < 0 ? 1 : 0;
+        const arcPath = createSvgElement('path', {
+            class: 'bf2d-dimension-arc',
+            d: `M ${dimensionStart.x.toFixed(2)} ${dimensionStart.y.toFixed(2)} A ${dimensionRadius.toFixed(2)} ${dimensionRadius.toFixed(2)} 0 0 ${sweepFlag} ${dimensionEnd.x.toFixed(2)} ${dimensionEnd.y.toFixed(2)}`,
+            'stroke-width': strokeWidth.toFixed(2),
+            'marker-start': `url(#${DIMENSION_ARROW_MARKER_ID})`,
+            'marker-end': `url(#${DIMENSION_ARROW_MARKER_ID})`
+        });
+        group.appendChild(arcPath);
+
+        const startAngle = Math.atan2(startUnit.y, startUnit.x);
+        const endAngle = Math.atan2(endUnit.y, endUnit.x);
+        let delta = endAngle - startAngle;
+        if (sweepDir < 0 && delta > 0) {
+            delta -= 2 * Math.PI;
+        } else if (sweepDir > 0 && delta < 0) {
+            delta += 2 * Math.PI;
+        }
+        const totalAngle = Math.abs(delta);
+        const midAngle = startAngle + delta / 2;
+
+        const radiusLabel = `R${formatDisplayNumber(radius)} mm`;
+        const angleLabel = `${formatDisplayNumber(angleDeg)}°`;
+        const arcLengthPx = Math.abs(dimensionRadius) * totalAngle * pxPerUnit;
+        const radiusTextWidthPx = radiusLabel.length * DIMENSION_CONFIG.approxCharWidthPx;
+        const requiresExtraOffset = arcLengthPx < Math.max(radiusTextWidthPx, DIMENSION_CONFIG.minArcTextWidthPx);
+
+        let radiusTextOffset = DIMENSION_CONFIG.radiusTextOffsetPx * unitPerPx;
+        let angleTextOffset = DIMENSION_CONFIG.angleTextOffsetPx * unitPerPx;
+        if (requiresExtraOffset) {
+            radiusTextOffset += DIMENSION_CONFIG.radiusTextOffsetPx * unitPerPx;
+            angleTextOffset += (DIMENSION_CONFIG.angleTextOffsetPx * 0.5) * unitPerPx;
+        }
+
+        let radiusTextRadius = Math.max(dimensionRadius - radiusTextOffset, dimensionRadius * 0.45);
+        let angleTextRadius = Math.max(radiusTextRadius - angleTextOffset, dimensionRadius * 0.35);
+
+        const radiusTextPosition = {
+            x: center.x + Math.cos(midAngle) * radiusTextRadius,
+            y: center.y + Math.sin(midAngle) * radiusTextRadius
+        };
+        const angleTextPosition = {
+            x: center.x + Math.cos(midAngle) * angleTextRadius,
+            y: center.y + Math.sin(midAngle) * angleTextRadius
+        };
+
+        let tangentAngleDeg = (midAngle + (sweepDir < 0 ? -Math.PI / 2 : Math.PI / 2)) * 180 / Math.PI;
+        if (tangentAngleDeg > 90 || tangentAngleDeg < -90) {
+            tangentAngleDeg += 180;
+        }
+
+        const radiusTextGroup = createSvgElement('g', {
+            transform: `translate(${radiusTextPosition.x.toFixed(2)} ${radiusTextPosition.y.toFixed(2)}) rotate(${tangentAngleDeg.toFixed(2)})`
+        });
+        const radiusTextElement = createSvgElement('text', {
+            class: 'bf2d-dimension-text',
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle',
+            'font-size': (baseFontSize * 0.95).toFixed(2)
+        });
+        radiusTextElement.textContent = radiusLabel;
+        radiusTextGroup.appendChild(radiusTextElement);
+        group.appendChild(radiusTextGroup);
+
+        const angleTextElement = createSvgElement('text', {
+            class: 'bf2d-angle-text',
+            x: angleTextPosition.x.toFixed(2),
+            y: angleTextPosition.y.toFixed(2),
+            'text-anchor': 'middle',
+            'dominant-baseline': 'middle',
+            'font-size': (baseFontSize * 0.9).toFixed(2)
+        });
+        angleTextElement.textContent = angleLabel;
+        group.appendChild(angleTextElement);
+    }
+
+    function renderDimensions(svg, geometry, scale) {
+        if (!geometry) return;
+        const hasLengths = dimensionPreferences.showLengths && Array.isArray(geometry.legs) && geometry.legs.length > 0;
+        const hasRadii = dimensionPreferences.showRadii && Array.isArray(geometry.bends) && geometry.bends.length > 0;
+        if (!hasLengths && !hasRadii) {
+            return;
+        }
+
+        const defs = createDimensionMarkerDefs();
+        svg.appendChild(defs);
+
+        const dimensionGroup = createSvgElement('g', { class: 'bf2d-dimensions' });
+        const charWidthUnits = DIMENSION_CONFIG.approxCharWidthPx * scale.unitPerPx;
+        const fontSize = Math.max(12 * scale.unitPerPx, 6 * scale.unitPerPx);
+        const strokeWidth = Math.max(scale.unitPerPx * 1.2, scale.unitPerPx * 0.8);
+
+        if (hasLengths) {
+            geometry.legs.forEach(leg => addLengthDimension(dimensionGroup, leg, {
+                unitPerPx: scale.unitPerPx,
+                pxPerUnit: scale.pxPerUnit,
+                strokeWidth,
+                fontSize,
+                charWidthUnits
+            }));
+        }
+
+        if (hasRadii) {
+            geometry.bends.forEach(bend => addBendDimension(dimensionGroup, bend, {
+                unitPerPx: scale.unitPerPx,
+                pxPerUnit: scale.pxPerUnit,
+                strokeWidth,
+                fontSize,
+                charWidthUnits
+            }));
+        }
+
+        if (dimensionGroup.childNodes.length) {
+            svg.appendChild(dimensionGroup);
+        }
+    }
+
     function renderSvgPreview(summary) {
         const svg = document.getElementById('bf2dPreviewSvg');
         const note = document.getElementById('bf2dPreviewNote');
@@ -634,7 +1040,8 @@
             return;
         }
 
-        const { viewBox, pathData, screenPoints } = summary.geometry;
+        const geometry = summary.geometry;
+        const { viewBox, pathData, screenPoints } = geometry;
         svg.setAttribute('viewBox', `${viewBox.x.toFixed(2)} ${viewBox.y.toFixed(2)} ${viewBox.width.toFixed(2)} ${viewBox.height.toFixed(2)}`);
 
         const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -649,6 +1056,9 @@
         path.setAttribute('class', 'bf2d-svg-path');
         path.setAttribute('d', pathData);
         svg.appendChild(path);
+
+        const scale = computeSvgScale(svg, viewBox);
+        renderDimensions(svg, geometry, scale);
 
         if (screenPoints.length) {
             const start = screenPoints[0];
