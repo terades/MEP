@@ -1,17 +1,19 @@
 /* global i18n, showFeedback */
 (function () {
+    const META_DEFAULTS = Object.freeze({
+        project: '',
+        order: '',
+        position: '',
+        diameter: 12,
+        rollDiameter: 48,
+        quantity: 1,
+        steelGrade: 'B500B',
+        remark: ''
+    });
+
     const state = {
         segments: [],
-        meta: {
-            project: '',
-            order: '',
-            position: '',
-            diameter: 12,
-            rollDiameter: 48,
-            quantity: 1,
-            steelGrade: 'B500B',
-            remark: ''
-        },
+        meta: { ...META_DEFAULTS },
         datasetText: ''
     };
 
@@ -37,6 +39,7 @@
         minArcTextWidthPx: 48
     });
     const DIMENSION_ARROW_MARKER_ID = 'bf2d-dim-arrow';
+    const SAVED_FORMS_STORAGE_KEY = 'bf2dSavedForms';
 
     function createSvgElement(tagName, attributes = {}) {
         const element = document.createElementNS(SVG_NS, tagName);
@@ -291,6 +294,348 @@
             radiusToggle.addEventListener('change', () => {
                 dimensionPreferences.showRadii = radiusToggle.checked;
                 updateOutputs();
+            });
+        }
+    }
+
+    function getLocalStorageSafe() {
+        try {
+            if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+                return null;
+            }
+            return window.localStorage;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function readSavedForms() {
+        const storage = getLocalStorageSafe();
+        if (!storage) return {};
+        const raw = storage.getItem(SAVED_FORMS_STORAGE_KEY);
+        if (!raw) return {};
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (error) {
+            console.error('Failed to parse saved BF2D forms', error);
+        }
+        return {};
+    }
+
+    function persistSavedForms(forms) {
+        const storage = getLocalStorageSafe();
+        if (!storage) return false;
+        try {
+            const entries = Object.keys(forms || {});
+            if (!entries.length) {
+                storage.removeItem(SAVED_FORMS_STORAGE_KEY);
+            } else {
+                storage.setItem(SAVED_FORMS_STORAGE_KEY, JSON.stringify(forms));
+            }
+            return true;
+        } catch (error) {
+            console.error('Failed to persist BF2D forms', error);
+            return false;
+        }
+    }
+
+    function populateSavedFormsSelect(selectedName = '') {
+        const select = document.getElementById('bf2dSavedForms');
+        if (!select) return;
+        const storage = getLocalStorageSafe();
+        const forms = storage ? readSavedForms() : {};
+        const names = Object.keys(forms).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        const placeholderText = typeof i18n?.t === 'function' ? i18n.t('Gespeicherte Biegeform auswählen…') : 'Gespeicherte Biegeform auswählen…';
+        select.innerHTML = '';
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = placeholderText;
+        select.appendChild(placeholderOption);
+        names.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
+        const sanitizedSelected = sanitizeText(selectedName);
+        if (sanitizedSelected && Object.prototype.hasOwnProperty.call(forms, sanitizedSelected)) {
+            select.value = sanitizedSelected;
+        } else {
+            select.value = '';
+        }
+        const storageAvailable = !!storage;
+        const hasForms = storageAvailable && names.length > 0;
+        select.disabled = !hasForms;
+        const loadBtn = document.getElementById('bf2dLoadShapeButton');
+        if (loadBtn) {
+            loadBtn.disabled = !hasForms;
+        }
+        const deleteBtn = document.getElementById('bf2dDeleteShapeButton');
+        if (deleteBtn) {
+            deleteBtn.disabled = !hasForms;
+        }
+    }
+
+    function readShapeNameInput() {
+        const input = document.getElementById('bf2dShapeName');
+        if (!input) return '';
+        return sanitizeText(input.value);
+    }
+
+    function setShapeNameInputValue(value) {
+        const input = document.getElementById('bf2dShapeName');
+        if (!input) return;
+        input.value = value || '';
+    }
+
+    function resolveTargetShapeName() {
+        const select = document.getElementById('bf2dSavedForms');
+        if (select && select.value) {
+            return sanitizeText(select.value);
+        }
+        return readShapeNameInput();
+    }
+
+    function showStorageUnavailableFeedback() {
+        if (typeof showFeedback === 'function') {
+            const message = typeof i18n?.t === 'function' ? i18n.t('Speicherfunktion nicht verfügbar.') : 'Speicherfunktion nicht verfügbar.';
+            showFeedback('bf2dStatus', message, 'warning', 4000);
+        }
+    }
+
+    function buildCurrentShapeSnapshot() {
+        return {
+            meta: { ...state.meta },
+            segments: state.segments.map(segment => ({
+                length: Number(segment.length) || 0,
+                bendAngle: Number(segment.bendAngle) || 0,
+                bendDirection: segment.bendDirection === 'R' ? 'R' : 'L',
+                radius: Number(segment.radius) || 0
+            })),
+            dimensionPreferences: {
+                showLengths: !!dimensionPreferences.showLengths,
+                showRadii: !!dimensionPreferences.showRadii
+            },
+            rollDiameterAuto: !!rollDiameterAuto
+        };
+    }
+
+    function saveCurrentShape() {
+        const storage = getLocalStorageSafe();
+        if (!storage) {
+            showStorageUnavailableFeedback();
+            return;
+        }
+        const name = readShapeNameInput();
+        if (!name) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Bitte einen Namen für die Biegeform angeben.') : 'Bitte einen Namen für die Biegeform angeben.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            return;
+        }
+        setShapeNameInputValue(name);
+        const forms = readSavedForms();
+        forms[name] = buildCurrentShapeSnapshot();
+        if (!persistSavedForms(forms)) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht gespeichert werden.') : 'Biegeform konnte nicht gespeichert werden.';
+                showFeedback('bf2dStatus', message, 'error', 4000);
+            }
+            return;
+        }
+        populateSavedFormsSelect(name);
+        if (typeof showFeedback === 'function') {
+            const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform gespeichert.') : 'Biegeform gespeichert.';
+            showFeedback('bf2dStatus', message, 'success', 2000);
+        }
+    }
+
+    function applySavedShapeData(data) {
+        if (!data || typeof data !== 'object') {
+            return false;
+        }
+
+        const metaSource = {
+            ...META_DEFAULTS,
+            ...(typeof data.meta === 'object' && data.meta !== null ? data.meta : {})
+        };
+
+        metaFieldDefinitions().forEach(def => {
+            const hasOwn = Object.prototype.hasOwnProperty.call(metaSource, def.key);
+            const rawValue = hasOwn ? metaSource[def.key] : META_DEFAULTS[def.key];
+            let parserInput;
+            if (typeof rawValue === 'number' || typeof rawValue === 'string') {
+                parserInput = rawValue;
+            } else {
+                parserInput = META_DEFAULTS[def.key];
+            }
+            const parsed = def.parser(parserInput);
+            state.meta[def.key] = parsed;
+            const el = document.getElementById(def.id);
+            if (!el) return;
+            if (el.type === 'number') {
+                if (def.key === 'quantity') {
+                    const qty = Math.max(1, Math.round(Number(parsed) || 0));
+                    state.meta.quantity = qty;
+                    el.value = String(qty);
+                } else {
+                    el.value = formatNumberForInput(parsed);
+                }
+            } else {
+                el.value = parsed || '';
+            }
+        });
+
+        segmentIdCounter = 0;
+        if (Array.isArray(data.segments) && data.segments.length > 0) {
+            state.segments = data.segments.map(segment => {
+                const length = Number(segment?.length) || 0;
+                const bendAngle = Number(segment?.bendAngle) || 0;
+                const direction = segment?.bendDirection === 'R' ? 'R' : 'L';
+                const radiusValue = Number(segment?.radius);
+                const radius = Number.isFinite(radiusValue) ? radiusValue : null;
+                return createSegment(length, bendAngle, direction, radius);
+            });
+            enforceLastSegmentDefaults();
+        } else {
+            initDefaultSegments();
+        }
+
+        const savedPreferences = (typeof data.dimensionPreferences === 'object' && data.dimensionPreferences !== null) ? data.dimensionPreferences : {};
+        dimensionPreferences.showLengths = savedPreferences.showLengths !== undefined ? !!savedPreferences.showLengths : true;
+        dimensionPreferences.showRadii = savedPreferences.showRadii !== undefined ? !!savedPreferences.showRadii : true;
+        const lengthToggle = document.getElementById('bf2dShowLengths');
+        if (lengthToggle) {
+            lengthToggle.checked = dimensionPreferences.showLengths;
+        }
+        const radiusToggle = document.getElementById('bf2dShowRadii');
+        if (radiusToggle) {
+            radiusToggle.checked = dimensionPreferences.showRadii;
+        }
+
+        setRollDiameterValue(state.meta.rollDiameter, { updateInput: true, fromUser: false });
+        if (typeof data.rollDiameterAuto === 'boolean') {
+            rollDiameterAuto = data.rollDiameterAuto;
+        } else {
+            rollDiameterAuto = true;
+        }
+
+        renderSegmentTable();
+        updateOutputs();
+        return true;
+    }
+
+    function handleLoadSelectedShape() {
+        const storage = getLocalStorageSafe();
+        if (!storage) {
+            showStorageUnavailableFeedback();
+            return;
+        }
+        const name = resolveTargetShapeName();
+        if (!name) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Bitte eine gespeicherte Biegeform auswählen.') : 'Bitte eine gespeicherte Biegeform auswählen.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            return;
+        }
+        const forms = readSavedForms();
+        const data = forms[name];
+        if (!data) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform nicht gefunden.') : 'Biegeform nicht gefunden.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            populateSavedFormsSelect('');
+            return;
+        }
+        setShapeNameInputValue(name);
+        if (!applySavedShapeData(data)) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht geladen werden.') : 'Biegeform konnte nicht geladen werden.';
+                showFeedback('bf2dStatus', message, 'error', 4000);
+            }
+            return;
+        }
+        populateSavedFormsSelect(name);
+        if (typeof showFeedback === 'function') {
+            const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform geladen.') : 'Biegeform geladen.';
+            showFeedback('bf2dStatus', message, 'success', 2000);
+        }
+    }
+
+    function handleDeleteSelectedShape() {
+        const storage = getLocalStorageSafe();
+        if (!storage) {
+            showStorageUnavailableFeedback();
+            return;
+        }
+        const name = resolveTargetShapeName();
+        if (!name) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Bitte eine gespeicherte Biegeform auswählen.') : 'Bitte eine gespeicherte Biegeform auswählen.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            return;
+        }
+        setShapeNameInputValue(name);
+        const forms = readSavedForms();
+        if (!Object.prototype.hasOwnProperty.call(forms, name)) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform nicht gefunden.') : 'Biegeform nicht gefunden.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            populateSavedFormsSelect('');
+            return;
+        }
+        delete forms[name];
+        if (!persistSavedForms(forms)) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht gelöscht werden.') : 'Biegeform konnte nicht gelöscht werden.';
+                showFeedback('bf2dStatus', message, 'error', 4000);
+            }
+            return;
+        }
+        populateSavedFormsSelect('');
+        if (typeof showFeedback === 'function') {
+            const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform gelöscht.') : 'Biegeform gelöscht.';
+            showFeedback('bf2dStatus', message, 'success', 2000);
+        }
+    }
+
+    function attachStorageListeners() {
+        const saveBtn = document.getElementById('bf2dSaveShapeButton');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', saveCurrentShape);
+        }
+        const loadBtn = document.getElementById('bf2dLoadShapeButton');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', handleLoadSelectedShape);
+        }
+        const deleteBtn = document.getElementById('bf2dDeleteShapeButton');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', handleDeleteSelectedShape);
+        }
+        const select = document.getElementById('bf2dSavedForms');
+        if (select) {
+            select.addEventListener('change', event => {
+                const value = sanitizeText(event.target.value);
+                if (value) {
+                    setShapeNameInputValue(value);
+                }
+            });
+        }
+        const input = document.getElementById('bf2dShapeName');
+        if (input) {
+            input.addEventListener('input', () => {
+                const dropdown = document.getElementById('bf2dSavedForms');
+                if (dropdown && dropdown.value) {
+                    dropdown.value = '';
+                }
             });
         }
     }
@@ -1232,6 +1577,8 @@
         }
         attachMetaListeners();
         attachActionListeners();
+        attachStorageListeners();
+        populateSavedFormsSelect();
         renderSegmentTable();
         updateOutputs();
     }
@@ -1240,10 +1587,14 @@
         init,
         onShow() {
             if (!initialized) return;
+            const currentSelection = document.getElementById('bf2dSavedForms')?.value || '';
+            populateSavedFormsSelect(currentSelection);
             updateOutputs();
         },
         refreshTranslations() {
             if (!initialized) return;
+            const currentSelection = document.getElementById('bf2dSavedForms')?.value || '';
+            populateSavedFormsSelect(currentSelection);
             renderSegmentTable();
             updateOutputs();
         }
