@@ -5,6 +5,7 @@
   "scripts": {
     "start": "serve ."
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "serve": "^14.2.5"
+  }
 }
