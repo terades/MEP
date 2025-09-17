@@ -33,6 +33,8 @@ let zonesPerLabel = 16; // Zonenanzahl Zone 1 (aufteilbar)
 let highlightedZoneDisplayIndex = null;
 let dimensioningMode = 'arrangementLength'; // 'arrangementLength' or 'totalZoneSpace'
 let showOverhangs = false;
+let summaryStatusOverride = null;
+let summaryStatusTimer = null;
 			
 			// Local storage key for templates
 const LOCAL_STORAGE_TEMPLATES_KEY = 'bvbsKorbsTemplates';
@@ -763,6 +765,83 @@ function loadLabelLayout() {
                             showOverhangs = show;
                             drawCagePreview();
                         }
+
+                        function updateGeneratorSummary() {
+                            const locale = document.documentElement?.lang || 'de';
+                            let numberFormatter = null;
+                            try {
+                                numberFormatter = new Intl.NumberFormat(locale);
+                            } catch (error) {
+                                numberFormatter = null;
+                            }
+                            const formatNumber = (value) => {
+                                if (!Number.isFinite(value)) {
+                                    return '0';
+                                }
+                                if (numberFormatter) {
+                                    return numberFormatter.format(value);
+                                }
+                                return value.toString();
+                            };
+
+                            const totalLengthInput = document.getElementById('gesamtlange');
+                            const totalLength = parseFloat(totalLengthInput?.value) || 0;
+                            const totalLengthEl = document.getElementById('summaryTotalLength');
+                            if (totalLengthEl) {
+                                const roundedLength = Math.max(0, Math.round(totalLength));
+                                totalLengthEl.textContent = roundedLength > 0 ? `${formatNumber(roundedLength)} mm` : '0 mm';
+                            }
+
+                            const zoneCount = zonesData.length;
+                            const zoneCountEl = document.getElementById('summaryZoneCount');
+                            if (zoneCountEl) {
+                                zoneCountEl.textContent = formatNumber(zoneCount);
+                            }
+
+                            const stirrupCount = zonesData.reduce((sum, zone, index) => sum + getEffectiveZoneNum(zone, index), 0);
+                            const stirrupCountEl = document.getElementById('summaryStirrupCount');
+                            if (stirrupCountEl) {
+                                stirrupCountEl.textContent = formatNumber(stirrupCount);
+                            }
+
+                            const statusEl = document.getElementById('summaryStatus');
+                            if (statusEl) {
+                                statusEl.classList.remove('summary-status--ready', 'summary-status--warning', 'summary-status--highlight');
+                                let statusText;
+                                if (summaryStatusOverride) {
+                                    const overrideKey = summaryStatusOverride.key || summaryStatusOverride.fallback;
+                                    const overrideFallback = summaryStatusOverride.fallback || overrideKey;
+                                    statusText = (window.i18n?.t?.(overrideKey) || overrideFallback);
+                                    statusEl.classList.add('summary-status--highlight');
+                                } else if (zoneCount === 0) {
+                                    statusText = window.i18n?.t?.('Füge Zonen hinzu, um zu starten.') || 'Füge Zonen hinzu, um zu starten.';
+                                    statusEl.classList.add('summary-status--warning');
+                                } else {
+                                    statusText = window.i18n?.t?.('Bereit zur Generierung') || 'Bereit zur Generierung';
+                                    statusEl.classList.add('summary-status--ready');
+                                }
+                                statusEl.textContent = statusText;
+                            }
+                        }
+
+                        function setSummaryStatusOverride(key, fallback = key, duration = 4000) {
+                            if (!key) {
+                                summaryStatusOverride = null;
+                            } else {
+                                summaryStatusOverride = { key, fallback };
+                            }
+                            updateGeneratorSummary();
+                            if (summaryStatusTimer) {
+                                clearTimeout(summaryStatusTimer);
+                                summaryStatusTimer = null;
+                            }
+                            if (summaryStatusOverride && duration > 0) {
+                                summaryStatusTimer = setTimeout(() => {
+                                    summaryStatusOverride = null;
+                                    updateGeneratorSummary();
+                                }, duration);
+                            }
+                        }
 			
 			// Initialize collapsible sections
 			function initCollapsibleHeaders() {
@@ -801,14 +880,15 @@ function loadLabelLayout() {
 			}
 			
 			// Render all zone input fields and buttons AND the summary table
-			function renderAllZones() {
-			    const tbody = document.querySelector('#zonesTable tbody');
-			    if (!tbody) return;
-			    tbody.innerHTML = '';
-			    if (zonesData.length === 0) {
-			        const emptyRow = tbody.insertRow();
-			        const cell = emptyRow.insertCell();
-			        cell.colSpan = 5;
+                        function renderAllZones() {
+                            const tbody = document.querySelector('#zonesTable tbody');
+                            if (!tbody) return;
+                            tbody.innerHTML = '';
+                            updateGeneratorSummary();
+                            if (zonesData.length === 0) {
+                                const emptyRow = tbody.insertRow();
+                                const cell = emptyRow.insertCell();
+                                cell.colSpan = 5;
 			        cell.textContent = "Noch keine Zonen definiert. Fügen Sie eine hinzu!";
 			        cell.style.textAlign = "center";
 			        cell.style.fontStyle = "italic";
@@ -1006,11 +1086,80 @@ function updateZonesPerLabel(value) {
 }
 
 
+function loadSampleBasket() {
+    const sample = {
+        projekt: 'Demo-Projekt MEP',
+        komm: 'K-0424',
+        auftrag: 'BVBS-2024',
+        posnr: '12',
+        gesamtlange: 4200,
+        anzahl: 2,
+        langdrahtDurchmesser: 12,
+        anfangsueberstand: 80,
+        endueberstand: 80,
+        buegelname1: 'Korb Typ A',
+        buegelname2: 'Korb Typ B',
+        zones: [
+            { dia: 8, num: 6, pitch: 150 },
+            { dia: 8, num: 5, pitch: 180 },
+            { dia: 10, num: 8, pitch: 160 },
+            { dia: 8, num: 6, pitch: 150 },
+            { dia: 8, num: 5, pitch: 180 }
+        ]
+    };
+
+    const applyValue = (id, value) => {
+        const element = document.getElementById(id);
+        if (element !== null && element !== undefined) {
+            element.value = value;
+        }
+    };
+
+    applyValue('projekt', sample.projekt);
+    applyValue('KommNr', sample.komm);
+    applyValue('auftrag', sample.auftrag);
+    applyValue('posnr', sample.posnr);
+    applyValue('gesamtlange', sample.gesamtlange);
+    applyValue('anzahl', sample.anzahl);
+    applyValue('langdrahtDurchmesser', sample.langdrahtDurchmesser);
+    applyValue('anfangsueberstand', sample.anfangsueberstand);
+    applyValue('endueberstand', sample.endueberstand);
+    applyValue('buegelname1', sample.buegelname1);
+    applyValue('buegelname2', sample.buegelname2);
+
+    zonesData = sample.zones.map((zone, index) => ({
+        id: index,
+        dia: zone.dia,
+        num: zone.num,
+        pitch: zone.pitch
+    }));
+    nextZoneId = zonesData.length;
+
+    renderAllZones();
+    updateAddZoneButtonState();
+    if (window.viewer3d && typeof window.viewer3d.prepareAutoFit === 'function') {
+        window.viewer3d.prepareAutoFit();
+    }
+    updateLabelPreview();
+    setSummaryStatusOverride('Beispielkorb aktiv', 'Beispielkorb aktiv');
+    triggerPreviewUpdateDebounced();
+    updateGenerateButtonState();
+
+    const view3dBtn = document.getElementById('view3dBtn');
+    if (view3dBtn && !view3dBtn.classList.contains('active')) {
+        view3dBtn.click();
+    } else if (window.viewer3d) {
+        window.viewer3d.onResize();
+    }
+}
+
+
 
                         // Debounce function to prevent excessive updates while typing
-                        function triggerPreviewUpdateDebounced() {
-			    clearTimeout(previewUpdateTimer);
-			    previewUpdateTimer = setTimeout(() => {
+function triggerPreviewUpdateDebounced() {
+    updateGeneratorSummary();
+    clearTimeout(previewUpdateTimer);
+    previewUpdateTimer = setTimeout(() => {
                     drawCagePreview();
                     if(window.viewer3d) {
                         const basketData = {
@@ -1694,6 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (zonesPerLabelEl) {
         updateZonesPerLabel(zonesPerLabelEl.value);
     }
+    document.getElementById('loadSampleBasketBtn')?.addEventListener('click', () => loadSampleBasket());
     document.getElementById('saveOrderButton')?.addEventListener('click', () => saveCurrentOrder());
     document.getElementById('openSavedOrdersButton')?.addEventListener('click', () => openSavedOrdersModal());
     document.getElementById('savedOrdersFilterInput')?.addEventListener('input', () => renderSavedOrdersList());
