@@ -4,6 +4,7 @@ let nextZoneId = 0;
 let savedOrders = [];
 let currentSavedOrderId = null;
 const LOCAL_STORAGE_SAVED_ORDERS_KEY = 'bvbsSavedOrders';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function getEffectiveZoneNum(zone, index) {
     return index === 0 ? zone.num + 1 : zone.num;
@@ -122,6 +123,159 @@ function persistSavedOrders() {
     }
 }
 
+function getZonePreviewColor(index, computedStyles) {
+    if (!computedStyles && typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+        computedStyles = window.getComputedStyle(document.documentElement);
+    }
+    const colorVar = `--svg-zone-color-${index % NUM_ZONE_COLORS_AVAILABLE}`;
+    const color = computedStyles ? computedStyles.getPropertyValue(colorVar) : null;
+    return color ? color.trim() || '#6c757d' : '#6c757d';
+}
+
+function createSavedOrderPreview(order) {
+    if (!order) return null;
+    const totalLength = parseFloat(order.gesamtlange) || 0;
+    const zones = Array.isArray(order.zonesData) ? order.zonesData : [];
+    if (totalLength <= 0 || zones.length === 0) {
+        return null;
+    }
+
+    const width = 160;
+    const height = 44;
+    const paddingX = 10;
+    const paddingY = 6;
+    const drawableWidth = width - paddingX * 2;
+    const scale = drawableWidth / totalLength;
+    if (!Number.isFinite(scale) || scale <= 0) {
+        return null;
+    }
+
+    const stirrupHeight = height - paddingY * 2;
+    const top = (height - stirrupHeight) / 2;
+    const bottom = top + stirrupHeight;
+    const endX = paddingX + totalLength * scale;
+
+    let computedStyles = null;
+    if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+        computedStyles = window.getComputedStyle(document.documentElement);
+    }
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', width.toString());
+    svg.setAttribute('height', height.toString());
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.classList.add('saved-order-preview-svg');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    const backgroundGroup = document.createElementNS(SVG_NS, 'g');
+    backgroundGroup.classList.add('saved-order-preview-background');
+    svg.appendChild(backgroundGroup);
+
+    const stirrupGroup = document.createElementNS(SVG_NS, 'g');
+    stirrupGroup.classList.add('saved-order-preview-stirrups');
+    svg.appendChild(stirrupGroup);
+
+    let currentPosition = 0;
+    zones.forEach((zone, index) => {
+        const pitch = Number(zone.pitch) || 0;
+        const numStirrups = Math.max(0, getEffectiveZoneNum(zone, index));
+        const zoneLength = numStirrups > 0 && pitch > 0 ? numStirrups * pitch : 0;
+        if (zoneLength > 0) {
+            const zoneStartX = paddingX + currentPosition * scale;
+            const zoneWidth = zoneLength * scale;
+            const zoneColor = getZonePreviewColor(index, computedStyles);
+
+            const rect = document.createElementNS(SVG_NS, 'rect');
+            rect.setAttribute('x', zoneStartX.toFixed(2));
+            rect.setAttribute('y', top.toFixed(2));
+            rect.setAttribute('width', Math.max(zoneWidth, 0.5).toFixed(2));
+            rect.setAttribute('height', stirrupHeight.toFixed(2));
+            rect.setAttribute('fill', zoneColor);
+            rect.setAttribute('fill-opacity', '0.12');
+            rect.setAttribute('stroke', zoneColor);
+            rect.setAttribute('stroke-width', '0.5');
+            backgroundGroup.appendChild(rect);
+
+            for (let j = 1; j <= numStirrups; j++) {
+                const stirrupPos = currentPosition + j * pitch;
+                const stirrupX = paddingX + stirrupPos * scale;
+                if (stirrupX > endX + 0.5) {
+                    break;
+                }
+                const stirrupLine = document.createElementNS(SVG_NS, 'line');
+                stirrupLine.setAttribute('x1', stirrupX.toFixed(2));
+                stirrupLine.setAttribute('x2', stirrupX.toFixed(2));
+                stirrupLine.setAttribute('y1', top.toFixed(2));
+                stirrupLine.setAttribute('y2', bottom.toFixed(2));
+                stirrupLine.setAttribute('stroke', zoneColor);
+                stirrupLine.setAttribute('stroke-width', '1');
+                stirrupGroup.appendChild(stirrupLine);
+            }
+        }
+        currentPosition += zoneLength;
+    });
+
+    if (currentPosition < totalLength) {
+        const emptyStartX = paddingX + currentPosition * scale;
+        const emptyWidth = (totalLength - currentPosition) * scale;
+        if (emptyWidth > 0.5) {
+            const emptyRect = document.createElementNS(SVG_NS, 'rect');
+            emptyRect.setAttribute('x', emptyStartX.toFixed(2));
+            emptyRect.setAttribute('y', top.toFixed(2));
+            emptyRect.setAttribute('width', emptyWidth.toFixed(2));
+            emptyRect.setAttribute('height', stirrupHeight.toFixed(2));
+            emptyRect.setAttribute('fill', 'var(--light-bg-color, rgba(0,0,0,0.06))');
+            emptyRect.setAttribute('fill-opacity', '0.35');
+            emptyRect.setAttribute('stroke', 'var(--border-color, #ced4da)');
+            emptyRect.setAttribute('stroke-dasharray', '3 3');
+            emptyRect.setAttribute('stroke-width', '0.5');
+            backgroundGroup.appendChild(emptyRect);
+        }
+    }
+
+    const baseLine = document.createElementNS(SVG_NS, 'line');
+    baseLine.setAttribute('x1', paddingX.toFixed(2));
+    baseLine.setAttribute('x2', endX.toFixed(2));
+    baseLine.setAttribute('y1', bottom.toFixed(2));
+    baseLine.setAttribute('y2', bottom.toFixed(2));
+    baseLine.setAttribute('stroke', 'var(--secondary-color, #495057)');
+    baseLine.setAttribute('stroke-width', '1.4');
+    baseLine.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(baseLine);
+
+    const topLine = document.createElementNS(SVG_NS, 'line');
+    topLine.setAttribute('x1', paddingX.toFixed(2));
+    topLine.setAttribute('x2', endX.toFixed(2));
+    topLine.setAttribute('y1', top.toFixed(2));
+    topLine.setAttribute('y2', top.toFixed(2));
+    topLine.setAttribute('stroke', 'var(--border-color, #ced4da)');
+    topLine.setAttribute('stroke-width', '0.8');
+    topLine.setAttribute('stroke-dasharray', '4 3');
+    svg.appendChild(topLine);
+
+    const startPost = document.createElementNS(SVG_NS, 'line');
+    startPost.setAttribute('x1', paddingX.toFixed(2));
+    startPost.setAttribute('x2', paddingX.toFixed(2));
+    startPost.setAttribute('y1', top.toFixed(2));
+    startPost.setAttribute('y2', bottom.toFixed(2));
+    startPost.setAttribute('stroke', 'var(--secondary-color, #495057)');
+    startPost.setAttribute('stroke-width', '1.6');
+    svg.appendChild(startPost);
+
+    const endPost = document.createElementNS(SVG_NS, 'line');
+    endPost.setAttribute('x1', endX.toFixed(2));
+    endPost.setAttribute('x2', endX.toFixed(2));
+    endPost.setAttribute('y1', top.toFixed(2));
+    endPost.setAttribute('y2', bottom.toFixed(2));
+    endPost.setAttribute('stroke', 'var(--secondary-color, #495057)');
+    endPost.setAttribute('stroke-width', '1.6');
+    svg.appendChild(endPost);
+
+    return svg;
+}
+
 function renderSavedOrdersList() {
     const list = document.getElementById('savedOrdersList');
     if (!list) return;
@@ -129,7 +283,7 @@ function renderSavedOrdersList() {
     list.innerHTML = '';
     const ordersToShow = savedOrders.filter(order => {
         if (!filterText) return true;
-        return [order.projekt, order.komm, order.auftrag, order.posnr]
+        return [order.projekt, order.komm, order.auftrag, order.posnr, order.buegelname1, order.buegelname2]
             .some(val => (val || '').toString().toLowerCase().includes(filterText));
     });
     if (ordersToShow.length === 0) {
@@ -140,13 +294,68 @@ function renderSavedOrdersList() {
     }
     ordersToShow.forEach(order => {
         const li = document.createElement('li');
-        li.className = 'production-item';
-        li.innerHTML = `<div><strong>${i18n.t('Projekt')}:</strong> ${order.projekt}</div>
-                        <div><strong>Komm:</strong> <span class="komm-number">${order.komm}</span></div>
-                        <div><strong>${i18n.t('Auftrag')}:</strong> ${order.auftrag}</div>
-                        <div><strong>Pos-Nr:</strong> ${order.posnr}</div>`;
+        li.className = 'production-item saved-order-item';
+
+        const mainRow = document.createElement('div');
+        mainRow.className = 'saved-order-main';
+
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'saved-order-preview-container';
+        const previewSvg = createSavedOrderPreview(order);
+        if (previewSvg) {
+            previewContainer.appendChild(previewSvg);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'saved-order-preview-placeholder';
+            placeholder.textContent = '–';
+            previewContainer.appendChild(placeholder);
+        }
+
+        const infoContainer = document.createElement('div');
+        infoContainer.className = 'saved-order-info';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'saved-order-name';
+        const stirrupNames = [order.buegelname1, order.buegelname2]
+            .map(name => (typeof name === 'string' ? name.trim() : ''))
+            .filter(Boolean);
+        const nameText = stirrupNames.join(' / ') ||
+            order.projekt ||
+            order.posnr ||
+            order.komm ||
+            order.auftrag ||
+            '-';
+        nameEl.textContent = nameText;
+        if (nameText && nameText !== '-') {
+            nameEl.title = nameText;
+        }
+        infoContainer.appendChild(nameEl);
+
+        const details = document.createElement('div');
+        details.className = 'saved-order-details';
+        const detailFields = [
+            { label: i18n.t('Projekt'), value: order.projekt },
+            { label: 'Komm', value: order.komm },
+            { label: i18n.t('Auftrag'), value: order.auftrag },
+            { label: 'Pos-Nr', value: order.posnr }
+        ];
+        detailFields.forEach(field => {
+            const detailItem = document.createElement('div');
+            const strong = document.createElement('strong');
+            strong.textContent = `${field.label}:`;
+            detailItem.appendChild(strong);
+            detailItem.appendChild(document.createTextNode(' '));
+            detailItem.appendChild(document.createTextNode(field.value || '-'));
+            details.appendChild(detailItem);
+        });
+        infoContainer.appendChild(details);
+
+        mainRow.appendChild(previewContainer);
+        mainRow.appendChild(infoContainer);
+        li.appendChild(mainRow);
+
         const btnGroup = document.createElement('div');
-        btnGroup.className = 'button-group';
+        btnGroup.className = 'button-group saved-order-actions';
         const loadBtn = document.createElement('button');
         loadBtn.className = 'btn-secondary';
         loadBtn.textContent = i18n.t('Laden');
@@ -161,6 +370,7 @@ function renderSavedOrdersList() {
         delBtn.addEventListener('click', () => deleteSavedOrder(order.id));
         btnGroup.appendChild(delBtn);
         li.appendChild(btnGroup);
+
         list.appendChild(li);
     });
 }
@@ -176,6 +386,8 @@ function saveCurrentOrder() {
         komm: document.getElementById('KommNr')?.value || '',
         auftrag: document.getElementById('auftrag')?.value || '',
         posnr: document.getElementById('posnr')?.value || '',
+        buegelname1: document.getElementById('buegelname1')?.value || '',
+        buegelname2: document.getElementById('buegelname2')?.value || '',
         gesamtlange: document.getElementById('gesamtlange')?.value || '',
         anzahl: document.getElementById('anzahl')?.value || '',
         langdrahtDurchmesser: document.getElementById('langdrahtDurchmesser')?.value || '',
@@ -207,6 +419,10 @@ function loadOrderIntoForm(id) {
     document.getElementById('KommNr').value = order.komm;
     document.getElementById('auftrag').value = order.auftrag;
     document.getElementById('posnr').value = order.posnr;
+    const buegelname1Input = document.getElementById('buegelname1');
+    if (buegelname1Input) buegelname1Input.value = order.buegelname1 || '';
+    const buegelname2Input = document.getElementById('buegelname2');
+    if (buegelname2Input) buegelname2Input.value = order.buegelname2 || '';
     document.getElementById('gesamtlange').value = order.gesamtlange;
     document.getElementById('anzahl').value = order.anzahl;
     document.getElementById('langdrahtDurchmesser').value = order.langdrahtDurchmesser;
