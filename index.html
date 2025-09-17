@@ -119,6 +119,21 @@
                     <div class="card-header">
                         <h2 class="card-title" data-i18n="Eingabedaten">Eingabedaten</h2>
                     </div>
+                    <div class="generator-summary" role="status" aria-live="polite">
+                        <div class="summary-item">
+                            <span class="summary-label" data-i18n="Aktuelle Gesamtlänge">Aktuelle Gesamtlänge</span>
+                            <span class="summary-value" id="summaryTotalLength">0 mm</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label" data-i18n="Zonenzähler">Zonenzähler</span>
+                            <span class="summary-value" id="summaryZoneCount">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label" data-i18n="Summe Bügel">Summe Bügel</span>
+                            <span class="summary-value" id="summaryStirrupCount">0</span>
+                        </div>
+                        <div class="summary-status summary-status--warning" id="summaryStatus" data-i18n="Füge Zonen hinzu, um zu starten.">Füge Zonen hinzu, um zu starten.</div>
+                    </div>
                     <div class="input-scroll-container">
                         <h3 class="section-title collapsible-header" data-i18n="Allgemein">Allgemein</h3>
                         <div class="collapsible-content section-content-bg">
@@ -248,23 +263,41 @@
                 </div>
                 <div class="preview-column">
                     <div class="card preview-card">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 class="card-title" style="margin-bottom: 0;" data-i18n="Visuelle Vorschau Korb">Visuelle Vorschau Korb</h2>
-                            <div class="view-toggle-buttons">
-                                <button type="button" id="view2dBtn" class="btn-toggle active" data-i18n="2D-Ansicht">2D-Ansicht</button>
-                                <button type="button" id="view3dBtn" class="btn-toggle" data-i18n="3D-Ansicht">3D-Ansicht</button>
+                        <div class="card-header preview-header">
+                            <div class="preview-title">
+                                <h2 class="card-title" data-i18n="Visuelle Vorschau Korb">Visuelle Vorschau Korb</h2>
+                                <p class="card-subtitle" data-i18n="Interaktive Vorschau und Kontrolle">Interaktive Vorschau und Kontrolle</p>
                             </div>
-                            <div style="display: flex; gap: 1rem; align-items: center;">
-                                <div id="overhangToggleContainer">
-                                    <label for="overhangToggle" data-i18n="Überstände anzeigen:">Überstände anzeigen:</label>
-                                    <input type="checkbox" id="overhangToggle" onchange="toggleOverhangVisibility(this.checked)">
+                            <div class="preview-toolbar">
+                                <div class="toolbar-group">
+                                    <span class="toolbar-label" data-i18n="Ansicht">Ansicht</span>
+                                    <div class="view-toggle-buttons">
+                                        <button type="button" id="view2dBtn" class="btn-toggle active" data-i18n="2D-Ansicht">2D-Ansicht</button>
+                                        <button type="button" id="view3dBtn" class="btn-toggle" data-i18n="3D-Ansicht">3D-Ansicht</button>
+                                    </div>
                                 </div>
-                                <div id="dimensionModeToggleContainer">
-                                    <label for="dimensioningToggle" data-i18n="Bemaßung Zonenlänge:">Bemaßung Zonenlänge:</label>
-                                    <select id="dimensioningToggle" onchange="toggleDimensioningMode(this.value)">
-                                        <option value="arrangementLength" selected data-i18n="(n-1) x Pitch">(n-1) x Pitch</option>
-                                        <option value="totalZoneSpace" data-i18n="n x Pitch">n x Pitch</option>
-                                    </select>
+                                <div class="toolbar-group">
+                                    <span class="toolbar-label" data-i18n="Darstellung">Darstellung</span>
+                                    <div class="toolbar-row toggle-inline">
+                                        <input type="checkbox" id="overhangToggle" onchange="toggleOverhangVisibility(this.checked)">
+                                        <label for="overhangToggle" data-i18n="Überstände anzeigen">Überstände anzeigen</label>
+                                    </div>
+                                    <div class="toolbar-row">
+                                        <label for="dimensioningToggle" data-i18n="Bemaßung Zonenlänge">Bemaßung Zonenlänge</label>
+                                        <select id="dimensioningToggle" onchange="toggleDimensioningMode(this.value)">
+                                            <option value="arrangementLength" selected data-i18n="(n-1) x Pitch">(n-1) x Pitch</option>
+                                            <option value="totalZoneSpace" data-i18n="n x Pitch">n x Pitch</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="toolbar-group toolbar-group--action">
+                                    <span class="toolbar-label" data-i18n="Schnellstart">Schnellstart</span>
+                                    <button type="button" class="btn-secondary preview-action-btn" id="loadSampleBasketBtn" data-i18n-title="Beispielkorb laden">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 2l9 5v6c0 3.87-3.13 7-7 7H10c-3.87 0-7-3.13-7-7V7l9-5zm0 2.18L5 7.09v5.91c0 3.31 2.69 6 6 6h4c3.31 0 6-2.69 6-6V7.09l-7-2.91zm-1 4.32h2v3h3v2h-3v3h-2v-3H8v-2h3v-3z" />
+                                        </svg>
+                                        <span data-i18n="Beispielkorb laden">Beispielkorb laden</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls;
+let currentBasketGroup = null;
+let shouldAutoFit = true;
 
 function init() {
     const container = document.getElementById('viewer3dContainer');
@@ -15,31 +17,48 @@ function init() {
     scene.background = new THREE.Color(0xf0f0f0);
 
     // Camera
-    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.z = 5;
+    camera = new THREE.PerspectiveCamera(60, container.clientWidth / Math.max(container.clientHeight, 1), 0.1, 1000);
+    camera.position.set(6, 6, 10);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
     // Controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = true;
+    controls.minDistance = 2;
+    controls.maxDistance = 120;
+    controls.addEventListener('start', () => {
+        shouldAutoFit = false;
+    });
+    controls.target.set(0, 0, 0);
+    controls.update();
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdedede, 0.35);
+    scene.add(hemiLight);
+
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
 
-    // Placeholder Geometry
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    // Ground grid
+    const gridHelper = new THREE.GridHelper(60, 30, 0xd0d0d0, 0xe6e6e6);
+    gridHelper.position.y = -1.2;
+    const gridMaterials = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material];
+    gridMaterials.forEach(mat => {
+        mat.opacity = 0.35;
+        mat.transparent = true;
+    });
+    scene.add(gridHelper);
 
     // Listeners
     window.addEventListener('resize', onResize);
@@ -57,8 +76,8 @@ function onResize() {
     const container = document.getElementById('viewer3dContainer');
     if (!container || !renderer) return;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const width = Math.max(container.clientWidth, 1);
+    const height = Math.max(container.clientHeight, 1);
 
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -74,6 +93,7 @@ function update(basketData) {
         }
     });
     toRemove.forEach(child => scene.remove(child));
+    currentBasketGroup = null;
 
     if (!basketData || !basketData.totalLength) {
         return;
@@ -128,6 +148,11 @@ function update(basketData) {
     });
 
     scene.add(basketGroup);
+    currentBasketGroup = basketGroup;
+
+    if (shouldAutoFit) {
+        fitCameraToObject(basketGroup);
+    }
 }
 
 function createStirrup(width, height, radius, material) {
@@ -151,9 +176,43 @@ function createStirrup(width, height, radius, material) {
 }
 
 
+function fitCameraToObject(object, offset = 1.6) {
+    if (!object || !camera || !controls) return;
+
+    const boundingBox = new THREE.Box3().setFromObject(object);
+    const center = boundingBox.getCenter(new THREE.Vector3());
+    const size = boundingBox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    if (!Number.isFinite(maxDim) || maxDim === 0) {
+        return;
+    }
+
+    const fitDistance = (maxDim / 2) / Math.tan((Math.PI * camera.fov) / 360);
+    const distance = fitDistance * offset;
+    const direction = new THREE.Vector3(1, 0.8, 1).normalize();
+
+    camera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
+    camera.near = Math.max(0.1, distance / 100);
+    camera.far = Math.max(camera.near * 100, distance * 6);
+    camera.updateProjectionMatrix();
+
+    controls.target.copy(center);
+    controls.update();
+}
+
+function prepareAutoFit() {
+    shouldAutoFit = true;
+    if (currentBasketGroup) {
+        fitCameraToObject(currentBasketGroup);
+    }
+}
+
+
 // Expose functions to global scope
 window.viewer3d = {
     init,
     update,
-    onResize
+    onResize,
+    prepareAutoFit
 };
