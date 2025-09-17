@@ -9,8 +9,17 @@
         <link rel="stylesheet" href="styles.css">
         <script src="i18n.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-                <script src="generator.js" defer></script>
+        <script type="importmap">
+            {
+              "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+              }
+            }
+        </script>
+        <script src="generator.js" defer></script>
         <script src="production.js" defer></script>
+        <script type="module" src="viewer3d.js" defer></script>
     </head>
     <body>
         <aside id="appSidebar" class="app-sidebar" aria-label="Hauptnavigation">
@@ -241,6 +250,10 @@
                     <div class="card preview-card">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h2 class="card-title" style="margin-bottom: 0;" data-i18n="Visuelle Vorschau Korb">Visuelle Vorschau Korb</h2>
+                            <div class="view-toggle-buttons">
+                                <button type="button" id="view2dBtn" class="btn-toggle active" data-i18n="2D-Ansicht">2D-Ansicht</button>
+                                <button type="button" id="view3dBtn" class="btn-toggle" data-i18n="3D-Ansicht">3D-Ansicht</button>
+                            </div>
                             <div style="display: flex; gap: 1rem; align-items: center;">
                                 <div id="overhangToggleContainer">
                                     <label for="overhangToggle" data-i18n="Überstände anzeigen:">Überstände anzeigen:</label>
@@ -259,6 +272,7 @@
                             <div id="cagePreviewSvgContainer">
                                 <svg id="cagePreviewSvg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
                             </div>
+                            <div id="viewer3dContainer" style="display: none;"></div>
                             <div id="previewError" class="info-text"></div>
                         </div>
                         <div class="download-canvas-btn-container">
@@ -456,6 +470,12 @@
                             <h2 class="card-title" data-i18n="Produktionsliste">Produktionsliste</h2>
                         </div>
                         <div class="production-controls">
+                            <div class="button-group">
+                                <button type="button" id="printSelectedButton" class="btn-secondary" disabled>
+                                    <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path></svg>
+                                    <span data-i18n="Selektion drucken">Selektion drucken</span>
+                                </button>
+                            </div>
                             <input type="text" id="productionFilter" data-i18n-placeholder="Filter" placeholder="Filter">
                             <select id="productionStatusFilter">
                                 <option value="all" data-i18n="Alle">Alle</option>
@@ -468,7 +488,27 @@
                                 <option value="projekt" data-i18n="Projekt">Projekt</option>
                             </select>
                         </div>
-                        <ul id="productionList" class="production-list"></ul>
+                        <div class="production-table-wrapper">
+                            <table id="productionTable" class="full-width-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30px;"><input type="checkbox" id="selectAllCheckbox"></th>
+                                        <th data-i18n="Projekt">Projekt</th>
+                                        <th data-i18n="KommNr">KommNr</th>
+                                        <th data-i18n="Auftrag">Auftrag</th>
+                                        <th data-i18n="Pos-Nr.">Pos-Nr.</th>
+                                        <th data-i18n="Status">Status</th>
+                                        <th data-i18n="Startzeit">Startzeit</th>
+                                        <th data-i18n="Laufzeit">Laufzeit</th>
+                                        <th data-i18n="Bemerkung">Bemerkung</th>
+                                        <th data-i18n="Label">Label</th>
+                                        <th data-i18n="Aktionen">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productionList">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -591,6 +631,7 @@
                 </div>
             </div>
         </div>
+        <div id="print-container" style="display: none;"></div>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.1.1/bwip-js.min.js"></script>
     </body>
 </html>

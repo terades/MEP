@@ -1,10 +1,39 @@
 // production.js
 
+const LOCAL_STORAGE_PRODUCTION_LIST_KEY = 'bvbsProductionList';
 let productionList = [];
+
+function loadProductionList() {
+    const data = localStorage.getItem(LOCAL_STORAGE_PRODUCTION_LIST_KEY);
+    if (data) {
+        try {
+            productionList = JSON.parse(data);
+        } catch (e) {
+            console.error('Could not parse production list', e);
+            productionList = [];
+        }
+    }
+}
+
+function persistProductionList() {
+    try {
+        localStorage.setItem(LOCAL_STORAGE_PRODUCTION_LIST_KEY, JSON.stringify(productionList));
+    } catch (e) {
+        console.error('Could not store production list', e);
+    }
+}
+
 let productionFilterText = '';
 let productionSortKey = 'startTime';
 let productionStatusFilter = 'all';
 const EDIT_PASSWORD = 'mep';
+let selectedProductionIds = new Set();
+
+function updateBatchButtonsState() {
+    const hasSelection = selectedProductionIds.size > 0;
+    const printBtn = document.getElementById('printSelectedButton');
+    if (printBtn) printBtn.disabled = !hasSelection;
+}
 
 function setActiveNavigation(view) {
     document.body.dataset.activeView = view;
@@ -78,106 +107,111 @@ function formatDuration(ms) {
 }
 
 function renderProductionList() {
-    const list = document.getElementById('productionList');
-    if (!list) return;
+    const tbody = document.getElementById('productionList');
+    if (!tbody) return;
+
     let items = productionList.filter(item => {
         const textMatch = productionFilterText === '' ||
-            [item.projekt, item.komm, item.auftrag, item.posnr]
-                .some(f => f.toLowerCase().includes(productionFilterText));
+            [item.projekt, item.komm, item.auftrag, item.posnr, item.note]
+            .some(f => f && f.toLowerCase().includes(productionFilterText));
         const statusMatch = productionStatusFilter === 'all' || item.status === productionStatusFilter;
         return textMatch && statusMatch;
     });
+
     items.sort((a, b) => {
         if (productionSortKey === 'projekt') {
             return a.projekt.localeCompare(b.projekt);
         }
-        return a.startTime.localeCompare(b.startTime);
+        return (b.startTime || '').localeCompare(a.startTime || '');
     });
-    list.innerHTML = '';
-    items.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.className = `production-item ${statusClass(item.status)}`;
-        const duration = item.startTimestamp ? ((item.status === 'done' ? item.endTimestamp : Date.now()) - item.startTimestamp) : null;
-        li.innerHTML = `<div><strong>${i18n.t('Startzeit')}:</strong> ${item.startTime}</div>
-                        <div><strong>${i18n.t('Projekt')}:</strong> ${item.projekt}</div>
-                        <div><strong>Komm:</strong> <span class="komm-number">${item.komm}</span></div>
-                        <div><strong>${i18n.t('Auftrag')}:</strong> ${item.auftrag}</div>
-                        <div><strong>Pos-Nr:</strong> ${item.posnr}</div>
-                        <div><strong>${i18n.t('Bemerkung')}:</strong> ${item.note || ''}</div>
-                        ${duration !== null ? `<div><strong>${i18n.t('Laufzeit')}:</strong> ${formatDuration(duration)}</div>` : ''}
-                        <div><strong>${i18n.t('Status')}:</strong> ${i18n.t(statusKey(item.status))}</div>`;
-        const img = document.createElement('img');
-        img.src = item.labelImg;
-        img.style.maxWidth = '200px';
-        img.style.marginTop = '0.5rem';
-        img.style.cursor = 'pointer';
-        img.addEventListener('click', () => window.open(item.labelImg, '_blank'));
-        li.appendChild(img);
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'button-group';
-        const editBtn = document.createElement('button');
-        editBtn.className = 'btn-secondary';
-        editBtn.textContent = i18n.t('Bearbeiten');
-        editBtn.addEventListener('click', () => {
-            const pwd = prompt(i18n.t('Passwort eingeben'));
-            if (pwd !== EDIT_PASSWORD) {
-                alert(i18n.t('Falsches Passwort'));
-                return;
+
+    tbody.innerHTML = '';
+    items.forEach(item => {
+        const row = tbody.insertRow();
+        row.className = `production-item ${statusClass(item.status)}`;
+        row.dataset.id = item.id || (item.komm + item.posnr);
+
+        // Checkbox
+        const cellCheckbox = row.insertCell();
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'row-checkbox';
+        checkbox.dataset.id = row.dataset.id;
+        checkbox.checked = selectedProductionIds.has(row.dataset.id);
+        cellCheckbox.appendChild(checkbox);
+
+        // Data cells
+        row.insertCell().textContent = item.projekt;
+        row.insertCell().textContent = item.komm;
+        row.insertCell().textContent = item.auftrag;
+        row.insertCell().textContent = item.posnr;
+
+        // Status
+        const cellStatus = row.insertCell();
+        const statusSelect = document.createElement('select');
+        statusSelect.className = 'status-select';
+
+        const updateSelectClass = () => {
+            statusSelect.classList.remove('pending', 'in-progress', 'done');
+            statusSelect.classList.add(statusClass(statusSelect.value));
+        };
+
+        const statuses = ['pending', 'inProgress', 'done'];
+        statuses.forEach(status => {
+            const option = document.createElement('option');
+            option.value = status;
+            option.textContent = i18n.t(statusKey(status));
+            if (status === item.status) {
+                option.selected = true;
             }
-            const newStart = prompt(i18n.t('Startzeit'), item.startTime);
-            if (newStart !== null) item.startTime = newStart;
-            const newProjekt = prompt(i18n.t('Projekt'), item.projekt);
-            if (newProjekt !== null) item.projekt = newProjekt;
-            const newKomm = prompt('Komm', item.komm);
-            if (newKomm !== null) item.komm = newKomm;
-            const newAuftrag = prompt(i18n.t('Auftrag'), item.auftrag);
-            if (newAuftrag !== null) item.auftrag = newAuftrag;
-            const newPosnr = prompt('Pos-Nr', item.posnr);
-            if (newPosnr !== null) item.posnr = newPosnr;
-            const newNote = prompt(i18n.t('Bemerkung'), item.note || '');
-            if (newNote !== null) item.note = newNote;
+            statusSelect.appendChild(option);
+        });
+        statusSelect.addEventListener('change', (e) => {
+            const newStatus = e.target.value;
+            item.status = newStatus;
+            if (newStatus === 'inProgress' && !item.startTimestamp) {
+                item.startTimestamp = Date.now();
+            } else if (newStatus === 'done' && !item.endTimestamp) {
+                item.endTimestamp = Date.now();
+            }
+            updateSelectClass();
+            persistProductionList();
             renderProductionList();
         });
-        btnGroup.appendChild(editBtn);
-        const noteBtn = document.createElement('button');
-        noteBtn.className = 'btn-secondary';
-        noteBtn.textContent = i18n.t('Bemerkung');
-        noteBtn.addEventListener('click', () => {
-            const newNote = prompt(i18n.t('Bemerkung'), item.note || '');
-            if (newNote !== null) {
-                item.note = newNote;
-                renderProductionList();
-            }
-        });
-        btnGroup.appendChild(noteBtn);
-        if (item.status === 'pending') {
-            const startBtn = document.createElement('button');
-            startBtn.className = 'btn-secondary';
-            startBtn.textContent = i18n.t('Starten');
-            startBtn.addEventListener('click', () => {
-                item.status = 'inProgress';
-                item.startTimestamp = Date.now();
-                renderProductionList();
-            });
-            btnGroup.appendChild(startBtn);
-        }
-        if (item.status === 'inProgress') {
-            const doneBtn = document.createElement('button');
-            doneBtn.className = 'btn-success';
-            doneBtn.textContent = i18n.t('Abschließen');
-            doneBtn.addEventListener('click', () => {
-                item.status = 'done';
-                item.endTimestamp = Date.now();
-                renderProductionList();
-            });
-            btnGroup.appendChild(doneBtn);
-        }
-        li.appendChild(btnGroup);
-        list.appendChild(li);
+        updateSelectClass();
+        cellStatus.appendChild(statusSelect);
+
+
+        // Timestamps and Duration
+        row.insertCell().textContent = item.startTime ? new Date(item.startTime).toLocaleString() : '-';
+        const duration = item.startTimestamp ? ((item.status === 'done' ? item.endTimestamp : Date.now()) - item.startTimestamp) : null;
+        row.insertCell().textContent = duration !== null ? formatDuration(duration) : '-';
+
+        // Note
+        row.insertCell().textContent = item.note || '';
+
+        // Label Preview
+        const cellLabel = row.insertCell();
+        const img = document.createElement('img');
+        img.src = item.labelImg;
+        img.className = 'label-thumbnail';
+        img.addEventListener('click', () => window.open(item.labelImg, '_blank'));
+        cellLabel.appendChild(img);
+
+        // Actions
+        const cellActions = row.insertCell();
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'button-group';
+
+        cellActions.appendChild(btnGroup);
     });
+
+    updateBatchButtonsState();
+    updateSelectAllCheckboxState();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadProductionList();
     const updateSidebarState = () => {
         const isOpen = document.body.classList.contains('sidebar-open');
         const labelKey = isOpen ? 'Menü einklappen' : 'Menü ausklappen';
@@ -268,7 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const labelElement = document.getElementById('printableLabel');
         const canvas = await html2canvas(labelElement);
         const imgData = canvas.toDataURL('image/png');
+        const codes = typeof getBvbsCodes === 'function' ? getBvbsCodes() : [];
         productionList.push({
+            id: Date.now(),
             startTime,
             projekt: document.getElementById('projekt').value,
             komm: document.getElementById('KommNr').value,
@@ -276,11 +312,13 @@ document.addEventListener('DOMContentLoaded', () => {
             posnr: document.getElementById('posnr').value,
             note: document.getElementById('releaseNote')?.value || '',
             labelImg: imgData,
-            status: 'pending'
+            status: 'pending',
+            bvbsCodes: codes
         });
         if (window.deleteCurrentSavedOrder) {
             window.deleteCurrentSavedOrder();
         }
+        persistProductionList();
         closeReleaseModal();
         renderProductionList();
         showProductionView();
@@ -298,10 +336,125 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProductionList();
     });
 
+    const tableBody = document.getElementById('productionList');
+    tableBody?.addEventListener('change', e => {
+        if (e.target.classList.contains('row-checkbox')) {
+            const id = e.target.dataset.id;
+            if (e.target.checked) {
+                selectedProductionIds.add(id);
+            } else {
+                selectedProductionIds.delete(id);
+            }
+            updateBatchButtonsState();
+            updateSelectAllCheckboxState();
+        }
+    });
+
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox?.addEventListener('change', e => {
+        const isChecked = e.target.checked;
+        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+            const id = checkbox.dataset.id;
+            if (isChecked) {
+                selectedProductionIds.add(id);
+            } else {
+                selectedProductionIds.delete(id);
+            }
+        });
+        updateBatchButtonsState();
+    });
+
+    function updateSelectAllCheckboxState() {
+        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+        const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+        if(selectAllCheckbox) selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
+    }
+
     setInterval(() => {
         if (productionList.some(p => p.status === 'inProgress')) {
             renderProductionList();
         }
     }, 1000);
+
+    document.getElementById('printSelectedButton')?.addEventListener('click', () => {
+        const printContainer = document.getElementById('print-container');
+        if (!printContainer) return;
+
+        const selectedOrders = productionList.filter(order => selectedProductionIds.has(String(order.id)));
+
+        if (selectedOrders.length === 0) {
+            alert(i18n.t('Bitte wählen Sie mindestens einen Auftrag zum Drucken aus.'));
+            return;
+        }
+
+        printContainer.innerHTML = selectedOrders.map((order, index) => generateLabelHtml(order, index)).join('');
+
+        // Timeout to allow DOM to update before generating barcodes
+        setTimeout(() => {
+            selectedOrders.forEach((order, index) => {
+                if (order.bvbsCodes && order.bvbsCodes[0]) {
+                    generateBarcodeToLabel(order.bvbsCodes[0], `_batch_${index}_1`);
+                }
+                if (order.bvbsCodes && order.bvbsCodes[1]) {
+                    generateBarcodeToLabel(order.bvbsCodes[1], `_batch_${index}_2`);
+                }
+            });
+
+            window.print();
+        }, 100);
+    });
+
     showGeneratorView();
 });
+
+function generateLabelHtml(order, index) {
+    const hasTwoLabels = order.bvbsCodes && order.bvbsCodes.length > 1;
+    const posnr1 = `${order.posnr}${hasTwoLabels ? '/1' : ''}`;
+    const posnr2 = `${order.posnr}${hasTwoLabels ? '/2' : ''}`;
+
+    const label1 = `
+        <div class="label-wrapper-print">
+            <div id="printableLabel_batch_${index}_1" class="printableLabel-batch">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm;">
+                    <h3 style="margin: 0; font-size: 16pt; font-weight: bold;">
+                        <span data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span>${posnr1}</span>
+                    </h3>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
+                        <div>${order.komm}</div>
+                    </div>
+                </div>
+                <div class="label-grid" style="font-size: 12pt; margin-bottom: 4mm;">
+                    <div><strong data-i18n="Projekt:">Projekt:</strong></div><div>${order.projekt}</div>
+                    <div><strong data-i18n="Auftrag:">Auftrag:</strong></div><div>${order.auftrag}</div>
+                </div>
+                <div id="labelBarcodeContainer_batch_${index}_1" style="text-align: center; margin-top: 4mm;"></div>
+            </div>
+        </div>`;
+
+    if (!hasTwoLabels) {
+        return label1;
+    }
+
+    const label2 = `
+        <div class="label-wrapper-print">
+            <div id="printableLabel_batch_${index}_2" class="printableLabel-batch">
+                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4mm;">
+                    <h3 style="margin: 0; font-size: 16pt; font-weight: bold;">
+                        <span data-i18n="Pos‑Nr:">Pos‑Nr:</span> <span>${posnr2}</span>
+                    </h3>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:14pt;font-weight:bold;color:#000;">
+                        <div>${order.komm}</div>
+                    </div>
+                </div>
+                <div class="label-grid" style="font-size: 12pt; margin-bottom: 4mm;">
+                    <div><strong data-i18n="Projekt:">Projekt:</strong></div><div>${order.projekt}</div>
+                    <div><strong data-i18n="Auftrag:">Auftrag:</strong></div><div>${order.auftrag}</div>
+                </div>
+                <div id="labelBarcodeContainer_batch_${index}_2" style="text-align: center; margin-top: 4mm;"></div>
+            </div>
+        </div>`;
+
+    return label1 + label2;
+}
