@@ -1842,3 +1842,169 @@ select.status-select.done {
     margin-bottom: 1rem;
 }
 
+#bf2dView .card {
+    max-height: none;
+    height: auto;
+}
+
+.bf2d-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .bf2d-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bf2d-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.bf2d-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.bf2d-summary-item {
+    background: rgba(var(--primary-color-rgb), 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.bf2d-summary-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted-color);
+    font-weight: 600;
+}
+
+.bf2d-summary-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.bf2d-segment-table-wrapper {
+    overflow-x: auto;
+    margin-top: 0.75rem;
+}
+
+.bf2d-segment-table th,
+.bf2d-segment-table td {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.bf2d-segment-table input,
+.bf2d-segment-table select {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+}
+
+.bf2d-actions-cell {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.bf2d-action-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.6rem;
+    background: var(--card-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.bf2d-action-button:hover:not(:disabled) {
+    background: rgba(var(--primary-color-rgb), 0.12);
+    transform: translateY(-1px);
+}
+
+.bf2d-action-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.bf2d-error-list {
+    margin: 1rem 0 0;
+    padding-left: 1.25rem;
+    color: var(--danger-color);
+    font-size: 0.9rem;
+}
+
+.bf2d-error-list:empty {
+    display: none;
+}
+
+.bf2d-preview-container {
+    min-height: 320px;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--light-bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+#bf2dPreviewSvg {
+    width: 100%;
+    height: 320px;
+}
+
+.bf2d-svg-background {
+    fill: var(--card-bg-color);
+    stroke: var(--border-color);
+    stroke-width: 0.5;
+}
+
+.bf2d-svg-path {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.bf2d-svg-start {
+    fill: var(--success-color);
+    stroke: #ffffff;
+    stroke-width: 2;
+}
+
+.bf2d-svg-end {
+    fill: var(--danger-color);
+    stroke: #ffffff;
+    stroke-width: 2;
+}
+
+#bf2dDatasetOutput {
+    width: 100%;
+    min-height: 240px;
+    font-family: 'Fira Code', 'Source Code Pro', monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background: var(--light-bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+

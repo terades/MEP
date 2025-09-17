@@ -35,6 +35,8 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'productionView'];
+
 function setActiveNavigation(view) {
     document.body.dataset.activeView = view;
     document.querySelectorAll('.sidebar-link[data-view-target]').forEach(btn => {
@@ -48,21 +50,32 @@ function setActiveNavigation(view) {
     });
 }
 
+function showView(view) {
+    APP_VIEW_IDS.forEach(viewId => {
+        const el = document.getElementById(viewId);
+        if (el) {
+            el.style.display = viewId === view ? 'block' : 'none';
+        }
+    });
+    setActiveNavigation(view);
+    if (view === 'productionView') {
+        renderProductionList();
+    }
+    if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
+        window.bf2dConfigurator.onShow();
+    }
+}
+
 function showGeneratorView() {
-    const gen = document.getElementById('generatorView');
-    const prod = document.getElementById('productionView');
-    if (gen) gen.style.display = 'block';
-    if (prod) prod.style.display = 'none';
-    setActiveNavigation('generatorView');
+    showView('generatorView');
 }
 
 function showProductionView() {
-    const gen = document.getElementById('generatorView');
-    const prod = document.getElementById('productionView');
-    if (gen) gen.style.display = 'none';
-    if (prod) prod.style.display = 'block';
-    setActiveNavigation('productionView');
-    renderProductionList();
+    showView('productionView');
+}
+
+function showBf2dView() {
+    showView('bf2dView');
 }
 
 function openGeneratorAndClick(buttonId) {
@@ -259,6 +272,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
         showGeneratorView();
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
+        showBf2dView();
         closeSidebarOnSmallScreens();
     });
     document.getElementById('showProductionBtn')?.addEventListener('click', () => {
