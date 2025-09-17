@@ -7,6 +7,7 @@
             order: '',
             position: '',
             diameter: 12,
+            rollDiameter: 48,
             quantity: 1,
             steelGrade: 'B500B',
             remark: ''
@@ -16,14 +17,32 @@
 
     let initialized = false;
     let segmentIdCounter = 0;
+    let rollDiameterAuto = true;
 
-    function createSegment(length, bendAngle, bendDirection = 'L', radius = 0) {
+    function getRollRadius() {
+        const rollDiameter = Number(state.meta.rollDiameter);
+        if (!Number.isFinite(rollDiameter) || rollDiameter <= 0) {
+            return 0;
+        }
+        return rollDiameter / 2;
+    }
+
+    function createSegment(length, bendAngle, bendDirection = 'L', radius = null) {
+        const numericLength = Number(length) || 0;
+        const numericAngle = Number(bendAngle) || 0;
+        const normalizedDirection = bendDirection === 'R' ? 'R' : 'L';
+        let numericRadius;
+        if (radius === null || typeof radius === 'undefined') {
+            numericRadius = numericAngle > 0 ? getRollRadius() : 0;
+        } else {
+            numericRadius = Number(radius) || 0;
+        }
         return {
             id: ++segmentIdCounter,
-            length: Number(length) || 0,
-            bendAngle: Number(bendAngle) || 0,
-            bendDirection: bendDirection === 'R' ? 'R' : 'L',
-            radius: Number(radius) || 0
+            length: numericLength,
+            bendAngle: numericAngle,
+            bendDirection: normalizedDirection,
+            radius: numericRadius
         };
     }
 
@@ -65,6 +84,69 @@
         return text;
     }
 
+    function areNumbersClose(a, b, epsilon = 1e-6) {
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+            return false;
+        }
+        const diff = Math.abs(a - b);
+        const scale = Math.max(1, Math.abs(a), Math.abs(b));
+        return diff <= epsilon * scale;
+    }
+
+    function applyRollDiameterToSegments() {
+        const rollRadius = getRollRadius();
+        state.segments.forEach((segment, index) => {
+            const isLast = index === state.segments.length - 1;
+            const angle = Number(segment.bendAngle) || 0;
+            if (isLast || angle <= 0 || rollRadius <= 0) {
+                segment.radius = 0;
+            } else {
+                segment.radius = rollRadius;
+            }
+        });
+    }
+
+    function updateSegmentRadiusInputs() {
+        const inputs = document.querySelectorAll('.bf2d-radius-input');
+        inputs.forEach(input => {
+            const segmentId = Number(input.dataset.segmentId);
+            if (!segmentId) return;
+            const segment = state.segments.find(item => item.id === segmentId);
+            if (!segment) return;
+            const formatted = formatNumberForInput(segment.radius);
+            if (input.value !== formatted) {
+                input.value = formatted;
+            }
+        });
+    }
+
+    function setRollDiameterValue(value, { updateInput = true, fromUser = false } = {}) {
+        const parsed = clampNumber(parseFloat(value), 0, 100000);
+        state.meta.rollDiameter = parsed;
+        if (updateInput) {
+            const rollInput = document.getElementById('bf2dRollDiameter');
+            if (rollInput) {
+                rollInput.value = formatNumberForInput(parsed);
+            }
+        }
+        const diameter = Number(state.meta.diameter);
+        if (Number.isFinite(diameter) && diameter > 0) {
+            const defaultRoll = diameter * 4;
+            const isDefault = areNumbersClose(parsed, defaultRoll);
+            if (fromUser) {
+                rollDiameterAuto = isDefault;
+            } else if (rollDiameterAuto) {
+                rollDiameterAuto = isDefault;
+            } else if (isDefault) {
+                rollDiameterAuto = true;
+            }
+        } else {
+            rollDiameterAuto = true;
+        }
+        applyRollDiameterToSegments();
+        updateSegmentRadiusInputs();
+    }
+
     function enforceLastSegmentDefaults() {
         if (!state.segments.length) return;
         const last = state.segments[state.segments.length - 1];
@@ -75,11 +157,12 @@
 
     function initDefaultSegments() {
         state.segments = [
-            createSegment(800, 90, 'L', 50),
-            createSegment(400, 90, 'L', 50),
+            createSegment(800, 90, 'L'),
+            createSegment(400, 90, 'L'),
             createSegment(600, 0, 'L', 0)
         ];
         enforceLastSegmentDefaults();
+        applyRollDiameterToSegments();
     }
 
     function metaFieldDefinitions() {
@@ -91,6 +174,11 @@
                 id: 'bf2dDiameter',
                 key: 'diameter',
                 parser: value => clampNumber(parseFloat(value), 0.1, 200)
+            },
+            {
+                id: 'bf2dRollDiameter',
+                key: 'rollDiameter',
+                parser: value => clampNumber(parseFloat(value), 0, 100000)
             },
             {
                 id: 'bf2dQuantity',
@@ -114,16 +202,30 @@
         metaFieldDefinitions().forEach(def => {
             const el = document.getElementById(def.id);
             if (!el) return;
-            el.addEventListener('input', () => {
-                state.meta[def.key] = def.parser(el.value);
+            el.addEventListener('input', event => {
+                if (def.key === 'rollDiameter') {
+                    setRollDiameterValue(event.target.value, { updateInput: false, fromUser: true });
+                } else {
+                    state.meta[def.key] = def.parser(event.target.value);
+                    if (def.key === 'diameter' && rollDiameterAuto) {
+                        setRollDiameterValue(state.meta.diameter * 4);
+                    }
+                }
                 updateOutputs();
             });
-            el.addEventListener('blur', () => {
-                state.meta[def.key] = def.parser(el.value);
-                if (def.key === 'diameter') {
-                    el.value = formatNumberForInput(state.meta.diameter);
-                } else if (def.key === 'quantity') {
-                    el.value = Number.isFinite(state.meta.quantity) ? String(Math.round(state.meta.quantity)) : '1';
+            el.addEventListener('blur', event => {
+                if (def.key === 'rollDiameter') {
+                    setRollDiameterValue(event.target.value, { updateInput: true, fromUser: true });
+                } else {
+                    state.meta[def.key] = def.parser(event.target.value);
+                    if (def.key === 'diameter') {
+                        el.value = formatNumberForInput(state.meta.diameter);
+                        if (rollDiameterAuto) {
+                            setRollDiameterValue(state.meta.diameter * 4);
+                        }
+                    } else if (def.key === 'quantity') {
+                        el.value = Number.isFinite(state.meta.quantity) ? String(Math.round(state.meta.quantity)) : '1';
+                    }
                 }
                 updateOutputs();
             });
@@ -161,6 +263,7 @@
     }
 
     function renderSegmentTable() {
+        applyRollDiameterToSegments();
         const tbody = document.getElementById('bf2dSegmentsBody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -235,16 +338,10 @@
             radiusInput.min = '0';
             radiusInput.step = '1';
             radiusInput.value = formatNumberForInput(segment.radius);
-            radiusInput.disabled = isLast;
-            radiusInput.addEventListener('input', event => {
-                segment.radius = clampNumber(parseFloat(event.target.value), 0, 100000);
-                updateOutputs();
-            });
-            radiusInput.addEventListener('blur', () => {
-                segment.radius = clampNumber(parseFloat(radiusInput.value), 0, 100000);
-                radiusInput.value = formatNumberForInput(segment.radius);
-                updateOutputs();
-            });
+            radiusInput.dataset.segmentId = String(segment.id);
+            radiusInput.classList.add('bf2d-radius-input');
+            radiusInput.readOnly = true;
+            radiusInput.setAttribute('aria-readonly', 'true');
             radiusCell.appendChild(radiusInput);
             row.appendChild(radiusCell);
 
@@ -270,15 +367,13 @@
             state.segments.push(createSegment(500, 0, 'L', 0));
         } else {
             const previousLast = state.segments[state.segments.length - 1];
-            if (previousLast.bendAngle === 0) {
+            if ((Number(previousLast.bendAngle) || 0) === 0) {
                 previousLast.bendAngle = 90;
-            }
-            if (previousLast.radius === 0) {
-                previousLast.radius = 50;
             }
             state.segments.push(createSegment(500, 0, previousLast.bendDirection || 'L', 0));
         }
         enforceLastSegmentDefaults();
+        applyRollDiameterToSegments();
         renderSegmentTable();
         updateOutputs();
     }
@@ -294,6 +389,7 @@
         if (index === -1) return;
         state.segments.splice(index, 1);
         enforceLastSegmentDefaults();
+        applyRollDiameterToSegments();
         renderSegmentTable();
         updateOutputs();
     }
@@ -304,12 +400,15 @@
         const [segment] = state.segments.splice(index, 1);
         state.segments.splice(targetIndex, 0, segment);
         enforceLastSegmentDefaults();
+        applyRollDiameterToSegments();
         renderSegmentTable();
         updateOutputs();
     }
 
     function computeSummary() {
         const errors = [];
+        applyRollDiameterToSegments();
+
         const segments = state.segments;
         if (segments.length < 2) {
             errors.push(i18n.t('Mindestens zwei Segmente erforderlich.'));
@@ -317,6 +416,10 @@
 
         let straightLength = 0;
         let arcLength = 0;
+        let requiresRollDiameter = false;
+
+        const rollDiameter = Number(state.meta.rollDiameter);
+        const rollRadius = Number.isFinite(rollDiameter) && rollDiameter > 0 ? rollDiameter / 2 : 0;
 
         segments.forEach((segment, index) => {
             const length = Number(segment.length);
@@ -333,13 +436,10 @@
                     errors.push(i18n.t('Segment {index}: Biegewinkel muss zwischen 0° und 180° liegen.', { index: index + 1 }));
                 }
                 if (angle > 0) {
-                    const radius = Number(segment.radius);
-                    if (!Number.isFinite(radius) || radius <= 0) {
-                        errors.push(i18n.t('Segment {index}: Radius muss größer als 0 sein, wenn ein Winkel definiert ist.', { index: index + 1 }));
-                    }
-                    if (Number.isFinite(radius) && radius > 0) {
+                    requiresRollDiameter = true;
+                    if (rollRadius > 0) {
                         const angleRad = (Math.abs(angle) * Math.PI) / 180;
-                        arcLength += angleRad * radius;
+                        arcLength += angleRad * rollRadius;
                     }
                 }
             }
@@ -353,6 +453,10 @@
         const diameter = Number(state.meta.diameter);
         if (!Number.isFinite(diameter) || diameter <= 0) {
             errors.push(i18n.t('Durchmesser muss größer als 0 sein.'));
+        }
+
+        if (requiresRollDiameter && (!Number.isFinite(rollDiameter) || rollDiameter <= 0)) {
+            errors.push(i18n.t('Biegerollendurchmesser muss größer als 0 sein.'));
         }
 
         const totalLength = straightLength + arcLength;
@@ -386,6 +490,7 @@
     }
 
     function buildGeometry(segments) {
+        applyRollDiameterToSegments();
         let orientation = 0;
         let current = { x: 0, y: 0 };
         const mathPoints = [{ x: 0, y: 0 }];
@@ -566,6 +671,8 @@
 
     function updateOutputs() {
         if (!initialized) return;
+        applyRollDiameterToSegments();
+        updateSegmentRadiusInputs();
         const summary = computeSummary();
         updateSummaryUI(summary);
         updateErrorList(summary.errors);
@@ -597,12 +704,14 @@
         const steelGrade = sanitizeText(state.meta.steelGrade);
         const remark = sanitizeText(state.meta.remark);
         const diameter = Number(state.meta.diameter) || 0;
+        const rollDiameter = Number(state.meta.rollDiameter) || 0;
+        const rollRadius = rollDiameter > 0 ? rollDiameter / 2 : 0;
         const quantity = Math.max(1, Math.round(Number(state.meta.quantity) || 0));
 
         lines.push('BVBS;3.1;ABS');
         lines.push('ST;FORM;BF2D');
         lines.push(`ID;${project};${order};${position};${remark}`);
-        lines.push(`PR;DIAMETER;${formatNumberForDataset(diameter)};STEEL;${steelGrade};QUANTITY;${quantity}`);
+        lines.push(`PR;DIAMETER;${formatNumberForDataset(diameter)};STEEL;${steelGrade};QUANTITY;${quantity};S;${formatNumberForDataset(Math.max(rollDiameter, 0))}`);
         lines.push(`RE;STRAIGHT;${formatNumberForDataset(summary.straightLength)};ARC;${formatNumberForDataset(summary.arcLength)};TOTAL;${formatNumberForDataset(summary.totalLength)}`);
 
         state.segments.forEach((segment, index) => {
@@ -610,8 +719,10 @@
             lines.push(`LG;${legIndex};${formatNumberForDataset(Math.max(segment.length, 0))}`);
             if (index < state.segments.length - 1) {
                 const direction = segment.bendDirection === 'R' ? 'R' : 'L';
-                const signedAngle = (direction === 'R' ? -1 : 1) * Math.max(segment.bendAngle, 0);
-                lines.push(`BN;${legIndex};${formatNumberForDataset(signedAngle)};RADIUS;${formatNumberForDataset(Math.max(segment.radius, 0))};DIR;${direction}`);
+                const bendAngle = Math.max(segment.bendAngle, 0);
+                const signedAngle = (direction === 'R' ? -1 : 1) * bendAngle;
+                const radiusValue = bendAngle > 0 ? rollRadius : 0;
+                lines.push(`BN;${legIndex};${formatNumberForDataset(signedAngle)};RADIUS;${formatNumberForDataset(Math.max(radiusValue, 0))};DIR;${direction}`);
             }
         });
 
@@ -700,6 +811,15 @@
         segmentIdCounter = 0;
         initDefaultSegments();
         readMetaFromInputs();
+        const initialRoll = Number(state.meta.rollDiameter);
+        const defaultRoll = Number(state.meta.diameter) * 4;
+        if (Number.isFinite(initialRoll) && initialRoll > 0) {
+            setRollDiameterValue(initialRoll);
+        } else if (Number.isFinite(defaultRoll) && defaultRoll > 0) {
+            setRollDiameterValue(defaultRoll);
+        } else {
+            setRollDiameterValue(0);
+        }
         attachMetaListeners();
         attachActionListeners();
         renderSegmentTable();
