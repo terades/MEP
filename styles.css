@@ -1409,39 +1409,36 @@ body:not(.sidebar-open) .sidebar-scroll {
                         }
 			@media print {
 			body * {
-				visibility: hidden; /* Alles verstecken, außer den Druck-Labels */
+				visibility: hidden;
 			}
 
-			/* Nur die Druck-Labels und deren Inhalte sichtbar machen */
-			#printableLabel,
-			#printableLabel2,
-			#printableLabel *,
-			#printableLabel2 * {
-				visibility: visible;
-			}
+            #print-container, #print-container * {
+                visibility: visible;
+            }
 
-			#printableLabel,
-			#printableLabel2 {
-				position: static; /* Von absolute zu static ändern, um normalen Dokumentfluss zu gewährleisten */
-				margin: 0; /* Keine externen Ränder */
-				padding: 4mm; /* Padding wie im Bildschirm-Layout, um den Inhalt korrekt zu positionieren */
-				border: none; /* Keine sichtbaren Rahmen beim Druck */
-				width: 100mm; /* Feste Breite beibehalten */
-				height: auto; /* Höhe automatisch anpassen */
-				box-sizing: border-box; /* Padding und Border in die Breite/Höhe einbeziehen */
-				float: none; /* Float entfernen, falls vorhanden, um den Block-Kontext zu bewahren */
-				overflow: visible; /* Sicherstellen, dass nichts abgeschnitten wird */
-			}
+            #print-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
 
-                        #printableLabel,
-                        #printableLabel2 {
-                                page-break-after: auto;
-                                page-break-before: auto;
-                        }
+            .label-wrapper-print {
+                page-break-after: always;
+                width: 100mm;
+                height: 58mm;
+                padding: 4mm;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
 
-                        .two-page #printableLabel {
-                                page-break-after: always;
-                        }
+            .printableLabel-batch {
+                width: 100%;
+                height: 100%;
+                font-family: 'Arial', sans-serif;
+			    color: #000;
+			    background: #fff;
+            }
 
 						/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
                         @page {
@@ -1516,26 +1513,141 @@ body:not(.sidebar-open) .sidebar-scroll {
     margin-left: 1rem;
 }
 
-.production-list {
-    list-style: none;
-    padding: 1rem;
-    margin: 0;
-    border: 1px solid var(--border-color);
+.production-table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+}
+
+#productionTable {
+    margin-top: 1rem;
+}
+
+#productionTable th,
+#productionTable td {
+    white-space: nowrap;
+    padding: 0.75rem 1rem;
+}
+
+.label-thumbnail {
+    max-width: 150px;
+    max-height: 50px;
+    object-fit: contain;
+    cursor: pointer;
+    transition: transform 0.2s;
     border-radius: var(--border-radius);
-    background-color: var(--light-bg-color);
+    border: 1px solid var(--border-color);
+    background-color: #fff;
 }
 
-.production-item {
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1rem;
+.label-thumbnail:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
 }
 
-.production-item .komm-number {
-    font-size: 1.2rem;
+.status-badge {
+    padding: 0.25em 0.6em;
+    border-radius: 999px;
+    font-size: 0.8rem;
     font-weight: 600;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
 }
 
+.status-badge.pending {
+    background-color: var(--warning-color);
+}
+
+.status-badge.in-progress {
+    background-color: var(--primary-color);
+}
+
+.status-badge.done {
+    background-color: var(--success-color);
+}
+
+#productionTable .button-group {
+    justify-content: flex-start;
+    gap: 0.25rem;
+}
+
+#productionTable .button-group button {
+    padding: 0.4rem;
+    line-height: 0;
+}
+
+#productionTable .button-group svg {
+    width: 1.2em;
+    height: 1.2em;
+    fill: currentColor;
+    margin: 0;
+}
+
+.status-select {
+    padding: 0.25em 0.6em;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+    border: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: var(--warning-color); /* Default to pending */
+    cursor: pointer;
+}
+
+select.status-select.pending {
+    background-color: var(--warning-color);
+}
+select.status-select.in-progress {
+    background-color: var(--primary-color);
+}
+select.status-select.done {
+    background-color: var(--success-color);
+}
+
+#viewer3dContainer {
+    min-height: 320px;
+    background-color: var(--light-bg-color);
+    border-radius: var(--border-radius);
+    padding: .5rem;
+    margin-bottom: .5rem;
+    overflow: hidden;
+    position: relative;
+}
+
+#viewer3dContainer canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.view-toggle-buttons {
+    display: flex;
+    background-color: var(--light-bg-color);
+    border-radius: var(--border-radius);
+    padding: 0.25rem;
+    border: 1px solid var(--border-color);
+}
+
+.btn-toggle {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text-muted-color);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: calc(var(--border-radius) - 0.25rem);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-toggle.active {
+    background-color: var(--card-bg-color);
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
 .production-controls {
     display: flex;
     gap: .5rem;
@@ -1545,23 +1657,5 @@ body:not(.sidebar-open) .sidebar-scroll {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     margin-bottom: 1rem;
-}
-
-.production-item.pending {
-    border-left: 4px solid var(--border-color);
-    padding-left: .5rem;
-}
-
-.production-item.in-progress {
-    border-left: 4px solid var(--warning-color);
-    padding-left: .5rem;
-    background-color: rgba(255,149,0,0.1);
-}
-
-.production-item.done {
-    border-left: 4px solid var(--success-color);
-    padding-left: .5rem;
-    background-color: rgba(52,199,89,0.1);
-    opacity: 0.7;
 }
 

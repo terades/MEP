@@ -164,8 +164,12 @@ function renderSavedOrdersList() {
 }
 
 function saveCurrentOrder() {
+    const now = new Date().toISOString();
+    const orderId = currentSavedOrderId || Date.now();
+    const existingOrder = savedOrders.find(o => o.id === orderId);
+
     const order = {
-        id: currentSavedOrderId || Date.now(),
+        id: orderId,
         projekt: document.getElementById('projekt')?.value || '',
         komm: document.getElementById('KommNr')?.value || '',
         auftrag: document.getElementById('auftrag')?.value || '',
@@ -177,7 +181,10 @@ function saveCurrentOrder() {
         endueberstand: document.getElementById('endueberstand')?.value || '',
         maxZones: maxZones,
         zonesPerLabel: zonesPerLabel,
-        zonesData: JSON.parse(JSON.stringify(zonesData))
+        zonesData: JSON.parse(JSON.stringify(zonesData)),
+        status: 'Draft',
+        createdAt: existingOrder?.createdAt || now,
+        lastModified: now
     };
     const idx = savedOrders.findIndex(o => o.id === order.id);
     if (idx >= 0) {
@@ -1003,7 +1010,17 @@ function updateZonesPerLabel(value) {
                         // Debounce function to prevent excessive updates while typing
                         function triggerPreviewUpdateDebounced() {
 			    clearTimeout(previewUpdateTimer);
-			    previewUpdateTimer = setTimeout(drawCagePreview, 150);
+			    previewUpdateTimer = setTimeout(() => {
+                    drawCagePreview();
+                    if(window.viewer3d) {
+                        const basketData = {
+                            totalLength: parseFloat(document.getElementById('gesamtlange').value) || 0,
+                            mainBarDiameter: parseFloat(document.getElementById('langdrahtDurchmesser').value) || 0,
+                            zones: JSON.parse(JSON.stringify(zonesData))
+                        };
+                        window.viewer3d.update(basketData);
+                    }
+                }, 150);
 			}
 			
 			// Render the summary table of zones
@@ -1651,6 +1668,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initCollapsibleHeaders();
     loadTemplatesFromFile();
     loadLabelLayout();
+    if(window.viewer3d) {
+        window.viewer3d.init();
+    }
     applyLabelLayout();
     LABEL_ELEMENT_IDS.forEach(id => {
                                 const el = document.getElementById(id);
@@ -1747,6 +1767,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (debugInfoEl) debugInfoEl.textContent = '';
                                 console.clear();
                                 showFeedback('barcodeError', 'Debug-Log gelöscht.', 'info', 2000);
+                            });
+
+                            document.getElementById('view2dBtn')?.addEventListener('click', () => {
+                                document.getElementById('cagePreviewSvgContainer').style.display = 'block';
+                                document.getElementById('viewer3dContainer').style.display = 'none';
+                                document.getElementById('view2dBtn').classList.add('active');
+                                document.getElementById('view3dBtn').classList.remove('active');
+                            });
+
+                            document.getElementById('view3dBtn')?.addEventListener('click', () => {
+                                document.getElementById('cagePreviewSvgContainer').style.display = 'none';
+                                document.getElementById('viewer3dContainer').style.display = 'block';
+                                document.getElementById('view2dBtn').classList.remove('active');
+                                document.getElementById('view3dBtn').classList.add('active');
+                                // May need to trigger a resize/render of the 3D view
+                                if(window.viewer3d) {
+                                    window.viewer3d.onResize();
+                                }
                             });
                             // Initial validation and rendering
                             const inputsToValidateOnLoad = [{
