@@ -2140,7 +2140,7 @@ select.status-select.done {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
 }
 
 .bf2d-preview-controls .bf2d-toggle {
@@ -2151,17 +2151,95 @@ select.status-select.done {
     color: var(--text-color);
 }
 
+.bf2d-view-toggle {
+    display: inline-flex;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.bf2d-view-toggle-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.45rem 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bf2d-view-toggle-btn:not(.is-active):hover {
+    background: var(--light-bg-color);
+    color: var(--primary-color);
+}
+
+.bf2d-view-toggle-btn.is-active {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.bf2d-preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .bf2d-preview-stage {
     flex: 1 1 auto;
     min-height: 320px;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
+    position: relative;
+}
+
+.bf2d-preview-stage > svg,
+.bf2d-preview-stage > .bf2d-preview-3d {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
 }
 
 #bf2dPreviewSvg {
-    width: 100%;
-    height: 100%;
+    display: block;
+}
+
+.bf2d-preview-3d {
+    position: relative;
+    min-height: 320px;
+}
+
+.bf2d-preview-3d canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+.bf2d-preview-container[data-view-mode="2d"] .bf2d-preview-3d {
+    display: none;
+}
+
+.bf2d-preview-container[data-view-mode="3d"] #bf2dPreviewSvg {
+    display: none;
+}
+
+.bf2d-preview-container[data-view-mode="3d"] .bf2d-preview-3d {
+    display: block;
+}
+
+.bf2d-preview-container[data-view-mode="3d"] .bf2d-when-2d {
+    display: none !important;
+}
+
+.bf2d-preview-container[data-view-mode="3d"] .bf2d-when-3d {
+    display: flex;
+}
+
+.bf2d-preview-container[data-view-mode="2d"] .bf2d-when-3d {
+    display: none;
 }
 
 .bf2d-dimensions {

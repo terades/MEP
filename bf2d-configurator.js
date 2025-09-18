@@ -15,7 +15,8 @@
         segments: [],
         meta: { ...META_DEFAULTS },
         datasetText: '',
-        previewNoteOverride: null
+        previewNoteOverride: null,
+        viewMode: '2d'
     };
 
     let initialized = false;
@@ -69,15 +70,29 @@
         return rollDiameter / 2;
     }
 
+    function enforceMinimumRadius(radius) {
+        const rollRadius = getRollRadius();
+        const numericRadius = Number(radius);
+        if (!Number.isFinite(numericRadius) || numericRadius <= 0) {
+            return 0;
+        }
+        if (rollRadius > 0 && numericRadius <= rollRadius) {
+            return rollRadius + 1;
+        }
+        return numericRadius;
+    }
+
     function createSegment(length, bendAngle, bendDirection = 'L', radius = null) {
         const numericLength = Number(length) || 0;
         const numericAngle = Number(bendAngle) || 0;
         const normalizedDirection = bendDirection === 'R' ? 'R' : 'L';
-        let numericRadius;
-        if (radius === null || typeof radius === 'undefined') {
-            numericRadius = numericAngle > 0 ? getRollRadius() : 0;
-        } else {
-            numericRadius = Number(radius) || 0;
+        let numericRadius = 0;
+        if (numericAngle > 0) {
+            if (radius === null || typeof radius === 'undefined') {
+                numericRadius = enforceMinimumRadius(getRollRadius());
+            } else {
+                numericRadius = enforceMinimumRadius(Number(radius) || 0);
+            }
         }
         return {
             id: ++segmentIdCounter,
@@ -140,10 +155,14 @@
         state.segments.forEach((segment, index) => {
             const isLast = index === state.segments.length - 1;
             const angle = Number(segment.bendAngle) || 0;
-            if (isLast || angle <= 0 || rollRadius <= 0) {
+            if (isLast || angle <= 0) {
                 segment.radius = 0;
             } else {
-                segment.radius = rollRadius;
+                if (rollRadius > 0) {
+                    segment.radius = enforceMinimumRadius(rollRadius);
+                } else {
+                    segment.radius = enforceMinimumRadius(segment.radius);
+                }
             }
         });
     }
@@ -320,6 +339,34 @@
             radiusToggle.addEventListener('change', () => {
                 dimensionPreferences.showRadii = radiusToggle.checked;
                 updateOutputs();
+            });
+        }
+
+        const view2dBtn = document.getElementById('bf2dViewToggle2d');
+        if (view2dBtn) {
+            view2dBtn.addEventListener('click', () => setPreviewViewMode('2d'));
+        }
+
+        const view3dBtn = document.getElementById('bf2dViewToggle3d');
+        if (view3dBtn) {
+            view3dBtn.addEventListener('click', () => setPreviewViewMode('3d'));
+        }
+
+        const reset3dBtn = document.getElementById('bf2dReset3dButton');
+        if (reset3dBtn) {
+            reset3dBtn.addEventListener('click', () => {
+                if (window.bf2dViewer3D && typeof window.bf2dViewer3D.resetView === 'function') {
+                    window.bf2dViewer3D.resetView();
+                }
+            });
+        }
+
+        const zoom3dBtn = document.getElementById('bf2dZoom3dButton');
+        if (zoom3dBtn) {
+            zoom3dBtn.addEventListener('click', () => {
+                if (window.bf2dViewer3D && typeof window.bf2dViewer3D.zoomToFit === 'function') {
+                    window.bf2dViewer3D.zoomToFit();
+                }
             });
         }
 
@@ -948,6 +995,7 @@
         const mathPoints = [{ x: 0, y: 0 }];
         const legs = [];
         const bends = [];
+        const pathSegments = [];
 
         segments.forEach((segment, index) => {
             const length = Math.max(0, Number(segment.length) || 0);
@@ -978,14 +1026,23 @@
                 screenOrientation
             });
 
+            if (length > 0) {
+                pathSegments.push({
+                    type: 'line',
+                    start: { ...startPoint },
+                    end: { ...endPoint }
+                });
+            }
+
             const isLast = index === segments.length - 1;
             let signedAngleRad = 0;
             if (!isLast) {
                 const angleDeg = Number(segment.bendAngle) || 0;
                 const sign = segment.bendDirection === 'R' ? -1 : 1;
                 signedAngleRad = (angleDeg * Math.PI / 180) * sign;
-                const radius = Number(segment.radius) || 0;
+                let radius = enforceMinimumRadius(segment.radius);
                 if (angleDeg > 0 && radius > 0) {
+                    segment.radius = radius;
                     const arcStart = { ...endPoint };
                     const leftNormal = { x: -dir.y, y: dir.x };
                     const center = {
@@ -993,7 +1050,8 @@
                         y: arcStart.y + leftNormal.y * radius * sign
                     };
                     const startAngle = Math.atan2(arcStart.y - center.y, arcStart.x - center.x);
-                    const steps = Math.max(6, Math.ceil(Math.abs(angleDeg) / 10));
+                    const endAngle = startAngle + signedAngleRad;
+                    const steps = Math.min(32, Math.max(6, Math.ceil(Math.abs(angleDeg) / 10)));
                     for (let step = 1; step <= steps; step++) {
                         const theta = startAngle + signedAngleRad * (step / steps);
                         const arcPoint = {
@@ -1004,6 +1062,18 @@
                     }
                     const arcEnd = { ...mathPoints[mathPoints.length - 1] };
                     current = arcEnd;
+
+                    pathSegments.push({
+                        type: 'arc',
+                        start: { ...arcStart },
+                        end: { ...arcEnd },
+                        center: { ...center },
+                        radius,
+                        startAngle,
+                        endAngle,
+                        clockwise: signedAngleRad < 0,
+                        subdivisions: steps
+                    });
 
                     const screenCenter = { x: center.x, y: -center.y };
                     const screenArcStart = { x: arcStart.x, y: -arcStart.y };
@@ -1098,7 +1168,9 @@
             height,
             screenPoints,
             legs,
-            bends
+            bends,
+            mathPoints,
+            pathSegments
         };
     }
 
@@ -1320,6 +1392,51 @@
         }
     }
 
+    function setPreviewViewMode(mode) {
+        const nextMode = mode === '3d' ? '3d' : '2d';
+        const previousMode = state.viewMode;
+        state.viewMode = nextMode;
+
+        const container = document.querySelector('.bf2d-preview-container');
+        if (container) {
+            container.setAttribute('data-view-mode', nextMode);
+        }
+
+        const svg = document.getElementById('bf2dPreviewSvg');
+        if (svg) {
+            svg.setAttribute('aria-hidden', nextMode === '3d' ? 'true' : 'false');
+        }
+
+        const preview3d = document.getElementById('bf2dPreview3d');
+        if (preview3d) {
+            preview3d.setAttribute('aria-hidden', nextMode === '3d' ? 'false' : 'true');
+        }
+
+        const view2dBtn = document.getElementById('bf2dViewToggle2d');
+        if (view2dBtn) {
+            view2dBtn.classList.toggle('is-active', nextMode === '2d');
+            view2dBtn.setAttribute('aria-pressed', nextMode === '2d' ? 'true' : 'false');
+        }
+
+        const view3dBtn = document.getElementById('bf2dViewToggle3d');
+        if (view3dBtn) {
+            view3dBtn.classList.toggle('is-active', nextMode === '3d');
+            view3dBtn.setAttribute('aria-pressed', nextMode === '3d' ? 'true' : 'false');
+        }
+
+        if (nextMode === '3d' && window.bf2dViewer3D) {
+            if (typeof window.bf2dViewer3D.init === 'function') {
+                window.bf2dViewer3D.init();
+            }
+            if (previousMode !== '3d' && typeof window.bf2dViewer3D.prepareAutoFit === 'function') {
+                window.bf2dViewer3D.prepareAutoFit();
+            }
+            if (typeof window.bf2dViewer3D.onResize === 'function') {
+                window.bf2dViewer3D.onResize();
+            }
+        }
+    }
+
     function renderSvgPreview(summary) {
         const svg = document.getElementById('bf2dPreviewSvg');
         const note = document.getElementById('bf2dPreviewNote');
@@ -1405,6 +1522,34 @@
         }
     }
 
+    function update3dPreview(summary) {
+        const viewer = window.bf2dViewer3D;
+        if (!viewer || typeof viewer.update !== 'function') {
+            return;
+        }
+
+        if (typeof viewer.init === 'function') {
+            viewer.init();
+        }
+
+        if (!summary || summary.errors.length || !summary.geometry) {
+            viewer.update(null);
+            return;
+        }
+
+        const geometry = summary.geometry;
+        viewer.update({
+            diameter: Number(state.meta.diameter) || 0,
+            rollDiameter: Number(state.meta.rollDiameter) || 0,
+            pathSegments: Array.isArray(geometry.pathSegments) ? geometry.pathSegments : [],
+            points: Array.isArray(geometry.mathPoints) ? geometry.mathPoints : []
+        });
+
+        if (state.viewMode === '3d' && typeof viewer.onResize === 'function') {
+            viewer.onResize();
+        }
+    }
+
     function updateOutputs() {
         if (!initialized) return;
         applyRollDiameterToSegments();
@@ -1413,6 +1558,7 @@
         updateSummaryUI(summary);
         updateErrorList(summary.errors);
         renderSvgPreview(summary);
+        update3dPreview(summary);
         updateDataset(summary);
     }
 
@@ -1457,7 +1603,8 @@
                 const direction = segment.bendDirection === 'R' ? 'R' : 'L';
                 const bendAngle = Math.max(segment.bendAngle, 0);
                 const signedAngle = (direction === 'R' ? -1 : 1) * bendAngle;
-                const radiusValue = bendAngle > 0 ? rollRadius : 0;
+                const radiusSource = bendAngle > 0 ? segment.radius : 0;
+                const radiusValue = bendAngle > 0 ? enforceMinimumRadius(radiusSource) : 0;
                 lines.push(`BN;${legIndex};${formatNumberForDataset(signedAngle)};RADIUS;${formatNumberForDataset(Math.max(radiusValue, 0))};DIR;${direction}`);
             }
         });
@@ -2317,6 +2464,7 @@
         populateSavedFormsSelect();
         renderImportTable();
         renderSegmentTable();
+        setPreviewViewMode(state.viewMode || '2d');
         updateOutputs();
     }
 
@@ -2326,6 +2474,7 @@
             if (!initialized) return;
             const currentSelection = document.getElementById('bf2dSavedForms')?.value || '';
             populateSavedFormsSelect(currentSelection);
+            setPreviewViewMode(state.viewMode || '2d');
             updateOutputs();
         },
         refreshTranslations() {
@@ -2333,6 +2482,7 @@
             const currentSelection = document.getElementById('bf2dSavedForms')?.value || '';
             populateSavedFormsSelect(currentSelection);
             renderSegmentTable();
+            setPreviewViewMode(state.viewMode || '2d');
             updateOutputs();
         }
     };
