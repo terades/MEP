@@ -175,6 +175,10 @@
                                 <input type="number" id="langdrahtDurchmesser" value="6" oninput="triggerPreviewUpdateDebounced(); validateNumberInput(this, 1, 'int', 'Längsdraht-Ø in mm (min. 1)');">
                                 <span class="input-feedback"></span>
                             </div>
+                            <div class="form-group">
+                                <label for="stahlgute" data-i18n="Stahlsorte (g):">Stahlsorte (g):</label>
+                                <input type="text" id="stahlgute" value="B500B" maxlength="20" oninput="triggerPreviewUpdateDebounced()">
+                            </div>
                         </div>
                         <h3 class="section-title collapsible-header" data-i18n="PtGABBIE-Daten">PtGABBIE-Daten</h3>
                         <div class="collapsible-content section-content-bg">
@@ -368,6 +372,12 @@
                                     </svg>
                                     <span data-i18n="Kopieren">Kopieren</span>
                                 </button>
+                                <button type="button" class="btn-secondary open-qr-btn" data-target="outputBvbsCode1" data-label="1" data-i18n-title="QR-Code anzeigen">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v4h-4v-2h2v-2z"/>
+                                    </svg>
+                                    <span data-i18n="QR-Code anzeigen">QR-Code anzeigen</span>
+                                </button>
                             </div>
                             <div class="bvbs-output-field" id="bvbsOutputField2" style="display:none;">
                                 <textarea id="outputBvbsCode2" readonly></textarea>
@@ -376,6 +386,12 @@
                                         <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                                     </svg>
                                     <span data-i18n="Kopieren">Kopieren</span>
+                                </button>
+                                <button type="button" class="btn-secondary open-qr-btn" data-target="outputBvbsCode2" data-label="2" data-i18n-title="QR-Code anzeigen">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v4h-4v-2h2v-2z"/>
+                                    </svg>
+                                    <span data-i18n="QR-Code anzeigen">QR-Code anzeigen</span>
                                 </button>
                             </div>
                         </div>
@@ -857,6 +873,28 @@
                 </div>
             </div>
         </div>
+        <div id="qrModal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle">
+                <div class="modal-header card-header">
+                    <h2 id="qrModalTitle" class="modal-title card-title" data-title-base="BVBS QR-Code" data-i18n="BVBS QR-Code">BVBS QR-Code</h2>
+                    <button type="button" class="close-modal-btn" onclick="closeQrModal()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="qr-code-container">
+                        <canvas id="qrCodeCanvas" aria-label="BVBS QR-Code"></canvas>
+                    </div>
+                    <pre id="qrCodeValue" class="qr-code-value"></pre>
+                    <div id="qrCodeError" class="info-text error-message" style="display:none;"></div>
+                </div>
+                <div class="modal-footer button-group" style="justify-content: flex-end;">
+                    <button type="button" class="btn-secondary" onclick="closeQrModal()" data-i18n="Schließen">Schließen</button>
+                </div>
+            </div>
+        </div>
         <div id="zplModal" class="modal-overlay">
             <div class="modal-content card">
                 <div class="modal-header card-header">
@@ -876,6 +914,7 @@
             </div>
         </div>
         <div id="print-container" style="display: none;"></div>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.1.1/bwip-js.min.js"></script>
     </body>
 </html>

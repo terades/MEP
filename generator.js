@@ -9,9 +9,89 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 function getEffectiveZoneNum(zone, index) {
     return index === 0 ? zone.num + 1 : zone.num;
 }
-			
-			// Visual constants for SVG rendering
-			const STIRRUP_HEIGHT_VISUAL = 50;
+
+function getStirrupCount(zonesArr) {
+    if (!Array.isArray(zonesArr)) {
+        return 0;
+    }
+    return zonesArr.reduce((sum, zone, index) => sum + getEffectiveZoneNum(zone, index), 0);
+}
+
+const STEEL_DENSITY_KG_PER_M3 = 7850;
+
+function sanitizeBvbsSegment(value) {
+    return (value ?? '').toString().replace(/[@|\r\n]+/g, ' ').trim();
+}
+
+function formatNumberForBvbs(value, decimals = 0) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) {
+        return '0';
+    }
+    if (decimals > 0) {
+        return num.toFixed(decimals);
+    }
+    if (Math.abs(num - Math.round(num)) < 1e-6) {
+        return String(Math.round(num));
+    }
+    return num.toString();
+}
+
+function calculateBarWeightKg(lengthMm, diameterMm) {
+    const length = Number(lengthMm);
+    const diameter = Number(diameterMm);
+    if (!Number.isFinite(length) || !Number.isFinite(diameter) || length <= 0 || diameter <= 0) {
+        return 0;
+    }
+    const lengthMeters = length / 1000;
+    const radiusMeters = (diameter / 1000) / 2;
+    const crossSectionArea = Math.PI * radiusMeters * radiusMeters;
+    return crossSectionArea * lengthMeters * STEEL_DENSITY_KG_PER_M3;
+}
+
+function formatWeightForBvbs(lengthMm, diameterMm) {
+    const weight = calculateBarWeightKg(lengthMm, diameterMm);
+    if (!Number.isFinite(weight) || weight <= 0) {
+        return '0';
+    }
+    return weight.toFixed(6);
+}
+
+function encodeZonesForBvbs(zonesArr, startOverhang, endOverhang, extra = {}) {
+    const padValue = (value, digits) => {
+        const safe = Math.max(0, Math.round(Number(value) || 0));
+        return safe.toString().padStart(digits, '0');
+    };
+    const startSegment = padValue(startOverhang, 3);
+    const endSegment = padValue(endOverhang, 3);
+    const zoneSegments = Array.isArray(zonesArr)
+        ? zonesArr.map((zone, index) => {
+            const count = Math.max(0, Math.round(Number(getEffectiveZoneNum(zone, index)) || 0));
+            const pitch = Math.max(0, Math.round(Number(zone?.pitch) || 0));
+            const countDigits = count < 100 ? 2 : 3;
+            const countStr = count.toString().padStart(countDigits, '0');
+            const pitchStr = pitch.toString().padStart(4, '0');
+            return `${countStr}${pitchStr}`;
+        }).join('')
+        : '';
+    const extras = [];
+    const sanitizedName = extra.name ? sanitizeBvbsSegment(extra.name) : '';
+    const sanitizedRecipe = extra.recipe ? sanitizeBvbsSegment(extra.recipe) : '';
+    if (sanitizedName) {
+        extras.push(`s${sanitizedName}`);
+    }
+    if (sanitizedRecipe) {
+        extras.push(`r${sanitizedRecipe}`);
+    }
+    let encoded = `a${startSegment}-${endSegment}${zoneSegments}`;
+    if (extras.length > 0) {
+        encoded += `|${extras.join('|')}`;
+    }
+    return encoded;
+}
+
+                        // Visual constants for SVG rendering
+                        const STIRRUP_HEIGHT_VISUAL = 50;
 			const PADDING_VISUAL = 35;
 			const DIM_LINE_OFFSET_ABOVE = 30;
 			const DIM_LINE_OFFSET_BELOW = 25;
@@ -388,11 +468,13 @@ function saveCurrentOrder() {
         posnr: document.getElementById('posnr')?.value || '',
         buegelname1: document.getElementById('buegelname1')?.value || '',
         buegelname2: document.getElementById('buegelname2')?.value || '',
+        steelGrade: document.getElementById('stahlgute')?.value || '',
         gesamtlange: document.getElementById('gesamtlange')?.value || '',
         anzahl: document.getElementById('anzahl')?.value || '',
         langdrahtDurchmesser: document.getElementById('langdrahtDurchmesser')?.value || '',
         anfangsueberstand: document.getElementById('anfangsueberstand')?.value || '',
         endueberstand: document.getElementById('endueberstand')?.value || '',
+        rezeptname: document.getElementById('rezeptname')?.value || '',
         maxZones: maxZones,
         zonesPerLabel: zonesPerLabel,
         zonesData: JSON.parse(JSON.stringify(zonesData)),
@@ -423,11 +505,15 @@ function loadOrderIntoForm(id) {
     if (buegelname1Input) buegelname1Input.value = order.buegelname1 || '';
     const buegelname2Input = document.getElementById('buegelname2');
     if (buegelname2Input) buegelname2Input.value = order.buegelname2 || '';
+    const steelGradeInput = document.getElementById('stahlgute');
+    if (steelGradeInput) steelGradeInput.value = order.steelGrade || 'B500B';
     document.getElementById('gesamtlange').value = order.gesamtlange;
     document.getElementById('anzahl').value = order.anzahl;
     document.getElementById('langdrahtDurchmesser').value = order.langdrahtDurchmesser;
     document.getElementById('anfangsueberstand').value = order.anfangsueberstand;
     document.getElementById('endueberstand').value = order.endueberstand;
+    const rezeptInput = document.getElementById('rezeptname');
+    if (rezeptInput) rezeptInput.value = order.rezeptname || '';
     document.getElementById('maxZonesInput').value = order.maxZones || maxZones;
     updateMaxZones(document.getElementById('maxZonesInput').value);
     document.getElementById('zonesPerLabelInput').value = order.zonesPerLabel || zonesPerLabel;
@@ -839,16 +925,110 @@ function loadLabelLayout() {
                             }
                         }
 
-                        function closeZplModal() {
-                            const modal = document.getElementById('zplModal');
-                            if (modal) modal.classList.remove('visible');
-                        }
-			
-			// Generate a compact summary of zones for the template manager
-			function generateZoneSummary(zones) {
-			    if (!zones || zones.length === 0) {
-			        return "Keine Zonen definiert.";
-			    }
+function closeZplModal() {
+    const modal = document.getElementById('zplModal');
+    if (modal) modal.classList.remove('visible');
+}
+
+function renderQrCodeToCanvas(canvas, text) {
+    if (!canvas) {
+        throw new Error('canvas missing');
+    }
+    if (typeof qrcode === 'undefined') {
+        throw new Error('QR library unavailable');
+    }
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const moduleCount = qr.getModuleCount();
+    const cellSize = Math.max(2, Math.floor(260 / moduleCount));
+    const margin = 4;
+    const size = moduleCount * cellSize + margin * 2;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        throw new Error('No canvas context');
+    }
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+    for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+            if (qr.isDark(row, col)) {
+                ctx.fillRect(margin + col * cellSize, margin + row * cellSize, cellSize, cellSize);
+            }
+        }
+    }
+}
+
+function setQrModalTitle(labelSuffix = '') {
+    const titleEl = document.getElementById('qrModalTitle');
+    if (!titleEl) return;
+    const baseKey = titleEl.getAttribute('data-i18n') || titleEl.getAttribute('data-title-base') || 'BVBS QR-Code';
+    const baseText = (window.i18n?.t?.(baseKey) || baseKey).trim();
+    titleEl.textContent = labelSuffix ? `${baseText} ${labelSuffix}` : baseText;
+}
+
+function openQrModalWithCode(code, labelSuffix = '') {
+    const modal = document.getElementById('qrModal');
+    const canvas = document.getElementById('qrCodeCanvas');
+    const valueEl = document.getElementById('qrCodeValue');
+    const errorEl = document.getElementById('qrCodeError');
+    if (!modal || !canvas || !valueEl) {
+        console.warn('QR modal elements missing');
+        return;
+    }
+    if (errorEl) {
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+    }
+    try {
+        renderQrCodeToCanvas(canvas, code);
+    } catch (err) {
+        console.error('Unable to generate QR code', err);
+        if (errorEl) {
+            errorEl.style.display = 'block';
+            errorEl.textContent = window.i18n?.t?.('QR-Code konnte nicht erzeugt werden.') || 'QR-Code konnte nicht erzeugt werden.';
+        }
+    }
+    valueEl.textContent = code;
+    setQrModalTitle(labelSuffix);
+    modal.classList.add('visible');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeQrModal() {
+    const modal = document.getElementById('qrModal');
+    if (!modal) return;
+    const canvas = document.getElementById('qrCodeCanvas');
+    const valueEl = document.getElementById('qrCodeValue');
+    const errorEl = document.getElementById('qrCodeError');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    if (valueEl) {
+        valueEl.textContent = '';
+    }
+    if (errorEl) {
+        errorEl.style.display = 'none';
+        errorEl.textContent = '';
+    }
+    setQrModalTitle('');
+    modal.classList.remove('visible');
+    modal.setAttribute('aria-hidden', 'true');
+}
+window.closeQrModal = closeQrModal;
+
+// Generate a compact summary of zones for the template manager
+function generateZoneSummary(zones) {
+    if (!zones || zones.length === 0) {
+        return "Keine Zonen definiert.";
+    }
                             const summary = zones.map((zone, idx) => {
                                 const effectiveNum = getEffectiveZoneNum(zone, idx);
                                 if (effectiveNum === 1) {
@@ -1311,6 +1491,7 @@ function loadSampleBasket() {
         gesamtlange: 4200,
         anzahl: 2,
         langdrahtDurchmesser: 12,
+        steelGrade: 'B500B',
         anfangsueberstand: 80,
         endueberstand: 80,
         buegelname1: 'Korb Typ A',
@@ -1338,6 +1519,7 @@ function loadSampleBasket() {
     applyValue('gesamtlange', sample.gesamtlange);
     applyValue('anzahl', sample.anzahl);
     applyValue('langdrahtDurchmesser', sample.langdrahtDurchmesser);
+    applyValue('stahlgute', sample.steelGrade || 'B500B');
     applyValue('anfangsueberstand', sample.anfangsueberstand);
     applyValue('endueberstand', sample.endueberstand);
     applyValue('buegelname1', sample.buegelname1);
@@ -1767,50 +1949,78 @@ function triggerPreviewUpdateDebounced() {
 			
 			    try {
 			        // Get all input values
-			        const projekt = document.getElementById('projekt').value;
-			        const KommNr = document.getElementById('KommNr').value;
-			        const auftrag = document.getElementById('auftrag').value;
-			        const posnr = document.getElementById('posnr').value;
+                                const projekt = document.getElementById('projekt').value;
+                                const KommNr = document.getElementById('KommNr').value;
+                                const auftrag = document.getElementById('auftrag').value;
+                                const posnr = document.getElementById('posnr').value;
                                 const rawGesamtlange = document.getElementById('gesamtlange').value;
-                                const anzahl = document.getElementById('anzahl').value;
-                                const langdrahtDurchmesser = document.getElementById('langdrahtDurchmesser').value;
-                                const anfangsueberstand = document.getElementById('anfangsueberstand').value;
-                                const endueberstand = document.getElementById('endueberstand').value;
+                                const rawQuantity = document.getElementById('anzahl').value;
+                                const rawDiameter = document.getElementById('langdrahtDurchmesser').value;
+                                const rawAnfangsueberstand = document.getElementById('anfangsueberstand').value;
+                                const rawEndueberstand = document.getElementById('endueberstand').value;
+                                const steelGradeRaw = document.getElementById('stahlgute')?.value || 'B500B';
                                 const gesamtlangeVal = parseFloat(rawGesamtlange) || 0;
+                                const quantityValue = Math.max(1, Math.round(parseFloat(rawQuantity) || 0));
+                                const diameterValue = Math.max(0, Math.round(parseFloat(rawDiameter) || 0));
+                                const startOverhangValue = Math.max(0, Math.round(parseFloat(rawAnfangsueberstand) || 0));
+                                const endOverhangValue = Math.max(0, Math.round(parseFloat(rawEndueberstand) || 0));
                                 const buegelname1 = document.getElementById('buegelname1').value.trim();
                                 const buegelname2 = document.getElementById('buegelname2').value.trim();
                                 const rezeptname = document.getElementById('rezeptname').value.trim();
+                                const sanitizedProjekt = sanitizeBvbsSegment(projekt);
+                                const sanitizedKomm = sanitizeBvbsSegment(KommNr);
+                                const sanitizedAuftrag = sanitizeBvbsSegment(auftrag);
+                                const sanitizedPosnr = sanitizeBvbsSegment(posnr);
+                                const sanitizedSteelGrade = sanitizeBvbsSegment(steelGradeRaw) || 'B500B';
+                                const sanitizedRecipe = sanitizeBvbsSegment(rezeptname);
+                                const formattedLength = formatNumberForBvbs(gesamtlangeVal);
+                                const formattedQuantity = formatNumberForBvbs(quantityValue);
+                                const formattedDiameter = formatNumberForBvbs(diameterValue);
+                                const formattedWeight = formatWeightForBvbs(gesamtlangeVal, diameterValue);
 
                                 if (zonesData.length > zonesPerLabel && !buegelname2) {
                                     updateGenerateButtonState();
                                     return;
                                 }
 
-                                const buildCode = (zonesArr, startOv, endOv, name) => {
-                                    let head = `BF2D@Hj${projekt}@r${KommNr}@i${auftrag}@p${posnr}@l${gesamtlangeVal}@n${anzahl}@d${langdrahtDurchmesser}@e@g@s@v@`;
-                                    let pt = "PtGABBIE;";
-                                    pt += `i${startOv};`;
-                                    pt += `f${endOv};`;
-                                    zonesArr.forEach((z, idx) => {
-                                        const effectiveNum = getEffectiveZoneNum(z, idx);
-                                        pt += `d${z.dia};n${effectiveNum};p${z.pitch};`;
+                                const buildCode = (zonesArr, startOv, endOv, stirrupName) => {
+                                    const sanitizedName = sanitizeBvbsSegment(stirrupName);
+                                    const zoneCount = getStirrupCount(zonesArr);
+                                    const encodedZones = encodeZonesForBvbs(zonesArr, startOv, endOv, {
+                                        name: sanitizedName,
+                                        recipe: sanitizedRecipe
                                     });
-                                    if (name) pt += `s${name};`;
-                                    if (rezeptname) pt += `r${rezeptname};`;
-                                    if (pt.endsWith(';')) pt = pt.slice(0,-1);
-                                    pt += "@";
-                                    const pre = head + pt + "C";
+                                    const segments = [
+                                        `BF2D`,
+                                        `Hj${sanitizedProjekt}`,
+                                        `r${sanitizedKomm}`,
+                                        `i${sanitizedAuftrag}`,
+                                        `p${sanitizedPosnr}`,
+                                        `l${formattedLength}`,
+                                        `n${formattedQuantity}`,
+                                        `e${formattedWeight}`,
+                                        `d${formattedDiameter}`,
+                                        `g${sanitizedSteelGrade}`,
+                                        `s${zoneCount}`,
+                                        `v`,
+                                        `a`,
+                                        `c`,
+                                        `G${formattedLength}`,
+                                        `w0`,
+                                        `P${encodedZones}`
+                                    ];
+                                    const pre = segments.join('@') + '@C';
                                     const cs = calculateChecksum(pre);
-                                    return pre + cs + "@";
+                                    return `${pre}${cs}@`;
                                 };
-                                let finalBvbsCode = buildCode(zonesData, anfangsueberstand, endueberstand, buegelname1);
+                                let finalBvbsCode = buildCode(zonesData, startOverhangValue, endOverhangValue, buegelname1);
                                 let finalBvbsCode2 = null;
                                 if (zonesData.length > zonesPerLabel) {
                                     const firstZones = zonesData.slice(0, zonesPerLabel);
                                     const secondZones = zonesData.slice(zonesPerLabel);
-                                    finalBvbsCode = buildCode(firstZones, anfangsueberstand, 0, buegelname1);
-                                    const startOvSecond = zonesData[zonesPerLabel - 1]?.pitch || 0;
-                                    finalBvbsCode2 = buildCode(secondZones, startOvSecond, endueberstand, buegelname2);
+                                    finalBvbsCode = buildCode(firstZones, startOverhangValue, 0, buegelname1);
+                                    const startOvSecond = Math.max(0, Math.round(Number(zonesData[zonesPerLabel - 1]?.pitch) || 0));
+                                    finalBvbsCode2 = buildCode(secondZones, startOvSecond, endOverhangValue, buegelname2);
                                 }
                                 const out1 = document.getElementById('outputBvbsCode1');
                                 const out2 = document.getElementById('outputBvbsCode2');
@@ -1824,13 +2034,23 @@ function triggerPreviewUpdateDebounced() {
                                     field2.style.display = 'none';
                                 }
 
+                                const primaryZones = zonesData.length > zonesPerLabel ? zonesData.slice(0, zonesPerLabel) : zonesData;
+                                const secondaryZones = zonesData.length > zonesPerLabel ? zonesData.slice(zonesPerLabel) : [];
+                                const primaryCount = getStirrupCount(primaryZones);
+                                const secondaryCount = secondaryZones.length ? getStirrupCount(secondaryZones) : 0;
+
                                 updateBarcodeDebugInfo(`Generated BVBS code: ${finalBvbsCode}`);
+                                if (finalBvbsCode2) {
+                                    updateBarcodeDebugInfo(`Generated BVBS code (2): ${finalBvbsCode2}`);
+                                }
                                 updateBarcodeDebugInfo(`Code length: ${finalBvbsCode.length}${finalBvbsCode2 ? '/' + finalBvbsCode2.length : ''}`);
-			
-			        // Check for library before trying to use it
-			        if (typeof bwipjs === 'undefined') {
-			            console.error("bwip-js library not loaded!");
-			            updateBarcodeDebugInfo("bwip-js Bibliothek nicht geladen!");
+                                updateBarcodeDebugInfo(`Stirrup count: ${finalBvbsCode2 ? `${primaryCount}/${secondaryCount}` : primaryCount}`);
+                                updateBarcodeDebugInfo(`Weight per piece: ${formattedWeight} kg | Steel grade: ${sanitizedSteelGrade}`);
+
+                                // Check for library before trying to use it
+                                if (typeof bwipjs === 'undefined') {
+                                    console.error("bwip-js library not loaded!");
+                                    updateBarcodeDebugInfo("bwip-js Bibliothek nicht geladen!");
 			            showFeedback('barcodeError', 'Fehler: Barcode-Bibliothek nicht geladen. Bitte Seite neu laden.', 'error', 5000);
                                 createFallbackBarcode(finalBvbsCode, finalBvbsCode2);
 			            return;
@@ -2095,6 +2315,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 });
                             });
+                            document.querySelectorAll('.open-qr-btn')?.forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    const target = btn.getAttribute('data-target');
+                                    const label = btn.getAttribute('data-label') || '';
+                                    if (!target) {
+                                        return;
+                                    }
+                                    const code = document.getElementById(target)?.value.trim();
+                                    if (code) {
+                                        openQrModalWithCode(code, label);
+                                    } else {
+                                        showFeedback('barcodeError', window.i18n?.t?.('Kein BVBS-Code vorhanden.') || 'Kein BVBS-Code vorhanden.', 'warning', 4000);
+                                    }
+                                });
+                            });
                             document.getElementById('downloadSvgButton')?.addEventListener('click', () => {
                                 const svgElement = document.getElementById('cagePreviewSvg');
                                 if (!svgElement) return;
@@ -2115,6 +2350,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                     if (target) downloadLabelAsPng(target);
                                 });
                             });
+                            const qrModal = document.getElementById('qrModal');
+                            if (qrModal) {
+                                qrModal.addEventListener('click', (event) => {
+                                    if (event.target === qrModal) {
+                                        closeQrModal();
+                                    }
+                                });
+                            }
                             document.getElementById('printLabelButton')?.addEventListener('click', () => {
                                 if (getBvbsCodes().length === 0) {
                                     showFeedback('barcodeError', 'Bitte generieren Sie zuerst den Code, um das Label zu drucken.', 'warning', 5000);
