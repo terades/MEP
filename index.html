@@ -19,6 +19,7 @@
         </script>
         <script src="generator.js" defer></script>
         <script src="bf2d-configurator.js" defer></script>
+        <script type="module" src="bf2d-viewer3d.js" defer></script>
         <script src="bfma-configurator.js" defer></script>
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
@@ -691,19 +692,28 @@
                             <div class="card-header">
                                 <h2 class="card-title" data-i18n="SVG Vorschau">SVG Vorschau</h2>
                             </div>
-                            <div class="bf2d-preview-container">
+                            <div class="bf2d-preview-container" data-view-mode="2d">
                                 <div class="bf2d-preview-controls">
-                                    <div class="bf2d-toggle">
+                                    <div class="bf2d-view-toggle" role="group" aria-label="Ansicht umschalten">
+                                        <button type="button" id="bf2dViewToggle2d" class="bf2d-view-toggle-btn is-active" aria-pressed="true" data-i18n="2D">2D</button>
+                                        <button type="button" id="bf2dViewToggle3d" class="bf2d-view-toggle-btn" aria-pressed="false" data-i18n="3D">3D</button>
+                                    </div>
+                                    <div class="bf2d-toggle bf2d-when-2d">
                                         <input type="checkbox" id="bf2dShowLengths" checked>
                                         <label for="bf2dShowLengths" data-i18n="Längen anzeigen">Längen anzeigen</label>
                                     </div>
-                                    <div class="bf2d-toggle">
+                                    <div class="bf2d-toggle bf2d-when-2d">
                                         <input type="checkbox" id="bf2dShowRadii" checked>
                                         <label for="bf2dShowRadii" data-i18n="Radien anzeigen">Radien anzeigen</label>
+                                    </div>
+                                    <div class="bf2d-preview-actions bf2d-when-3d">
+                                        <button type="button" id="bf2dReset3dButton" class="btn-secondary" data-i18n="Reset View">Reset View</button>
+                                        <button type="button" id="bf2dZoom3dButton" class="btn-secondary" data-i18n="Zoom to Fit">Zoom to Fit</button>
                                     </div>
                                 </div>
                                 <div class="bf2d-preview-stage">
                                     <svg id="bf2dPreviewSvg" role="img" aria-label="BF2D Vorschau"></svg>
+                                    <div id="bf2dPreview3d" class="bf2d-preview-3d" aria-hidden="true"></div>
                                 </div>
                             </div>
                             <p id="bf2dPreviewNote" class="info-text" aria-live="polite"></p>
