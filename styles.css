@@ -2230,6 +2230,212 @@ select.status-select.done {
     resize: vertical;
 }
 
+/* BFMA Konfigurator */
+.bfma-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 480px) minmax(320px, 1fr);
+    gap: 1.75rem;
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .bfma-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bfma-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.25rem;
+}
+
+.bfma-summary-item {
+    background: var(--light-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.bfma-summary-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted-color);
+}
+
+.bfma-summary-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.bfma-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.bfma-storage-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+    align-items: end;
+}
+
+.bfma-storage-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.bfma-tabs {
+    margin-top: 1.5rem;
+}
+
+.bfma-tabs .tab-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.bfma-tabs .tab-button {
+    background: var(--light-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.6rem 1.1rem;
+    font-weight: 500;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+}
+
+.bfma-tabs .tab-button:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.bfma-tabs .tab-button.active {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.bfma-tabs .tab-content {
+    display: none;
+    margin-top: 1rem;
+}
+
+.bfma-tabs .tab-content.active {
+    display: block;
+}
+
+.table-action-button {
+    padding: 0.35rem;
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.table-action-button:hover {
+    transform: translateY(-1px);
+}
+
+.table-empty-hint {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-muted-color);
+    font-style: italic;
+}
+
+.bfma-preview-container {
+    min-height: 320px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--card-bg-color);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+}
+
+#bfmaPreviewSvg,
+.bfma-preview-svg {
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    display: block;
+}
+
+.bfma-bending-controls {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.bfma-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+#bfmaDatasetOutput {
+    width: 100%;
+    min-height: 220px;
+    font-family: 'Fira Code', 'Source Code Pro', monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background: var(--light-bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+.bfma-error-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--danger-color);
+    font-size: 0.9rem;
+    display: none;
+}
+
+.bfma-error-list li + li {
+    margin-top: 0.35rem;
+}
+
+@media (max-width: 768px) {
+    .bfma-storage-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .bfma-storage-actions {
+        justify-content: flex-start;
+    }
+
+    .bfma-preview-container {
+        min-height: 260px;
+    }
+}
+
 .production-list {
     list-style: none;
     margin: 0;
