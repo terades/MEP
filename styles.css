@@ -1216,6 +1216,11 @@ body:not(.sidebar-open) .sidebar-scroll {
     display: flex;
     align-items: center;
     gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.bvbs-output-field button {
+    white-space: nowrap;
 }
 
 .bvbs-output-field textarea {
@@ -1232,8 +1237,8 @@ body:not(.sidebar-open) .sidebar-scroll {
                         margin: 0 auto;
                         }
                         /* Und falls Du statt Canvas das <img> nutzt, auch hier */
-                        #labelBarcodeImage,
-                        #labelBarcodeImage2 {
+#labelBarcodeImage,
+#labelBarcodeImage2 {
                         display: block;
                         max-width: 100%;
                         max-height: 120px;
@@ -1355,9 +1360,33 @@ body:not(.sidebar-open) .sidebar-scroll {
                         max-width: 1000px;
                         width: 95%;
                         }
-			.modal-overlay.visible .modal-content {
-			transform: translateY(0);
-			}
+.modal-overlay.visible .modal-content {
+                        transform: translateY(0);
+                        }
+.qr-code-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+#qrCodeCanvas {
+    max-width: 100%;
+    height: auto;
+}
+
+.qr-code-value {
+    background-color: var(--light-bg-color);
+    border-radius: var(--border-radius);
+    padding: .75rem;
+    font-family: 'Fira Code', 'Source Code Pro', monospace;
+    overflow-wrap: anywhere;
+    margin-bottom: .75rem;
+}
+
+#qrCodeError {
+    text-align: center;
+}
 			.modal-header {
 			display: flex;
 			justify-content: space-between;
