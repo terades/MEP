@@ -239,5 +239,21 @@
   "Datensatz in Zwischenablage kopiert.": "Datensatz in Zwischenablage kopiert.",
   "Clipboard nicht verfügbar.": "Zwischenablage nicht verfügbar.",
   "ABS-Datei heruntergeladen.": "ABS-Datei heruntergeladen.",
-  "Keine gültige Vorschau verfügbar.": "Keine gültige Vorschau verfügbar."
+  "Keine gültige Vorschau verfügbar.": "Keine gültige Vorschau verfügbar.",
+  "ABS-Import": "ABS-Import",
+  "ABS-Datei importieren": "ABS-Datei importieren",
+  "Auswahl exportieren": "Auswahl exportieren",
+  "Keine Positionen importiert.": "Keine Positionen importiert.",
+  "⌀ (mm)": "⌀ (mm)",
+  "Länge gesamt": "Länge gesamt",
+  "Prüfsumme": "Prüfsumme",
+  "Typ": "Typ",
+  "Fehler beim Einlesen der ABS-Datei.": "Fehler beim Einlesen der ABS-Datei.",
+  "{count} Positionen importiert.": "{count} Positionen importiert.",
+  "{count} mit Fehlern": "{count} mit Fehlern",
+  "{count} mit Warnungen": "{count} mit Warnungen",
+  "OK": "OK",
+  "Fehler": "Fehler",
+  "Fehlt": "Fehlt",
+  "Keine Geometrie verfügbar.": "Keine Geometrie verfügbar."
 }

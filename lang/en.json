@@ -239,5 +239,21 @@
   "Datensatz in Zwischenablage kopiert.": "Dataset copied to clipboard.",
   "Clipboard nicht verfügbar.": "Clipboard not available.",
   "ABS-Datei heruntergeladen.": "ABS file downloaded.",
-  "Keine gültige Vorschau verfügbar.": "No valid preview available."
+  "Keine gültige Vorschau verfügbar.": "No valid preview available.",
+  "ABS-Import": "ABS import",
+  "ABS-Datei importieren": "Import ABS file",
+  "Auswahl exportieren": "Export selection",
+  "Keine Positionen importiert.": "No positions imported.",
+  "⌀ (mm)": "⌀ (mm)",
+  "Länge gesamt": "Total length",
+  "Prüfsumme": "Checksum",
+  "Typ": "Type",
+  "Fehler beim Einlesen der ABS-Datei.": "Error reading ABS file.",
+  "{count} Positionen importiert.": "{count} positions imported.",
+  "{count} mit Fehlern": "{count} with errors",
+  "{count} mit Warnungen": "{count} with warnings",
+  "OK": "OK",
+  "Fehler": "Error",
+  "Fehlt": "Missing",
+  "Keine Geometrie verfügbar.": "No geometry available."
 }
