@@ -867,6 +867,10 @@
             const outputEl = document.getElementById('bfmaDatasetOutput');
             if (outputEl) outputEl.value = '';
         }
+
+    if (window.bfmaViewer3D) {
+        window.bfmaViewer3D.update(JSON.parse(JSON.stringify(state)));
+    }
     }
 
     // --- Event Listeners ---
@@ -1065,6 +1069,50 @@
         }
     }
 
+    function attachViewListeners() {
+        const view2dBtn = document.getElementById('bfmaViewToggle2d');
+        const view3dBtn = document.getElementById('bfmaViewToggle3d');
+        const zoomBtn = document.getElementById('bfmaZoom3dButton');
+        const previewContainer = document.querySelector('#bfmaView .bfma-preview-container');
+        const svgPreview = document.getElementById('bfmaPreviewSvg');
+        const preview3d = document.getElementById('bfmaPreview3d');
+        const when3dControls = document.querySelector('#bfmaView .bfma-when-3d');
+
+        if (!view2dBtn || !view3dBtn || !zoomBtn || !previewContainer || !svgPreview || !preview3d || !when3dControls) {
+            return;
+        }
+
+        view2dBtn.addEventListener('click', () => {
+            previewContainer.dataset.viewMode = '2d';
+            view2dBtn.classList.add('is-active');
+            view3dBtn.classList.remove('is-active');
+            svgPreview.style.display = '';
+            preview3d.style.display = 'none';
+            when3dControls.style.display = 'none';
+        });
+
+        view3dBtn.addEventListener('click', () => {
+            previewContainer.dataset.viewMode = '3d';
+            view3dBtn.classList.add('is-active');
+            view2dBtn.classList.remove('is-active');
+            svgPreview.style.display = 'none';
+            preview3d.style.display = '';
+            when3dControls.style.display = '';
+
+            if (window.bfmaViewer3D) {
+                window.bfmaViewer3D.init();
+                window.bfmaViewer3D.onResize();
+                window.bfmaViewer3D.update(JSON.parse(JSON.stringify(state)));
+            }
+        });
+
+        zoomBtn.addEventListener('click', () => {
+            if (window.bfmaViewer3D) {
+                window.bfmaViewer3D.zoomToFit();
+            }
+        });
+    }
+
     function init() {
         if (initialized) return;
         const view = document.getElementById('bfmaView');
@@ -1075,6 +1123,7 @@
         attachActionListeners();
         attachImportListeners();
         attachStorageListeners();
+        attachViewListeners();
         populateSavedMeshesSelect();
 
         if (!state.yBars.length) addBar('Y');
@@ -1085,7 +1134,6 @@
     }
 
     window.bfmaConfigurator = {
-        init,
         onShow() {
             if (!initialized) {
                 init();
@@ -1095,5 +1143,4 @@
         },
         forceUpdate: () => scheduleUpdate({ immediate: true })
     };
-    document.addEventListener('DOMContentLoaded', init);
 })();
