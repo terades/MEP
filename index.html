@@ -20,6 +20,7 @@
         <script src="generator.js" defer></script>
         <script src="bf2d-configurator.js" defer></script>
         <script type="module" src="bf2d-viewer3d.js" defer></script>
+        <script type="module" src="bfma-viewer3d.js" defer></script>
         <script src="bfma-configurator.js" defer></script>
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
@@ -910,9 +911,19 @@
             <div class="card preview-card">
                 <div class="card-header">
                     <h2 class="card-title" data-i18n="Vorschau">Vorschau</h2>
+                    <div class="bf2d-preview-controls" style="margin-left: auto;">
+                        <div class="bf2d-view-toggle" role="group" aria-label="Ansicht umschalten">
+                            <button type="button" id="bfmaViewToggle2d" class="bf2d-view-toggle-btn is-active" aria-pressed="true" data-i18n="2D">2D</button>
+                            <button type="button" id="bfmaViewToggle3d" class="bf2d-view-toggle-btn" aria-pressed="false" data-i18n="3D">3D</button>
+                        </div>
+                        <div class="bf2d-preview-actions bfma-when-3d" style="display: none;">
+                             <button type="button" id="bfmaZoom3dButton" class="btn-secondary" data-i18n="Zoom to Fit">Zoom to Fit</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="bfma-preview-container">
+                <div class="bfma-preview-container" data-view-mode="2d">
                     <svg id="bfmaPreviewSvg"></svg>
+                    <div id="bfmaPreview3d" class="bfma-preview-3d" style="display: none; width: 100%; height: 400px; position: relative;" aria-hidden="true"></div>
                 </div>
             </div>
             <div class="card">
