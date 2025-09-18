@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'productionView'];
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'productionView'];
 
 function setActiveNavigation(view) {
     document.body.dataset.activeView = view;
@@ -64,6 +64,9 @@ function showView(view) {
     if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
         window.bf2dConfigurator.onShow();
     }
+    if (view === 'bfmaView' && window.bfmaConfigurator && typeof window.bfmaConfigurator.onShow === 'function') {
+        window.bfmaConfigurator.onShow();
+    }
 }
 
 function showGeneratorView() {
@@ -76,6 +79,10 @@ function showProductionView() {
 
 function showBf2dView() {
     showView('bf2dView');
+}
+
+function showBfmaView() {
+    showView('bfmaView');
 }
 
 function openGeneratorAndClick(buttonId) {
@@ -117,6 +124,24 @@ function formatDuration(ms) {
     const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
+}
+
+function updateSelectAllCheckboxState() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const tableBody = document.getElementById('productionList');
+    if (!tableBody || !selectAllCheckbox) return;
+    const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+    const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+    selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
+}
+
+function updateSelectAllCheckboxState() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const tableBody = document.getElementById('productionList');
+    if (!tableBody || !selectAllCheckbox) return;
+    const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
+    const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
+    selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
 }
 
 function renderProductionList() {
@@ -278,6 +303,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showBf2dView();
         closeSidebarOnSmallScreens();
     });
+    document.getElementById('showBfmaBtn')?.addEventListener('click', () => {
+        showBfmaView();
+        closeSidebarOnSmallScreens();
+    });
     document.getElementById('showProductionBtn')?.addEventListener('click', () => {
         showProductionView();
         closeSidebarOnSmallScreens();
@@ -369,6 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     selectAllCheckbox?.addEventListener('change', e => {
+        const tableBody = document.getElementById('productionList');
+        if (!tableBody) return;
         const isChecked = e.target.checked;
         const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
         rowCheckboxes.forEach(checkbox => {
@@ -381,13 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         updateBatchButtonsState();
+        updateSelectAllCheckboxState();
     });
-
-    function updateSelectAllCheckboxState() {
-        const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-        const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
-        if(selectAllCheckbox) selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
-    }
 
     setInterval(() => {
         if (productionList.some(p => p.status === 'inProgress')) {

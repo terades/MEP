@@ -19,6 +19,7 @@
         </script>
         <script src="generator.js" defer></script>
         <script src="bf2d-configurator.js" defer></script>
+        <script src="bfma-configurator.js" defer></script>
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
     </head>
@@ -49,6 +50,12 @@
                             <path d="M4 5h8l4 4h4v2h-4l-4-4H4v10H2V5c0-1.1.9-2 2-2h10l4 4h4v2h-4l-4-4H4" />
                         </svg>
                         <span class="sidebar-text" data-i18n="Biegeformen">Biegeformen</span>
+                    </button>
+                    <button id="showBfmaBtn" class="sidebar-link" data-view-target="bfmaView" data-i18n-title="Betonstahlmatten" title="Betonstahlmatten">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M2 2h20v20H2V2zm2 2v16h16V4H4zm2 2h5v5H6V6zm7 0h5v5h-5V6zm-7 7h5v5H6v-5zm7 0h5v5h-5v-5z"/>
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Betonstahlmatten">Betonstahlmatten</span>
                     </button>
                     <button id="showProductionBtn" class="sidebar-link" data-view-target="productionView" data-i18n-title="Produktion" title="Produktion">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -724,6 +731,190 @@
                         </div>
                     </div>
                 </div>
+<div id="bfmaView" class="app-container" style="display:none;">
+    <div class="bfma-layout">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title" data-i18n="BFMA Konfigurator">BFMA Konfigurator</h2>
+            </div>
+            <div class="bfma-summary-grid">
+                <div class="bfma-summary-item">
+                    <span class="bfma-summary-label" data-i18n="Gesamtgewicht">Gesamtgewicht</span>
+                    <span class="bfma-summary-value" id="bfmaSummaryWeight">0 kg</span>
+                </div>
+                <div class="bfma-summary-item">
+                    <span class="bfma-summary-label" data-i18n="Stäbe (Y/X/E)">Stäbe (Y/X/E)</span>
+                    <span class="bfma-summary-value" id="bfmaSummaryBarCounts">0 / 0 / 0</span>
+                </div>
+            </div>
+            <div class="bfma-form-grid">
+                <div class="form-group">
+                    <label for="bfmaPos" data-i18n="Pos.-Nr. (p)">Pos.-Nr. (p)</label>
+                    <input type="text" id="bfmaPos" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaLength" data-i18n="Länge (l) mm">Länge (l) mm</label>
+                    <input type="number" id="bfmaLength" value="5000">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaWidth" data-i18n="Breite (b) mm">Breite (b) mm</label>
+                    <input type="number" id="bfmaWidth" value="2000">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaQuantity" data-i18n="Anzahl (n)">Anzahl (n)</label>
+                    <input type="number" id="bfmaQuantity" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaWeight" data-i18n="Gewicht (e) kg">Gewicht (e) kg</label>
+                    <input type="number" id="bfmaWeight" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
+                    <input type="text" id="bfmaSteelGrade" value="B500A">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaMeshType" data-i18n="Mattentyp (m)">Mattentyp (m)</label>
+                    <input type="text" id="bfmaMeshType" value="Q257">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaBendingRoll" data-i18n="Biegerolle (s) mm">Biegerolle (s) mm</label>
+                    <input type="number" id="bfmaBendingRoll" value="0" disabled>
+                </div>
+            </div>
+
+            <div class="bfma-storage-controls">
+                <div class="form-group">
+                    <label for="bfmaShapeName" data-i18n="Matten-Name">Matten-Name</label>
+                    <input type="text" id="bfmaShapeName" data-i18n-placeholder="Matten-Name eingeben…" placeholder="Matten-Name eingeben…">
+                </div>
+                <div class="form-group">
+                    <label for="bfmaSavedShapes" data-i18n="Gespeicherte Matten">Gespeicherte Matten</label>
+                    <select id="bfmaSavedShapes" disabled>
+                        <option value="" data-i18n="Gespeicherte Matte auswählen…">Gespeicherte Matte auswählen…</option>
+                    </select>
+                </div>
+                <div class="bfma-storage-actions button-group">
+                    <button type="button" id="bfmaSaveShapeButton" class="btn-secondary" data-i18n="Speichern">Speichern</button>
+                    <button type="button" id="bfmaLoadShapeButton" class="btn-secondary" data-i18n="Laden" disabled>Laden</button>
+                    <button type="button" id="bfmaDeleteShapeButton" class="btn-danger" data-i18n="Löschen" disabled>Löschen</button>
+                </div>
+            </div>
+            <div class="bfma-tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="y-bars" data-i18n="Y-Längsstäbe">Y-Längsstäbe</button>
+                    <button class="tab-button" data-tab="x-bars" data-i18n="X-Querstäbe">X-Querstäbe</button>
+                    <button class="tab-button" data-tab="e-bars" data-i18n="E-Schrägstäbe">E-Schrägstäbe</button>
+                </div>
+                <div id="y-bars" class="tab-content active">
+                    <table class="full-width-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="d (mm)">d (mm)</th>
+                                <th data-i18n="x (mm)">x (mm)</th>
+                                <th data-i18n="y (mm)">y (mm)</th>
+                                <th data-i18n="l (mm)">l (mm)</th>
+                                <th data-i18n="e (mm;.. / mm,n)">e (mm;.. / mm,n)</th>
+                                <th data-i18n="z">z</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bfmaYBarsBody"></tbody>
+                    </table>
+                    <button type="button" id="bfmaAddYBar" class="btn-secondary" data-i18n="Y-Stab hinzufügen">Y-Stab hinzufügen</button>
+                </div>
+                <div id="x-bars" class="tab-content">
+                    <table class="full-width-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="d (mm)">d (mm)</th>
+                                <th data-i18n="x (mm)">x (mm)</th>
+                                <th data-i18n="y (mm)">y (mm)</th>
+                                <th data-i18n="l (mm)">l (mm)</th>
+                                <th data-i18n="e (mm;.. / mm,n)">e (mm;.. / mm,n)</th>
+                                <th data-i18n="z">z</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bfmaXBarsBody"></tbody>
+                    </table>
+                    <button type="button" id="bfmaAddXBar" class="btn-secondary" data-i18n="X-Stab hinzufügen">X-Stab hinzufügen</button>
+                </div>
+                <div id="e-bars" class="tab-content">
+                    <table class="full-width-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="d (mm)">d (mm)</th>
+                                <th data-i18n="x (mm)">x (mm)</th>
+                                <th data-i18n="y (mm)">y (mm)</th>
+                                <th data-i18n="l (mm)">l (mm)</th>
+                                <th data-i18n="w (°)">w (°)</th>
+                                <th data-i18n="e (mm;.. / mm,n)">e (mm;.. / mm,n)</th>
+                                <th data-i18n="z">z</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bfmaEBarsBody"></tbody>
+                    </table>
+                    <button type="button" id="bfmaAddEBar" class="btn-secondary" data-i18n="E-Stab hinzufügen">E-Stab hinzufügen</button>
+                </div>
+            </div>
+
+            <div class="bfma-bending-controls">
+                <div class="bfma-toggle">
+                    <input type="checkbox" id="bfmaIsBent">
+                    <label for="bfmaIsBent" data-i18n="Matte gebogen">Matte gebogen</label>
+                </div>
+                <div id="bfmaBendingEditor" style="display:none;">
+                    <div class="form-group">
+                        <label data-i18n="Biegerichtung">Biegerichtung</label>
+                        <select id="bfmaBendingDirection">
+                            <option value="Gx" data-i18n="Gx - X-Stäbe gebogen">Gx - X-Stäbe gebogen</option>
+                            <option value="Gy" data-i18n="Gy - Y-Stäbe gebogen">Gy - Y-Stäbe gebogen</option>
+                        </select>
+                    </div>
+                    <table class="full-width-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="Typ">Typ</th>
+                                <th data-i18n="Wert">Wert</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bfmaBendingSequenceBody"></tbody>
+                    </table>
+                    <button type="button" id="bfmaAddBendingSegment" class="btn-secondary" data-i18n="Segment hinzufügen">Segment hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-column">
+             <div class="card bf2d-import-card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="ABS-Import/Export">ABS-Import/Export</h2>
+                </div>
+                <div id="bfmaDropZone" class="bf2d-drop-zone">
+                    <p data-i18n="ABS-Datei hierher ziehen...">ABS-Datei hierher ziehen...</p>
+                </div>
+                <input type="file" id="bfmaImportFileInput" accept=".abs,text/plain" style="display:none">
+            </div>
+            <div class="card preview-card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="Vorschau">Vorschau</h2>
+                </div>
+                <div class="bfma-preview-container">
+                    <svg id="bfmaPreviewSvg"></svg>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="BVBS-ABS Datensatz">BVBS-ABS Datensatz</h2>
+                </div>
+                <textarea id="bfmaDatasetOutput" readonly></textarea>
+                <ul id="bfmaErrorList" class="bfma-error-list"></ul>
+            </div>
+        </div>
+    </div>
+</div>
                 <div id="productionView" class="app-container" style="display:none;">
                     <div class="card">
                         <div class="card-header">
