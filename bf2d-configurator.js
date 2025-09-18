@@ -31,7 +31,6 @@
         lengthOffsetPx: 16,
         lengthTextGapPx: 10,
         lengthTextExtraGapPx: 18,
-        lengthArrowClearancePx: 6,
         minLengthTextSpanPx: 50,
         approxCharWidthPx: 6.5,
         radiusInnerOffsetPx: 14,
@@ -39,7 +38,6 @@
         angleTextOffsetPx: 24,
         minArcTextWidthPx: 48
     });
-    const DIMENSION_ARROW_MARKER_ID = 'bf2d-dim-arrow';
     const SAVED_FORMS_STORAGE_KEY = 'bf2dSavedForms';
     const ABS_START_TOKEN_REGEX = /^(BF2D|BF3D|BFWE|BFMA|BFGT|BFAU)@/;
     const ABS_BLOCK_START_REGEX = /(?:(?<=@)|^)([HGMAPCXYE])/g;
@@ -1155,26 +1153,6 @@
         return { pxPerUnit, unitPerPx: 1 / pxPerUnit };
     }
 
-    function createDimensionMarkerDefs() {
-        const defs = createSvgElement('defs');
-        const marker = createSvgElement('marker', {
-            id: DIMENSION_ARROW_MARKER_ID,
-            orient: 'auto-start-reverse',
-            markerWidth: '6',
-            markerHeight: '6',
-            refX: '4',
-            refY: '3',
-            markerUnits: 'strokeWidth'
-        });
-        const markerPath = createSvgElement('path', {
-            d: 'M0 0 L6 3 L0 6 Z',
-            fill: 'var(--text-color)'
-        });
-        marker.appendChild(markerPath);
-        defs.appendChild(marker);
-        return defs;
-    }
-
     function addLengthDimension(group, leg, config) {
         const length = Number(leg.length);
         if (!Number.isFinite(length) || length <= 0) return;
@@ -1188,13 +1166,11 @@
 
         const unitPerPx = config.unitPerPx;
         const pxPerUnit = config.pxPerUnit;
-        const strokeWidth = config.strokeWidth;
         const charWidthUnits = config.charWidthUnits;
 
         const offsetUnits = DIMENSION_CONFIG.lengthOffsetPx * unitPerPx;
         const textGapUnits = DIMENSION_CONFIG.lengthTextGapPx * unitPerPx;
         const extraGapUnits = DIMENSION_CONFIG.lengthTextExtraGapPx * unitPerPx;
-        const arrowClearanceUnits = DIMENSION_CONFIG.lengthArrowClearancePx * unitPerPx;
 
         const ux = dx / segmentLength;
         const uy = dy / segmentLength;
@@ -1210,40 +1186,9 @@
             y: end.y + ny * offsetUnits
         };
 
-        const extensionStart = createSvgElement('line', {
-            class: 'bf2d-dimension-extension',
-            x1: start.x.toFixed(2),
-            y1: start.y.toFixed(2),
-            x2: dimStart.x.toFixed(2),
-            y2: dimStart.y.toFixed(2),
-            'stroke-width': strokeWidth.toFixed(2)
-        });
-        const extensionEnd = createSvgElement('line', {
-            class: 'bf2d-dimension-extension',
-            x1: end.x.toFixed(2),
-            y1: end.y.toFixed(2),
-            x2: dimEnd.x.toFixed(2),
-            y2: dimEnd.y.toFixed(2),
-            'stroke-width': strokeWidth.toFixed(2)
-        });
-        group.appendChild(extensionStart);
-        group.appendChild(extensionEnd);
-
-        const dimensionLine = createSvgElement('line', {
-            class: 'bf2d-dimension-line',
-            x1: dimStart.x.toFixed(2),
-            y1: dimStart.y.toFixed(2),
-            x2: dimEnd.x.toFixed(2),
-            y2: dimEnd.y.toFixed(2),
-            'stroke-width': strokeWidth.toFixed(2),
-            'marker-start': `url(#${DIMENSION_ARROW_MARKER_ID})`,
-            'marker-end': `url(#${DIMENSION_ARROW_MARKER_ID})`
-        });
-        group.appendChild(dimensionLine);
-
         const label = `${formatDisplayNumber(length)} mm`;
         const dimensionLength = Math.hypot(dimEnd.x - dimStart.x, dimEnd.y - dimStart.y);
-        const availableForText = dimensionLength - 2 * arrowClearanceUnits;
+        const availableForText = dimensionLength;
         const textWidthEstimate = label.length * charWidthUnits;
         const dimensionLengthPx = dimensionLength * pxPerUnit;
         let textOffset = textGapUnits;
@@ -1289,7 +1234,6 @@
 
         const unitPerPx = config.unitPerPx;
         const pxPerUnit = config.pxPerUnit;
-        const strokeWidth = config.strokeWidth;
         const baseFontSize = config.fontSize;
 
         let dimensionRadius = radius - DIMENSION_CONFIG.radiusInnerOffsetPx * unitPerPx;
@@ -1302,25 +1246,6 @@
         const endUnit = bend.endUnit;
         const sweepDir = bend.sweepDir;
 
-        const dimensionStart = {
-            x: center.x + startUnit.x * dimensionRadius,
-            y: center.y + startUnit.y * dimensionRadius
-        };
-        const dimensionEnd = {
-            x: center.x + endUnit.x * dimensionRadius,
-            y: center.y + endUnit.y * dimensionRadius
-        };
-
-        const sweepFlag = sweepDir < 0 ? 1 : 0;
-        const arcPath = createSvgElement('path', {
-            class: 'bf2d-dimension-arc',
-            d: `M ${dimensionStart.x.toFixed(2)} ${dimensionStart.y.toFixed(2)} A ${dimensionRadius.toFixed(2)} ${dimensionRadius.toFixed(2)} 0 0 ${sweepFlag} ${dimensionEnd.x.toFixed(2)} ${dimensionEnd.y.toFixed(2)}`,
-            'stroke-width': strokeWidth.toFixed(2),
-            'marker-start': `url(#${DIMENSION_ARROW_MARKER_ID})`,
-            'marker-end': `url(#${DIMENSION_ARROW_MARKER_ID})`
-        });
-        group.appendChild(arcPath);
-
         const startAngle = Math.atan2(startUnit.y, startUnit.x);
         const endAngle = Math.atan2(endUnit.y, endUnit.x);
         let delta = endAngle - startAngle;
@@ -1332,48 +1257,21 @@
         const totalAngle = Math.abs(delta);
         const midAngle = startAngle + delta / 2;
 
-        const radiusLabel = `R${formatDisplayNumber(radius)} mm`;
         const angleLabel = `${formatDisplayNumber(angleDeg)}°`;
         const arcLengthPx = Math.abs(dimensionRadius) * totalAngle * pxPerUnit;
-        const radiusTextWidthPx = radiusLabel.length * DIMENSION_CONFIG.approxCharWidthPx;
-        const requiresExtraOffset = arcLengthPx < Math.max(radiusTextWidthPx, DIMENSION_CONFIG.minArcTextWidthPx);
+        const requiresExtraOffset = arcLengthPx < DIMENSION_CONFIG.minArcTextWidthPx;
 
-        let radiusTextOffset = DIMENSION_CONFIG.radiusTextOffsetPx * unitPerPx;
         let angleTextOffset = DIMENSION_CONFIG.angleTextOffsetPx * unitPerPx;
         if (requiresExtraOffset) {
-            radiusTextOffset += DIMENSION_CONFIG.radiusTextOffsetPx * unitPerPx;
             angleTextOffset += (DIMENSION_CONFIG.angleTextOffsetPx * 0.5) * unitPerPx;
         }
 
-        let radiusTextRadius = Math.max(dimensionRadius - radiusTextOffset, dimensionRadius * 0.45);
-        let angleTextRadius = Math.max(radiusTextRadius - angleTextOffset, dimensionRadius * 0.35);
+        let angleTextRadius = Math.max(dimensionRadius - angleTextOffset, dimensionRadius * 0.35);
 
-        const radiusTextPosition = {
-            x: center.x + Math.cos(midAngle) * radiusTextRadius,
-            y: center.y + Math.sin(midAngle) * radiusTextRadius
-        };
         const angleTextPosition = {
             x: center.x + Math.cos(midAngle) * angleTextRadius,
             y: center.y + Math.sin(midAngle) * angleTextRadius
         };
-
-        let tangentAngleDeg = (midAngle + (sweepDir < 0 ? -Math.PI / 2 : Math.PI / 2)) * 180 / Math.PI;
-        if (tangentAngleDeg > 90 || tangentAngleDeg < -90) {
-            tangentAngleDeg += 180;
-        }
-
-        const radiusTextGroup = createSvgElement('g', {
-            transform: `translate(${radiusTextPosition.x.toFixed(2)} ${radiusTextPosition.y.toFixed(2)}) rotate(${tangentAngleDeg.toFixed(2)})`
-        });
-        const radiusTextElement = createSvgElement('text', {
-            class: 'bf2d-dimension-text',
-            'text-anchor': 'middle',
-            'dominant-baseline': 'middle',
-            'font-size': (baseFontSize * 0.95).toFixed(2)
-        });
-        radiusTextElement.textContent = radiusLabel;
-        radiusTextGroup.appendChild(radiusTextElement);
-        group.appendChild(radiusTextGroup);
 
         const angleTextElement = createSvgElement('text', {
             class: 'bf2d-angle-text',
@@ -1395,19 +1293,14 @@
             return;
         }
 
-        const defs = createDimensionMarkerDefs();
-        svg.appendChild(defs);
-
         const dimensionGroup = createSvgElement('g', { class: 'bf2d-dimensions' });
         const charWidthUnits = DIMENSION_CONFIG.approxCharWidthPx * scale.unitPerPx;
         const fontSize = Math.max(12 * scale.unitPerPx, 6 * scale.unitPerPx);
-        const strokeWidth = Math.max(scale.unitPerPx * 1.2, scale.unitPerPx * 0.8);
 
         if (hasLengths) {
             geometry.legs.forEach(leg => addLengthDimension(dimensionGroup, leg, {
                 unitPerPx: scale.unitPerPx,
                 pxPerUnit: scale.pxPerUnit,
-                strokeWidth,
                 fontSize,
                 charWidthUnits
             }));
@@ -1417,7 +1310,6 @@
             geometry.bends.forEach(bend => addBendDimension(dimensionGroup, bend, {
                 unitPerPx: scale.unitPerPx,
                 pxPerUnit: scale.pxPerUnit,
-                strokeWidth,
                 fontSize,
                 charWidthUnits
             }));
