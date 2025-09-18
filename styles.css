@@ -1904,8 +1904,51 @@ select.status-select.done {
     align-items: center;
 }
 
-.bf2d-import-body {
-    padding: 1rem;
+.bf2d-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: var(--light-bg-color);
+    min-height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bf2d-drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+    transform: scale(1.02);
+}
+
+.bf2d-drop-zone-content {
+    width: 100%;
+}
+
+.bf2d-drop-zone-icon {
+    width: 48px;
+    height: 48px;
+    fill: var(--primary-color);
+    opacity: 0.6;
+    margin-bottom: 1rem;
+}
+
+.bf2d-drop-zone-instructions p {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--heading-color);
+}
+
+.bf2d-drop-zone-note {
+    font-size: 0.9rem;
+    color: var(--text-muted-color);
+}
+
+.bf2d-import-content {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -1914,7 +1957,7 @@ select.status-select.done {
 .bf2d-import-table-wrapper {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    background-color: var(--light-bg-color);
+    background-color: var(--card-bg-color);
     max-height: 320px;
     overflow-y: auto;
 }
