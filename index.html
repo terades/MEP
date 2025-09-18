@@ -618,6 +618,39 @@
                             </div>
                             <ul id="bf2dErrorList" class="bf2d-error-list"></ul>
                         </div>
+                        <div class="card bf2d-import-card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="ABS-Import">ABS-Import</h2>
+                                <div class="button-group" style="justify-content: flex-end;">
+                                    <button type="button" id="bf2dImportButton" class="btn-secondary">
+                                        <span data-i18n="ABS-Datei importieren">ABS-Datei importieren</span>
+                                    </button>
+                                    <button type="button" id="bf2dExportSelectionButton" class="btn-secondary" disabled>
+                                        <span data-i18n="Auswahl exportieren">Auswahl exportieren</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="bf2d-import-body">
+                                <div id="bf2dImportStatus" class="info-text" aria-live="polite"></div>
+                                <div class="bf2d-import-table-wrapper">
+                                    <table id="bf2dImportTable" class="full-width-table bf2d-import-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:32px;"><input type="checkbox" id="bf2dImportSelectAll"></th>
+                                                <th data-i18n="Typ">Typ</th>
+                                                <th data-i18n="Pos.-Nr.">Pos.-Nr.</th>
+                                                <th data-i18n="⌀ (mm)">⌀ (mm)</th>
+                                                <th data-i18n="Länge gesamt">Länge gesamt</th>
+                                                <th data-i18n="Anzahl">Anzahl</th>
+                                                <th data-i18n="Prüfsumme">Prüfsumme</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bf2dImportTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <input type="file" id="bf2dImportFileInput" accept=".abs,text/plain" style="display:none">
+                        </div>
                         <div class="card preview-card">
                             <div class="card-header">
                                 <h2 class="card-title" data-i18n="SVG Vorschau">SVG Vorschau</h2>

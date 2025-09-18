@@ -14,7 +14,8 @@
     const state = {
         segments: [],
         meta: { ...META_DEFAULTS },
-        datasetText: ''
+        datasetText: '',
+        previewNoteOverride: null
     };
 
     let initialized = false;
@@ -40,6 +41,18 @@
     });
     const DIMENSION_ARROW_MARKER_ID = 'bf2d-dim-arrow';
     const SAVED_FORMS_STORAGE_KEY = 'bf2dSavedForms';
+    const ABS_START_TOKEN_REGEX = /^(BF2D|BF3D|BFWE|BFMA|BFGT|BFAU)@/;
+    const ABS_BLOCK_START_REGEX = /(?:(?<=@)|^)([HGMAPCXYE])/g;
+    const ABS_FIELD_REGEX = /([a-z])([^@]*)@/g;
+    const ABS_CHECKSUM_REGEX = /^C(\d+)@/;
+
+    const importState = {
+        entries: [],
+        selectedIds: new Set(),
+        activeId: null,
+        fileName: '',
+        lastError: null
+    };
 
     function createSvgElement(tagName, attributes = {}) {
         const element = document.createElementNS(SVG_NS, tagName);
@@ -229,6 +242,21 @@
         });
     }
 
+    function writeMetaToInputs() {
+        metaFieldDefinitions().forEach(def => {
+            const el = document.getElementById(def.id);
+            if (!el) return;
+            const value = state.meta[def.key];
+            if (def.key === 'diameter' || def.key === 'rollDiameter') {
+                el.value = formatNumberForInput(value);
+            } else if (def.key === 'quantity') {
+                el.value = Number.isFinite(value) ? String(Math.round(value)) : '1';
+            } else {
+                el.value = value !== undefined && value !== null ? String(value) : '';
+            }
+        });
+    }
+
     function attachMetaListeners() {
         metaFieldDefinitions().forEach(def => {
             const el = document.getElementById(def.id);
@@ -295,6 +323,30 @@
                 dimensionPreferences.showRadii = radiusToggle.checked;
                 updateOutputs();
             });
+        }
+
+        const importButton = document.getElementById('bf2dImportButton');
+        const importInput = document.getElementById('bf2dImportFileInput');
+        if (importButton && importInput) {
+            importButton.addEventListener('click', () => importInput.click());
+        }
+        if (importInput) {
+            importInput.addEventListener('change', handleAbsFileImport);
+        }
+
+        const exportButton = document.getElementById('bf2dExportSelectionButton');
+        if (exportButton) {
+            exportButton.addEventListener('click', exportSelectedAbsEntries);
+        }
+
+        const importTableBody = document.getElementById('bf2dImportTableBody');
+        if (importTableBody) {
+            importTableBody.addEventListener('click', handleImportTableClick);
+        }
+
+        const selectAll = document.getElementById('bf2dImportSelectAll');
+        if (selectAll) {
+            selectAll.addEventListener('change', handleImportSelectAll);
         }
     }
 
@@ -754,6 +806,7 @@
     }
 
     function addSegment() {
+        state.previewNoteOverride = null;
         if (state.segments.length === 0) {
             state.segments.push(createSegment(500, 0, 'L', 0));
         } else {
@@ -770,6 +823,7 @@
     }
 
     function removeSegment(id) {
+        state.previewNoteOverride = null;
         if (state.segments.length <= 2) {
             if (typeof showFeedback === 'function') {
                 showFeedback('bf2dStatus', i18n.t('Mindestens zwei Segmente erforderlich.'), 'warning', 3000);
@@ -786,6 +840,7 @@
     }
 
     function moveSegment(index, direction) {
+        state.previewNoteOverride = null;
         const targetIndex = index + direction;
         if (targetIndex < 0 || targetIndex >= state.segments.length) return;
         const [segment] = state.segments.splice(index, 1);
@@ -1374,7 +1429,33 @@
         }
         if (note) {
             note.textContent = '';
-            note.classList.remove('warning-message', 'error-message', 'success-message');
+            note.classList.remove('warning-message', 'error-message', 'success-message', 'info-message');
+        }
+        if (state.previewNoteOverride && (!summary.geometry || summary.errors.length)) {
+            if (note) {
+                const message = typeof state.previewNoteOverride === 'string'
+                    ? state.previewNoteOverride
+                    : state.previewNoteOverride?.message
+                        || (state.previewNoteOverride?.messageKey && typeof i18n?.t === 'function'
+                            ? i18n.t(state.previewNoteOverride.messageKey)
+                            : state.previewNoteOverride?.messageKey)
+                        || (typeof i18n?.t === 'function'
+                            ? i18n.t('Keine Geometrie verfügbar.')
+                            : 'Keine Geometrie verfügbar.');
+                note.textContent = message;
+                const type = state.previewNoteOverride?.type || 'info';
+                if (type === 'error') {
+                    note.classList.add('error-message');
+                } else if (type === 'success') {
+                    note.classList.add('success-message');
+                } else if (type === 'warning') {
+                    note.classList.add('warning-message');
+                } else {
+                    note.classList.add('info-message');
+                }
+            }
+            svg.removeAttribute('viewBox');
+            return;
         }
         if (summary.errors.length || !summary.geometry) {
             if (note) {
@@ -1558,6 +1639,690 @@
         }
     }
 
+    function normalizeAbsContent(text) {
+        if (typeof text !== 'string') return '';
+        return text.replace(/\r\n?/g, '\n');
+    }
+
+    function normalizeAbsLine(line) {
+        if (typeof line !== 'string') return '';
+        const trimmed = line.trim();
+        if (!trimmed) return '';
+        return trimmed.replace(/@\s+([HGMAPCXYE])/g, '@$1');
+    }
+
+    function computeImportChecksumPrefix(text) {
+        let sum = 0;
+        for (let i = 0; i < text.length; i++) {
+            sum += text.charCodeAt(i);
+        }
+        return sum;
+    }
+
+    function parseAbsBlock(rawBlock, blockId) {
+        const block = {
+            id: blockId,
+            raw: rawBlock,
+            fields: {},
+            errors: [],
+            warnings: []
+        };
+        if (!rawBlock || typeof rawBlock !== 'string') {
+            block.errors.push('Leerer Block');
+            return block;
+        }
+        if (blockId === 'C') {
+            const match = ABS_CHECKSUM_REGEX.exec(rawBlock.trim());
+            if (match) {
+                block.checkValue = Number(match[1]);
+            } else {
+                block.checkValue = NaN;
+                block.errors.push('Prüfsummenwert fehlt');
+            }
+            return block;
+        }
+        const content = rawBlock.slice(1);
+        const normalizedContent = content.trim();
+        let lastIndex = 0;
+        ABS_FIELD_REGEX.lastIndex = 0;
+        let fieldMatch;
+        while ((fieldMatch = ABS_FIELD_REGEX.exec(normalizedContent)) !== null) {
+            lastIndex = ABS_FIELD_REGEX.lastIndex;
+            const key = fieldMatch[1];
+            const rawValue = fieldMatch[2] || '';
+            const trimmedValue = rawValue.trim();
+            if (trimmedValue.includes('@')) {
+                block.warnings.push(`Unzulässiges Zeichen '@' im Feld ${key}`);
+            }
+            const value = trimmedValue.includes(';')
+                ? trimmedValue.split(';').map(part => part.trim())
+                : trimmedValue;
+            if (!block.fields[key]) {
+                block.fields[key] = [];
+            }
+            block.fields[key].push(value);
+        }
+        const remainder = normalizedContent.slice(lastIndex).trim();
+        if (remainder.length > 0) {
+            block.errors.push('Block unvollständig');
+        }
+        return block;
+    }
+
+    function getFirstFieldValue(block, key) {
+        if (!block || !block.fields || !block.fields[key] || !block.fields[key].length) {
+            return undefined;
+        }
+        const first = block.fields[key][0];
+        if (Array.isArray(first)) {
+            return first.length ? first[0] : undefined;
+        }
+        return first;
+    }
+
+    function parseNumberValue(value) {
+        if (Array.isArray(value)) {
+            return parseNumberValue(value[0]);
+        }
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : NaN;
+        }
+        if (typeof value !== 'string') return NaN;
+        const text = value.trim();
+        if (!text) return NaN;
+        const normalized = text.replace(',', '.');
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    function parseIntegerValue(value) {
+        const numeric = parseNumberValue(value);
+        if (!Number.isFinite(numeric)) return NaN;
+        return Math.round(numeric);
+    }
+
+    function parseDiameterValue(value) {
+        if (Array.isArray(value)) {
+            return parseDiameterValue(value[0]);
+        }
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : NaN;
+        }
+        if (typeof value !== 'string') return NaN;
+        const text = value.trim();
+        if (!text) return NaN;
+        const cleaned = text.replace(/d$/i, '').replace(',', '.');
+        const parsed = Number.parseFloat(cleaned);
+        return Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    function buildSegmentsFromNodes(nodes) {
+        if (!Array.isArray(nodes) || nodes.length < 2) {
+            return null;
+        }
+        const segments = [];
+        const orientations = [];
+        for (let i = 0; i < nodes.length - 1; i++) {
+            const start = nodes[i];
+            const end = nodes[i + 1];
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const length = Math.hypot(dx, dy);
+            const orientation = Math.atan2(dy, dx);
+            orientations.push(orientation);
+            segments.push({
+                length,
+                bendAngle: 0,
+                bendDirection: 'L'
+            });
+        }
+        for (let i = 0; i < segments.length - 1; i++) {
+            let delta = orientations[i + 1] - orientations[i];
+            while (delta <= -Math.PI) delta += Math.PI * 2;
+            while (delta > Math.PI) delta -= Math.PI * 2;
+            let angleDeg = Math.abs(delta * 180 / Math.PI);
+            if (angleDeg < 1e-6) angleDeg = 0;
+            if (angleDeg > 180) angleDeg = 180;
+            segments[i].bendAngle = angleDeg;
+            segments[i].bendDirection = delta < 0 ? 'R' : 'L';
+        }
+        if (segments.length) {
+            const last = segments[segments.length - 1];
+            last.bendAngle = 0;
+            last.bendDirection = last.bendDirection === 'R' ? 'R' : 'L';
+        }
+        return segments;
+    }
+
+    function parseAbsLine(line, orderIndex, originalLine, sourceIndex) {
+        const entry = {
+            id: `abs-${orderIndex + 1}`,
+            index: orderIndex,
+            sourceIndex: typeof sourceIndex === 'number' ? sourceIndex : orderIndex,
+            rawLine: line,
+            originalLine: originalLine ?? line,
+            type: '',
+            startValid: true,
+            blocks: [],
+            blockMap: new Map(),
+            metadata: {},
+            segmentDefinitions: null,
+            hasGeometry: false,
+            lengthFromGeometry: NaN,
+            checksum: { status: 'Fehlt', expected: null, actual: null },
+            errorMessages: [],
+            warningMessages: []
+        };
+
+        if (!line) {
+            entry.startValid = false;
+            entry.errorMessages.push('Leerer Datensatz');
+            return entry;
+        }
+
+        const startMatch = ABS_START_TOKEN_REGEX.exec(line);
+        if (startMatch) {
+            entry.type = startMatch[1];
+        } else {
+            entry.startValid = false;
+            const prefix = line.split('@', 1)[0];
+            entry.type = prefix || '';
+            entry.errorMessages.push('Ungültiger Startmarker');
+        }
+
+        const blockMatches = [];
+        ABS_BLOCK_START_REGEX.lastIndex = 0;
+        let blockMatch;
+        while ((blockMatch = ABS_BLOCK_START_REGEX.exec(line)) !== null) {
+            blockMatches.push({ id: blockMatch[1], index: blockMatch.index });
+        }
+        if (!blockMatches.length) {
+            entry.errorMessages.push('Keine Blöcke gefunden');
+            return entry;
+        }
+
+        blockMatches.forEach((match, idx) => {
+            const start = match.index;
+            const end = idx + 1 < blockMatches.length ? blockMatches[idx + 1].index : line.length;
+            const rawBlock = line.slice(start, end);
+            const parsedBlock = parseAbsBlock(rawBlock, match.id);
+            parsedBlock.startIndex = start;
+            parsedBlock.order = idx;
+            entry.blocks.push(parsedBlock);
+            if (!entry.blockMap.has(match.id)) {
+                entry.blockMap.set(match.id, []);
+            }
+            entry.blockMap.get(match.id).push(parsedBlock);
+            parsedBlock.errors.forEach(message => {
+                entry.errorMessages.push(`Block ${match.id}: ${message}`);
+            });
+            parsedBlock.warnings.forEach(message => {
+                entry.warningMessages.push(`Block ${match.id}: ${message}`);
+            });
+        });
+
+        const headerBlock = (entry.blockMap.get('H') || [])[0];
+        if (headerBlock) {
+            const diameterRaw = getFirstFieldValue(headerBlock, 'd');
+            const diameter = parseDiameterValue(diameterRaw);
+            const quantity = parseIntegerValue(getFirstFieldValue(headerBlock, 'n'));
+            const totalLength = parseNumberValue(getFirstFieldValue(headerBlock, 'l'));
+            const rollDiameter = parseNumberValue(getFirstFieldValue(headerBlock, 'f'));
+            entry.metadata = {
+                project: getFirstFieldValue(headerBlock, 'j') || '',
+                order: getFirstFieldValue(headerBlock, 'i') || '',
+                position: getFirstFieldValue(headerBlock, 'p') || '',
+                diameter,
+                diameterRaw: typeof diameterRaw === 'string' ? diameterRaw : '',
+                totalLength: Number.isFinite(totalLength) ? totalLength : NaN,
+                quantity: Number.isFinite(quantity) ? quantity : NaN,
+                steelGrade: getFirstFieldValue(headerBlock, 's') || '',
+                remark: getFirstFieldValue(headerBlock, 'v') || '',
+                rollDiameter: Number.isFinite(rollDiameter) ? rollDiameter : NaN,
+                doubleBar: typeof diameterRaw === 'string' && /d$/i.test(diameterRaw)
+            };
+        } else {
+            entry.metadata = {
+                project: '',
+                order: '',
+                position: '',
+                diameter: NaN,
+                diameterRaw: '',
+                totalLength: NaN,
+                quantity: NaN,
+                steelGrade: '',
+                remark: '',
+                rollDiameter: NaN,
+                doubleBar: false
+            };
+            entry.warningMessages.push('H-Block fehlt');
+        }
+
+        const checksumBlocks = entry.blockMap.get('C') || [];
+        if (checksumBlocks.length) {
+            const block = checksumBlocks[0];
+            const prefix = typeof block.startIndex === 'number' ? line.slice(0, block.startIndex + 1) : '';
+            if (prefix) {
+                const sum = computeImportChecksumPrefix(prefix);
+                const expected = 96 - (sum % 32);
+                entry.checksum.expected = expected;
+                const actual = Number(block.checkValue);
+                if (Number.isFinite(actual)) {
+                    entry.checksum.actual = actual;
+                    entry.checksum.status = actual === expected ? 'OK' : 'Fehler';
+                } else {
+                    entry.checksum.status = 'Fehler';
+                }
+            } else {
+                entry.checksum.status = 'Fehler';
+            }
+        } else {
+            entry.checksum.status = 'Fehlt';
+        }
+
+        if (entry.checksum.status === 'Fehler') {
+            entry.errorMessages.push('Prüfsummenprüfung fehlgeschlagen');
+        } else if (entry.checksum.status === 'Fehlt') {
+            entry.errorMessages.push('Prüfsummenblock fehlt');
+        }
+
+        const nodes = [];
+        ['X', 'Y', 'E'].forEach(blockId => {
+            const blocks = entry.blockMap.get(blockId) || [];
+            blocks.forEach(block => {
+                const xValue = getFirstFieldValue(block, 'x');
+                const yValue = getFirstFieldValue(block, 'y');
+                if (xValue === undefined || yValue === undefined) {
+                    entry.warningMessages.push(`Block ${blockId}: Koordinaten fehlen`);
+                    return;
+                }
+                const x = parseNumberValue(xValue);
+                const y = parseNumberValue(yValue);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                    entry.errorMessages.push(`Block ${blockId}: Ungültige Koordinaten`);
+                    return;
+                }
+                const sequence = parseNumberValue(getFirstFieldValue(block, 's'));
+                nodes.push({
+                    x,
+                    y,
+                    blockId,
+                    order: block.order || 0,
+                    sequence: Number.isFinite(sequence) ? sequence : null
+                });
+            });
+        });
+
+        if (nodes.length >= 2) {
+            const sortedNodes = nodes.slice().sort((a, b) => {
+                if (a.sequence !== null && b.sequence !== null && a.sequence !== b.sequence) {
+                    return a.sequence - b.sequence;
+                }
+                if (a.order !== b.order) {
+                    return a.order - b.order;
+                }
+                return 0;
+            });
+            const segments = buildSegmentsFromNodes(sortedNodes);
+            if (segments && segments.length) {
+                entry.segmentDefinitions = segments;
+                entry.hasGeometry = segments.length >= 2;
+                entry.lengthFromGeometry = segments.reduce((total, segment) => total + Math.max(segment.length, 0), 0);
+            }
+        }
+
+        if (!entry.segmentDefinitions) {
+            entry.hasGeometry = false;
+            entry.segmentDefinitions = null;
+            entry.lengthFromGeometry = NaN;
+            if (!nodes.length) {
+                entry.warningMessages.push('Keine Geometrie gefunden');
+            } else {
+                entry.warningMessages.push('Geometrie unvollständig');
+            }
+        }
+
+        return entry;
+    }
+
+    function parseAbsFileContent(text) {
+        const normalized = normalizeAbsContent(text);
+        const rawLines = normalized.split(/\n/);
+        const entries = [];
+        rawLines.forEach((rawLine, sourceIndex) => {
+            const trimmed = typeof rawLine === 'string' ? rawLine.trim() : '';
+            if (!trimmed) return;
+            const normalizedLine = normalizeAbsLine(rawLine);
+            if (!normalizedLine) return;
+            const entry = parseAbsLine(normalizedLine, entries.length, trimmed, sourceIndex);
+            entries.push(entry);
+        });
+        assignDisplayPositions(entries);
+        return entries;
+    }
+
+    function assignDisplayPositions(entries) {
+        const counts = new Map();
+        entries.forEach(entry => {
+            const position = entry?.metadata?.position || '';
+            if (!position) return;
+            counts.set(position, (counts.get(position) || 0) + 1);
+        });
+        const usedIndices = new Map();
+        entries.forEach(entry => {
+            const position = entry?.metadata?.position || '';
+            if (!position) {
+                entry.displayPosition = '';
+                return;
+            }
+            const total = counts.get(position) || 0;
+            if (total <= 1) {
+                entry.displayPosition = position;
+                return;
+            }
+            const index = (usedIndices.get(position) || 0) + 1;
+            usedIndices.set(position, index);
+            entry.displayPosition = `${position} (${index})`;
+        });
+    }
+
+    function formatOptionalNumber(value, decimals = 1) {
+        if (!Number.isFinite(value)) {
+            return '—';
+        }
+        const factor = Math.pow(10, decimals);
+        const rounded = Math.round(value * factor) / factor;
+        let text = rounded.toFixed(decimals);
+        if (decimals > 0) {
+            text = text.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+        }
+        return text;
+    }
+
+    function updateImportControls() {
+        const selectAll = document.getElementById('bf2dImportSelectAll');
+        const total = importState.entries.length;
+        const selected = importState.selectedIds.size;
+        if (selectAll) {
+            if (!total) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else {
+                selectAll.checked = selected > 0 && selected === total;
+                selectAll.indeterminate = selected > 0 && selected < total;
+            }
+        }
+        const exportButton = document.getElementById('bf2dExportSelectionButton');
+        if (exportButton) {
+            if (selected > 0) {
+                exportButton.removeAttribute('disabled');
+            } else {
+                exportButton.setAttribute('disabled', 'disabled');
+            }
+        }
+    }
+
+    function updateImportStatusDisplay() {
+        const statusEl = document.getElementById('bf2dImportStatus');
+        if (!statusEl) return;
+        const total = importState.entries.length;
+        if (!total) {
+            statusEl.textContent = typeof i18n?.t === 'function'
+                ? i18n.t('Keine Positionen importiert.')
+                : 'Keine Positionen importiert.';
+            statusEl.classList.remove('error-message', 'warning-message', 'success-message');
+            return;
+        }
+        const errorCount = importState.entries.filter(entry => entry.errorMessages.length > 0 || entry.checksum?.status === 'Fehler' || entry.checksum?.status === 'Fehlt' || entry.startValid === false).length;
+        const warningCount = importState.entries.filter(entry => entry.errorMessages.length === 0 && entry.warningMessages.length > 0).length;
+        const parts = [];
+        if (typeof i18n?.t === 'function') {
+            parts.push(i18n.t('{count} Positionen importiert.', { count: total }));
+            if (errorCount) {
+                parts.push(i18n.t('{count} mit Fehlern', { count: errorCount }));
+            }
+            if (warningCount) {
+                parts.push(i18n.t('{count} mit Warnungen', { count: warningCount }));
+            }
+        } else {
+            parts.push(`${total} Positionen importiert.`);
+            if (errorCount) parts.push(`${errorCount} mit Fehlern`);
+            if (warningCount) parts.push(`${warningCount} mit Warnungen`);
+        }
+        statusEl.textContent = parts.join(' · ');
+        statusEl.classList.remove('error-message', 'warning-message', 'success-message');
+        if (errorCount) {
+            statusEl.classList.add('error-message');
+        } else if (warningCount) {
+            statusEl.classList.add('warning-message');
+        }
+    }
+
+    function renderImportTable() {
+        const tbody = document.getElementById('bf2dImportTableBody');
+        if (!tbody) return;
+        tbody.textContent = '';
+        const entries = importState.entries || [];
+        if (!entries.length) {
+            const row = document.createElement('tr');
+            row.className = 'bf2d-import-empty-row';
+            const cell = document.createElement('td');
+            cell.colSpan = 7;
+            cell.className = 'bf2d-import-empty-cell';
+            cell.textContent = typeof i18n?.t === 'function'
+                ? i18n.t('Keine Positionen importiert.')
+                : 'Keine Positionen importiert.';
+            row.appendChild(cell);
+            tbody.appendChild(row);
+            updateImportControls();
+            updateImportStatusDisplay();
+            return;
+        }
+
+        entries.forEach(entry => {
+            const row = document.createElement('tr');
+            row.dataset.entryId = entry.id;
+            if (entry.errorMessages.length || entry.checksum?.status === 'Fehler' || entry.checksum?.status === 'Fehlt' || entry.startValid === false) {
+                row.classList.add('bf2d-import-error');
+            } else if (entry.warningMessages.length) {
+                row.classList.add('bf2d-import-warning');
+            }
+            if (importState.activeId === entry.id) {
+                row.classList.add('bf2d-import-active');
+            }
+            const tooltipParts = [];
+            if (entry.errorMessages.length) {
+                tooltipParts.push(entry.errorMessages.join(' · '));
+            }
+            if (entry.warningMessages.length) {
+                tooltipParts.push(entry.warningMessages.join(' · '));
+            }
+            if (tooltipParts.length) {
+                row.title = tooltipParts.join('\n');
+            }
+
+            const selectCell = document.createElement('td');
+            selectCell.className = 'bf2d-import-select-cell';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'bf2d-import-select';
+            checkbox.dataset.entryId = entry.id;
+            checkbox.checked = importState.selectedIds.has(entry.id);
+            selectCell.appendChild(checkbox);
+            row.appendChild(selectCell);
+
+            const typeCell = document.createElement('td');
+            typeCell.textContent = entry.type || '—';
+            row.appendChild(typeCell);
+
+            const positionCell = document.createElement('td');
+            positionCell.textContent = entry.displayPosition || entry.metadata.position || '—';
+            row.appendChild(positionCell);
+
+            const diameterCell = document.createElement('td');
+            diameterCell.textContent = formatOptionalNumber(entry.metadata.diameter, 1);
+            row.appendChild(diameterCell);
+
+            const lengthValue = Number.isFinite(entry.metadata.totalLength) ? entry.metadata.totalLength : entry.lengthFromGeometry;
+            const lengthCell = document.createElement('td');
+            lengthCell.textContent = formatOptionalNumber(lengthValue, 1);
+            row.appendChild(lengthCell);
+
+            const quantityCell = document.createElement('td');
+            const quantity = Number.isFinite(entry.metadata.quantity) ? Math.round(entry.metadata.quantity) : NaN;
+            quantityCell.textContent = Number.isFinite(quantity) ? String(quantity) : '—';
+            row.appendChild(quantityCell);
+
+            const checksumCell = document.createElement('td');
+            checksumCell.className = 'bf2d-import-checksum-cell';
+            const status = entry.checksum?.status || 'Fehlt';
+            let checksumLabel;
+            if (status === 'OK') {
+                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('OK') : 'OK';
+            } else if (status === 'Fehlt') {
+                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('Fehlt') : 'Fehlt';
+            } else {
+                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('Fehler') : 'Fehler';
+            }
+            if (status !== 'OK') {
+                checksumCell.classList.add('bf2d-import-checksum-error');
+                const expected = entry.checksum?.expected;
+                const actual = entry.checksum?.actual;
+                if (Number.isFinite(expected) && Number.isFinite(actual)) {
+                    checksumLabel += ` (${actual} ≠ ${expected})`;
+                }
+            }
+            checksumCell.textContent = checksumLabel;
+            row.appendChild(checksumCell);
+
+            tbody.appendChild(row);
+        });
+
+        updateImportControls();
+        updateImportStatusDisplay();
+    }
+
+    async function handleAbsFileImport(event) {
+        const input = event.target;
+        const files = input?.files;
+        if (!files || !files.length) return;
+        const file = files[0];
+        input.value = '';
+        try {
+            const text = await file.text();
+            importState.entries = parseAbsFileContent(text);
+            importState.selectedIds.clear();
+            importState.activeId = null;
+            importState.fileName = file.name || '';
+            renderImportTable();
+        } catch (error) {
+            console.error('Failed to import ABS file', error);
+            importState.entries = [];
+            importState.selectedIds.clear();
+            importState.activeId = null;
+            renderImportTable();
+            const statusEl = document.getElementById('bf2dImportStatus');
+            if (statusEl) {
+                const message = typeof i18n?.t === 'function'
+                    ? i18n.t('Fehler beim Einlesen der ABS-Datei.')
+                    : 'Fehler beim Einlesen der ABS-Datei.';
+                statusEl.textContent = message;
+                statusEl.classList.add('error-message');
+            }
+        }
+    }
+
+    function handleImportTableClick(event) {
+        const checkbox = event.target.closest('.bf2d-import-select');
+        if (checkbox) {
+            const entryId = checkbox.dataset.entryId;
+            if (!entryId) return;
+            if (checkbox.checked) {
+                importState.selectedIds.add(entryId);
+            } else {
+                importState.selectedIds.delete(entryId);
+            }
+            updateImportControls();
+            updateImportStatusDisplay();
+            return;
+        }
+        const row = event.target.closest('tr[data-entry-id]');
+        if (!row) return;
+        const entryId = row.dataset.entryId;
+        const entry = importState.entries.find(item => item.id === entryId);
+        if (!entry) return;
+        loadImportEntry(entry);
+    }
+
+    function handleImportSelectAll(event) {
+        const checked = Boolean(event.target.checked);
+        importState.selectedIds.clear();
+        if (checked) {
+            importState.entries.forEach(entry => importState.selectedIds.add(entry.id));
+        }
+        renderImportTable();
+    }
+
+    function exportSelectedAbsEntries() {
+        if (!importState.selectedIds.size) {
+            return;
+        }
+        const selectedEntries = importState.entries
+            .filter(entry => importState.selectedIds.has(entry.id))
+            .sort((a, b) => a.sourceIndex - b.sourceIndex);
+        if (!selectedEntries.length) return;
+        const content = selectedEntries.map(entry => entry.originalLine || entry.rawLine).join('\n');
+        if (!content) return;
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const baseName = importState.fileName ? importState.fileName.replace(/\.[^.]+$/, '') : 'abs_selection';
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${sanitizeFilename(baseName || 'abs_selection')}.abs`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    function loadImportEntry(entry) {
+        if (!entry) return;
+        importState.activeId = entry.id;
+        const meta = { ...META_DEFAULTS };
+        const header = entry.metadata || {};
+        meta.project = header.project || META_DEFAULTS.project;
+        meta.order = header.order || META_DEFAULTS.order;
+        meta.position = header.position || META_DEFAULTS.position;
+        meta.steelGrade = header.steelGrade || META_DEFAULTS.steelGrade;
+        meta.remark = header.remark || META_DEFAULTS.remark;
+        const quantity = Number.isFinite(header.quantity) && header.quantity > 0 ? Math.round(header.quantity) : META_DEFAULTS.quantity;
+        meta.quantity = Math.max(1, quantity);
+        meta.diameter = Number.isFinite(header.diameter) && header.diameter > 0 ? header.diameter : META_DEFAULTS.diameter;
+        const rollDiameter = Number.isFinite(header.rollDiameter) && header.rollDiameter > 0
+            ? header.rollDiameter
+            : Number.isFinite(meta.diameter) && meta.diameter > 0
+                ? meta.diameter * 4
+                : META_DEFAULTS.rollDiameter;
+        meta.rollDiameter = rollDiameter;
+        Object.assign(state.meta, meta);
+        writeMetaToInputs();
+
+        let segments = [];
+        if (Array.isArray(entry.segmentDefinitions) && entry.segmentDefinitions.length) {
+            segmentIdCounter = 0;
+            segments = entry.segmentDefinitions.map(segment => createSegment(segment.length, segment.bendAngle, segment.bendDirection));
+        } else {
+            segmentIdCounter = 0;
+            segments = [];
+        }
+        state.segments = segments;
+        state.previewNoteOverride = entry.hasGeometry ? null : { type: 'info', messageKey: 'Keine Geometrie verfügbar.' };
+        setRollDiameterValue(state.meta.rollDiameter, { updateInput: true, fromUser: false });
+        renderSegmentTable();
+        updateOutputs();
+        renderImportTable();
+    }
+
     function init() {
         if (initialized) return;
         const view = document.getElementById('bf2dView');
@@ -1579,6 +2344,7 @@
         attachActionListeners();
         attachStorageListeners();
         populateSavedFormsSelect();
+        renderImportTable();
         renderSegmentTable();
         updateOutputs();
     }

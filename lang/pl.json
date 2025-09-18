@@ -239,5 +239,21 @@
   "Datensatz in Zwischenablage kopiert.": "Zbiór danych skopiowano do schowka.",
   "Clipboard nicht verfügbar.": "Schowek jest niedostępny.",
   "ABS-Datei heruntergeladen.": "Plik ABS został pobrany.",
-  "Keine gültige Vorschau verfügbar.": "Podgląd jest niedostępny."
+  "Keine gültige Vorschau verfügbar.": "Podgląd jest niedostępny.",
+  "ABS-Import": "Import ABS",
+  "ABS-Datei importieren": "Importuj plik ABS",
+  "Auswahl exportieren": "Eksportuj zaznaczenie",
+  "Keine Positionen importiert.": "Nie zaimportowano pozycji.",
+  "⌀ (mm)": "⌀ (mm)",
+  "Länge gesamt": "Długość całkowita",
+  "Prüfsumme": "Suma kontrolna",
+  "Typ": "Typ",
+  "Fehler beim Einlesen der ABS-Datei.": "Błąd podczas odczytu pliku ABS.",
+  "{count} Positionen importiert.": "Zaimportowano {count} pozycji.",
+  "{count} mit Fehlern": "{count} z błędami",
+  "{count} mit Warnungen": "{count} z ostrzeżeniami",
+  "OK": "OK",
+  "Fehler": "Błąd",
+  "Fehlt": "Brak",
+  "Keine Geometrie verfügbar.": "Brak dostępnej geometrii."
 }

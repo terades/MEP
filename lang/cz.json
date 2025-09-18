@@ -239,5 +239,21 @@
   "Datensatz in Zwischenablage kopiert.": "Datová sada byla zkopírována do schránky.",
   "Clipboard nicht verfügbar.": "Schránka není k dispozici.",
   "ABS-Datei heruntergeladen.": "Soubor ABS byl stažen.",
-  "Keine gültige Vorschau verfügbar.": "Platný náhled není k dispozici."
+  "Keine gültige Vorschau verfügbar.": "Platný náhled není k dispozici.",
+  "ABS-Import": "Import ABS",
+  "ABS-Datei importieren": "Importovat soubor ABS",
+  "Auswahl exportieren": "Exportovat výběr",
+  "Keine Positionen importiert.": "Nebyla importována žádná pozice.",
+  "⌀ (mm)": "⌀ (mm)",
+  "Länge gesamt": "Celková délka",
+  "Prüfsumme": "Kontrolní součet",
+  "Typ": "Typ",
+  "Fehler beim Einlesen der ABS-Datei.": "Chyba při načítání souboru ABS.",
+  "{count} Positionen importiert.": "Importováno {count} pozic.",
+  "{count} mit Fehlern": "{count} s chybami",
+  "{count} mit Warnungen": "{count} s varováními",
+  "OK": "OK",
+  "Fehler": "Chyba",
+  "Fehlt": "Chybí",
+  "Keine Geometrie verfügbar.": "Geometrie není k dispozici."
 }
