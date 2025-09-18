@@ -91,6 +91,9 @@ function ensureInit() {
     state.camera.lookAt(0, 0, 0);
 
     state.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    state.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    state.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    state.renderer.toneMappingExposure = 1.05;
     state.renderer.setPixelRatio(window.devicePixelRatio || 1);
     state.renderer.setSize(container.clientWidth, container.clientHeight);
     container.innerHTML = '';
@@ -197,10 +200,27 @@ function update(meshData) {
     const yMaterial = new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6, roughness: 0.4 });
     const xMaterial = new THREE.MeshStandardMaterial({ color: 0xdb2777, metalness: 0.6, roughness: 0.4 });
 
+    const geometryCache = new Map();
+    const scaleVector = new THREE.Vector3(1, 1, 1);
+    const identityQuaternion = new THREE.Quaternion();
+    const xAxisQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
+
+    const getCylinderGeometry = (length, radius) => {
+        const safeLength = Math.max(length, 1);
+        const key = `${safeLength}:${radius}`;
+        if (!geometryCache.has(key)) {
+            const radialSegments = Math.max(10, Math.min(24, Math.round(radius * 2))); // smoother look for thicker bars
+            const geometry = new THREE.CylinderGeometry(radius, radius, safeLength, radialSegments, 1, false);
+            geometryCache.set(key, geometry);
+        }
+        return geometryCache.get(key);
+    };
+
     let maxDiameterY = 0;
     yBars.forEach(bar => maxDiameterY = Math.max(maxDiameterY, parseNumber(bar.d)));
 
     // Y-Bars (Längsstäbe): run along Y, are positioned across X
+    const yInstances = new Map();
     yBars.forEach(bar => {
         const diameter = parseNumber(bar.d);
         if (diameter <= 0) return;
@@ -208,24 +228,50 @@ function update(meshData) {
         const barLength = parseNumber(bar.l) || meshLength;
         const positionsX = getBarPositions(bar, meshWidth, bar.x);
         const doubleBarSpacing = diameter * 1.1;
+        const instanceKey = `${barLength}:${radius}`;
+
+        if (!yInstances.has(instanceKey)) {
+            yInstances.set(instanceKey, []);
+        }
+
+        const matrices = yInstances.get(instanceKey);
 
         positionsX.forEach(posX => {
-            for (let i = 0; i < (parseNumber(bar.z) || 1); i++) {
+            const count = Math.max(1, parseNumber(bar.z) || 1);
+            for (let i = 0; i < count; i++) {
                 const offset = i * doubleBarSpacing;
+                const xPos = posX + offset;
                 const zPos = radius; // Bottom of bar sits on z=0
-                const start = new THREE.Vector3(posX + offset, 0, zPos);
-                const end = new THREE.Vector3(posX + offset, barLength, zPos);
-                const path = new THREE.LineCurve3(start, end);
-                const tube = new THREE.TubeGeometry(path, 2, radius, 8);
-                const mesh = new THREE.Mesh(tube, yMaterial);
-                group.add(mesh);
-                boundingBox.expandByPoint(start);
-                boundingBox.expandByPoint(end);
+
+                const matrix = new THREE.Matrix4();
+                matrix.compose(
+                    new THREE.Vector3(xPos, barLength / 2, zPos),
+                    identityQuaternion,
+                    scaleVector
+                );
+                matrices.push(matrix);
+
+                boundingBox.expandByPoint(new THREE.Vector3(xPos - radius, 0, Math.max(0, zPos - radius)));
+                boundingBox.expandByPoint(new THREE.Vector3(xPos + radius, barLength, zPos + radius));
             }
         });
     });
 
+    yInstances.forEach((matrices, key) => {
+        const [lengthStr, radiusStr] = key.split(':');
+        const barLength = parseFloat(lengthStr);
+        const radius = parseFloat(radiusStr);
+        const geometry = getCylinderGeometry(barLength, radius);
+        const instanced = new THREE.InstancedMesh(geometry, yMaterial, matrices.length);
+        matrices.forEach((matrix, index) => {
+            instanced.setMatrixAt(index, matrix);
+        });
+        instanced.instanceMatrix.needsUpdate = true;
+        group.add(instanced);
+    });
+
     // X-Bars (Querstäbe): run along X, are positioned across Y
+    const xInstances = new Map();
     xBars.forEach(bar => {
         const diameter = parseNumber(bar.d);
         if (diameter <= 0) return;
@@ -233,21 +279,46 @@ function update(meshData) {
         const barLength = parseNumber(bar.l) || meshWidth;
         const positionsY = getBarPositions(bar, meshLength, bar.y);
         const doubleBarSpacing = diameter * 1.1;
+        const instanceKey = `${barLength}:${radius}`;
+
+        if (!xInstances.has(instanceKey)) {
+            xInstances.set(instanceKey, []);
+        }
+
+        const matrices = xInstances.get(instanceKey);
 
         positionsY.forEach(posY => {
-            for (let i = 0; i < (parseNumber(bar.z) || 1); i++) {
+            const count = Math.max(1, parseNumber(bar.z) || 1);
+            for (let i = 0; i < count; i++) {
                 const offset = i * doubleBarSpacing;
-                const zPos = maxDiameterY + radius; // Sits on top of Y bars
-                const start = new THREE.Vector3(0, posY + offset, zPos);
-                const end = new THREE.Vector3(barLength, posY + offset, zPos);
-                const path = new THREE.LineCurve3(start, end);
-                const tube = new THREE.TubeGeometry(path, 2, radius, 8);
-                const mesh = new THREE.Mesh(tube, xMaterial);
-                group.add(mesh);
-                boundingBox.expandByPoint(start);
-                boundingBox.expandByPoint(end);
+                const yPos = posY + offset;
+                const zPos = maxDiameterY + radius;
+
+                const matrix = new THREE.Matrix4();
+                matrix.compose(
+                    new THREE.Vector3(barLength / 2, yPos, zPos),
+                    xAxisQuaternion,
+                    scaleVector
+                );
+                matrices.push(matrix);
+
+                boundingBox.expandByPoint(new THREE.Vector3(-radius, yPos - radius, Math.max(0, zPos - radius)));
+                boundingBox.expandByPoint(new THREE.Vector3(barLength + radius, yPos + radius, zPos + radius));
             }
         });
+    });
+
+    xInstances.forEach((matrices, key) => {
+        const [lengthStr, radiusStr] = key.split(':');
+        const barLength = parseFloat(lengthStr);
+        const radius = parseFloat(radiusStr);
+        const geometry = getCylinderGeometry(barLength, radius);
+        const instanced = new THREE.InstancedMesh(geometry, xMaterial, matrices.length);
+        matrices.forEach((matrix, index) => {
+            instanced.setMatrixAt(index, matrix);
+        });
+        instanced.instanceMatrix.needsUpdate = true;
+        group.add(instanced);
     });
 
     if (boundingBox.isEmpty()) {
