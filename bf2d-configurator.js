@@ -325,13 +325,16 @@
             });
         }
 
-        const importButton = document.getElementById('bf2dImportButton');
+        const dropZone = document.getElementById('bf2dDropZone');
         const importInput = document.getElementById('bf2dImportFileInput');
-        if (importButton && importInput) {
-            importButton.addEventListener('click', () => importInput.click());
+        if (dropZone && importInput) {
+            dropZone.addEventListener('click', () => importInput.click());
+            dropZone.addEventListener('dragover', handleDragOver);
+            dropZone.addEventListener('dragleave', handleDragLeave);
+            dropZone.addEventListener('drop', handleDrop);
         }
         if (importInput) {
-            importInput.addEventListener('change', handleAbsFileImport);
+            importInput.addEventListener('change', handleFileInputChange);
         }
 
         const exportButton = document.getElementById('bf2dExportSelectionButton');
@@ -347,6 +350,11 @@
         const selectAll = document.getElementById('bf2dImportSelectAll');
         if (selectAll) {
             selectAll.addEventListener('change', handleImportSelectAll);
+        }
+
+        const clearImportButton = document.getElementById('bf2dClearImportButton');
+        if (clearImportButton) {
+            clearImportButton.addEventListener('click', clearImport);
         }
     }
 
@@ -2202,12 +2210,84 @@
         updateImportStatusDisplay();
     }
 
-    async function handleAbsFileImport(event) {
+    function setImportView(state) {
+        const dropZone = document.getElementById('bf2dDropZone');
+        const instructions = dropZone?.querySelector('.bf2d-drop-zone-instructions');
+        const content = document.getElementById('bf2dImportContent');
+        const clearButton = document.getElementById('bf2dClearImportButton');
+
+        if (!instructions || !content || !clearButton) return;
+
+        if (state === 'empty') {
+            instructions.style.display = 'block';
+            content.style.display = 'none';
+            clearButton.style.display = 'none';
+            if (dropZone) {
+                dropZone.style.cursor = 'pointer';
+            }
+        } else if (state === 'data') {
+            instructions.style.display = 'none';
+            content.style.display = 'block';
+            clearButton.style.display = 'inline-flex';
+            if (dropZone) {
+                dropZone.style.cursor = 'default';
+            }
+        }
+    }
+
+    function clearImport() {
+        importState.entries = [];
+        importState.selectedIds.clear();
+        importState.activeId = null;
+        importState.fileName = '';
+        const importInput = document.getElementById('bf2dImportFileInput');
+        if (importInput) {
+            importInput.value = '';
+        }
+        renderImportTable();
+        setImportView('empty');
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const dropZone = document.getElementById('bf2dDropZone');
+        if (dropZone) {
+            dropZone.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const dropZone = document.getElementById('bf2dDropZone');
+        if (dropZone) {
+            dropZone.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const dropZone = document.getElementById('bf2dDropZone');
+        if (dropZone) {
+            dropZone.classList.remove('drag-over');
+        }
+        const files = event.dataTransfer?.files;
+        if (files && files.length > 0) {
+            processAbsFile(files[0]);
+        }
+    }
+
+    function handleFileInputChange(event) {
         const input = event.target;
         const files = input?.files;
         if (!files || !files.length) return;
-        const file = files[0];
-        input.value = '';
+        processAbsFile(files[0]);
+    }
+
+    async function processAbsFile(file) {
+        if (!file) return;
         try {
             const text = await file.text();
             importState.entries = parseAbsFileContent(text);
@@ -2215,12 +2295,10 @@
             importState.activeId = null;
             importState.fileName = file.name || '';
             renderImportTable();
+            setImportView('data');
         } catch (error) {
             console.error('Failed to import ABS file', error);
-            importState.entries = [];
-            importState.selectedIds.clear();
-            importState.activeId = null;
-            renderImportTable();
+            clearImport();
             const statusEl = document.getElementById('bf2dImportStatus');
             if (statusEl) {
                 const message = typeof i18n?.t === 'function'
@@ -2228,6 +2306,7 @@
                     : 'Fehler beim Einlesen der ABS-Datei.';
                 statusEl.textContent = message;
                 statusEl.classList.add('error-message');
+                setImportView('data'); // Show error message inside the content area
             }
         }
     }
