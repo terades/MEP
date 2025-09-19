@@ -95,14 +95,12 @@
                 </div>
             </div>
             <div class="sidebar-footer">
-                <div class="language-select">
-                    <select id="languageSelect">
-                        <option value="de" data-flag="flags/de.svg">DE</option>
-                        <option value="en" data-flag="flags/gb.svg">EN</option>
-                        <option value="pl" data-flag="flags/pl.svg">PL</option>
-                        <option value="cz" data-flag="flags/cz.svg">CZ</option>
-                    </select>
-                </div>
+                <button id="showSettingsBtn" class="sidebar-link sidebar-link--settings" data-view-target="settingsView" data-i18n-title="Einstellungen" title="Einstellungen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm9 4c0-.7-.08-1.38-.23-2.03l2.02-1.57-1.9-3.3-2.4.74a8.03 8.03 0 0 0-3.5-2.02L14.5 1h-5l-.49 2.82a8.03 8.03 0 0 0-3.5 2.02l-2.4-.74-1.9 3.3 2.02 1.57A8.27 8.27 0 0 0 3 12c0 .7.08 1.38.23 2.03l-2.02 1.57 1.9 3.3 2.4-.74a8.03 8.03 0 0 0 3.5 2.02l.49 2.82h5l.49-2.82a8.03 8.03 0 0 0 3.5-2.02l2.4.74 1.9-3.3-2.02-1.57c.15-.65.23-1.33.23-2.03z" />
+                    </svg>
+                    <span class="sidebar-text" data-i18n="Einstellungen">Einstellungen</span>
+                </button>
                 <div class="app-version">v1.0.0</div>
             </div>
         </aside>
@@ -985,6 +983,69 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+                <div id="settingsView" class="app-container" style="display:none;">
+                    <header class="settings-header">
+                        <h1 data-i18n="Einstellungen">Einstellungen</h1>
+                        <p data-i18n="Einstellungen Beschreibung">Verwalte Sprache, Darstellung und persönliche Optionen der Anwendung.</p>
+                    </header>
+                    <div class="settings-grid">
+                        <section class="card settings-card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="Spracheinstellungen">Spracheinstellungen</h2>
+                                <p class="card-subtitle" data-i18n="Spracheinstellungen Beschreibung">Wähle deine bevorzugte Sprache für die Oberfläche.</p>
+                            </div>
+                            <div class="settings-section">
+                                <label for="languageSelect" class="settings-label" data-i18n="Sprache wählen">Sprache wählen</label>
+                                <div class="language-select">
+                                    <select id="languageSelect">
+                                        <option value="de" data-flag="flags/de.svg">DE</option>
+                                        <option value="en" data-flag="flags/gb.svg">EN</option>
+                                        <option value="pl" data-flag="flags/pl.svg">PL</option>
+                                        <option value="cz" data-flag="flags/cz.svg">CZ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="card settings-card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="Personalisierung">Personalisierung</h2>
+                                <p class="card-subtitle" data-i18n="Personalisierung Beschreibung">Passe Aussehen und Verhalten der Oberfläche an deine Bedürfnisse an.</p>
+                            </div>
+                            <div class="settings-section">
+                                <div class="settings-toggle">
+                                    <div class="settings-toggle-text">
+                                        <span class="settings-toggle-title" data-i18n="Dunkles Design aktivieren">Dunkles Design aktivieren</span>
+                                        <span class="settings-toggle-description" data-i18n="Dunkles Design aktivieren Beschreibung">Schont die Augen bei schlechten Lichtverhältnissen durch eine dunkle Farbpalette.</span>
+                                    </div>
+                                    <label class="settings-switch">
+                                        <input type="checkbox" id="darkModeToggle">
+                                        <span class="slider" aria-hidden="true"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-toggle">
+                                    <div class="settings-toggle-text">
+                                        <span class="settings-toggle-title" data-i18n="Kompakte Darstellung aktivieren">Kompakte Darstellung aktivieren</span>
+                                        <span class="settings-toggle-description" data-i18n="Kompakte Darstellung aktivieren Beschreibung">Reduziert Abstände und verdichtet Tabellen für mehr Inhalte auf einen Blick.</span>
+                                    </div>
+                                    <label class="settings-switch">
+                                        <input type="checkbox" id="compactModeToggle">
+                                        <span class="slider" aria-hidden="true"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-toggle">
+                                    <div class="settings-toggle-text">
+                                        <span class="settings-toggle-title" data-i18n="Animationen reduzieren">Animationen reduzieren</span>
+                                        <span class="settings-toggle-description" data-i18n="Animationen reduzieren Beschreibung">Minimiert visuelle Bewegung für eine ruhigere Darstellung.</span>
+                                    </div>
+                                    <label class="settings-switch">
+                                        <input type="checkbox" id="reduceMotionToggle">
+                                        <span class="slider" aria-hidden="true"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </main>

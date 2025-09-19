@@ -302,5 +302,18 @@
   "Matte \"{name}\" geladen.": "Mesh \"{name}\" loaded.",
   "Matte \"{name}\" wirklich löschen?": "Really delete mesh \"{name}\"?",
   "Matte \"{name}\" gelöscht.": "Mesh \"{name}\" deleted.",
-  "Stab duplizieren": "Duplikovat prut"
+  "Stab duplizieren": "Duplikovat prut",
+  "Einstellungen": "Nastavení",
+  "Einstellungen Beschreibung": "Spravujte jazyk, vzhled a osobní preference aplikace.",
+  "Spracheinstellungen": "Jazykové nastavení",
+  "Spracheinstellungen Beschreibung": "Vyberte preferovaný jazyk rozhraní.",
+  "Sprache wählen": "Vyberte jazyk",
+  "Personalisierung": "Personalizace",
+  "Personalisierung Beschreibung": "Přizpůsobte vzhled a chování rozhraní svým potřebám.",
+  "Dunkles Design aktivieren": "Zapnout tmavý režim",
+  "Dunkles Design aktivieren Beschreibung": "Přepne barevné schéma na tmavé pro práci při slabém světle.",
+  "Kompakte Darstellung aktivieren": "Zapnout kompaktní zobrazení",
+  "Kompakte Darstellung aktivieren Beschreibung": "Zmenší rozestupy a zhušťuje tabulky pro více informací na obrazovce.",
+  "Animationen reduzieren": "Omezit animace",
+  "Animationen reduzieren Beschreibung": "Minimalizuje pohyb v rozhraní pro klidnější práci."
 }

@@ -302,5 +302,18 @@
   "Matte \"{name}\" geladen.": "Matte \"{name}\" geladen.",
   "Matte \"{name}\" wirklich löschen?": "Matte \"{name}\" wirklich löschen?",
   "Matte \"{name}\" gelöscht.": "Matte \"{name}\" gelöscht.",
-  "Stab duplizieren": "Stab duplizieren"
+  "Stab duplizieren": "Stab duplizieren",
+  "Einstellungen": "Einstellungen",
+  "Einstellungen Beschreibung": "Verwalte Sprache, Darstellung und persönliche Optionen der Anwendung.",
+  "Spracheinstellungen": "Spracheinstellungen",
+  "Spracheinstellungen Beschreibung": "Wähle deine bevorzugte Sprache für die Oberfläche.",
+  "Sprache wählen": "Sprache wählen",
+  "Personalisierung": "Personalisierung",
+  "Personalisierung Beschreibung": "Passe Aussehen und Verhalten der Oberfläche an deine Bedürfnisse an.",
+  "Dunkles Design aktivieren": "Dunkles Design aktivieren",
+  "Dunkles Design aktivieren Beschreibung": "Schont die Augen bei schlechten Lichtverhältnissen durch eine dunkle Farbpalette.",
+  "Kompakte Darstellung aktivieren": "Kompakte Darstellung aktivieren",
+  "Kompakte Darstellung aktivieren Beschreibung": "Reduziert Abstände und verdichtet Tabellen für mehr Inhalte auf einen Blick.",
+  "Animationen reduzieren": "Animationen reduzieren",
+  "Animationen reduzieren Beschreibung": "Minimiert visuelle Bewegung für eine ruhigere Darstellung."
 }
