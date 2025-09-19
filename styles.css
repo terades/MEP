@@ -485,6 +485,7 @@ select {
     flex-direction: column;
     background: var(--body-bg-color);
     position: relative;
+    padding: 2rem 0 2.5rem;
 }
 
 .app-header-wrapper {
@@ -1182,7 +1183,7 @@ body:not(.sidebar-open) .sidebar-scroll {
     .app-sidebar {
         width: var(--sidebar-expanded-width);
         transform: translateX(-100%);
-        padding-top: calc(var(--header-height) + 1.5rem);
+        padding-top: 1.75rem;
         pointer-events: none;
     }
     body.sidebar-open .app-sidebar {
@@ -1227,7 +1228,7 @@ body:not(.sidebar-open) .sidebar-scroll {
     flex: 1;
     min-height: 0;
     height: 100%;
-    max-height: calc(100vh - 120px); /* Adjusted for new header */
+    max-height: calc(100vh - 120px); /* Keep cards within the viewport */
     overflow: hidden;
     transition: all 0.3s ease;
 }
