@@ -280,6 +280,7 @@
   "y (mm)": "y (mm)",
   "e (mm;.. / mm,n)": "e (mm;.. / mm,n)",
   "z": "z",
+  "Anzahl (berechnet)": "Počet (vypočtený)",
   "w (°)": "w (°)",
   "Y-Stab hinzufügen": "Add Y-bar",
   "X-Stab hinzufügen": "Add X-bar",
@@ -300,5 +301,6 @@
   "Matte \"{name}\" gespeichert.": "Mesh \"{name}\" saved.",
   "Matte \"{name}\" geladen.": "Mesh \"{name}\" loaded.",
   "Matte \"{name}\" wirklich löschen?": "Really delete mesh \"{name}\"?",
-  "Matte \"{name}\" gelöscht.": "Mesh \"{name}\" deleted."
+  "Matte \"{name}\" gelöscht.": "Mesh \"{name}\" deleted.",
+  "Stab duplizieren": "Duplikovat prut"
 }

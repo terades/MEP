@@ -280,6 +280,7 @@
   "y (mm)": "y (mm)",
   "e (mm;.. / mm,n)": "e (mm;.. / mm,n)",
   "z": "z",
+  "Anzahl (berechnet)": "Anzahl (berechnet)",
   "w (°)": "w (°)",
   "Y-Stab hinzufügen": "Y-Stab hinzufügen",
   "X-Stab hinzufügen": "X-Stab hinzufügen",
@@ -300,5 +301,6 @@
   "Matte \"{name}\" gespeichert.": "Matte \"{name}\" gespeichert.",
   "Matte \"{name}\" geladen.": "Matte \"{name}\" geladen.",
   "Matte \"{name}\" wirklich löschen?": "Matte \"{name}\" wirklich löschen?",
-  "Matte \"{name}\" gelöscht.": "Matte \"{name}\" gelöscht."
+  "Matte \"{name}\" gelöscht.": "Matte \"{name}\" gelöscht.",
+  "Stab duplizieren": "Stab duplizieren"
 }

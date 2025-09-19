@@ -2431,6 +2431,22 @@ select.status-select.done {
     transform: translateY(-1px);
 }
 
+.table-action-group {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.bfma-count-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 3.25rem;
+}
+
+.bfma-count-cell.is-zero {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
 .table-empty-hint {
     text-align: center;
     padding: 1rem;

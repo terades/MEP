@@ -244,6 +244,38 @@
         }
     }
 
+    function duplicateBar(type, id) {
+        const collection = getBarCollection(type);
+        const index = collection.findIndex(item => item.id === id);
+        if (index === -1) {
+            return;
+        }
+        const original = collection[index];
+        const clone = JSON.parse(JSON.stringify(original));
+        clone.id = ++barIdCounter;
+
+        const { spacing } = parseSpacing(original.e);
+        const offset = Number.isFinite(spacing) && Math.abs(spacing) > 0 ? Math.abs(spacing) : 50;
+
+        if (type === 'Y') {
+            const width = parseNumber(state.header.b);
+            const maxWidth = Number.isFinite(width) ? width : Infinity;
+            clone.y = clamp(parseNumber(original.y) + offset, 0, maxWidth);
+        } else if (type === 'X') {
+            const length = parseNumber(state.header.l);
+            const maxLength = Number.isFinite(length) ? length : Infinity;
+            clone.x = clamp(parseNumber(original.x) + offset, 0, maxLength);
+        } else if (type === 'E') {
+            const length = parseNumber(state.header.l);
+            const maxLength = Number.isFinite(length) ? length : Infinity;
+            clone.x = clamp(parseNumber(original.x) + offset, 0, maxLength);
+        }
+
+        collection.splice(index + 1, 0, clone);
+        weightAutoUpdate = true;
+        scheduleUpdate();
+    }
+
     function createBendingSegment() {
         return {
             id: ++bendingSegmentIdCounter,
@@ -338,7 +370,7 @@
             body.textContent = '';
             const bars = state[config.collectionKey];
             if (!bars.length) {
-                ensureEmptyHint(body, config.fields.length + 1);
+                ensureEmptyHint(body, config.fields.length + 2);
                 return;
             }
             const fragment = document.createDocumentFragment();
@@ -347,7 +379,40 @@
                 config.fields.forEach(field => {
                     row.appendChild(createTableCellInput(bar, field.key, type));
                 });
+                const countCell = document.createElement('td');
+                const barCount = computeBarCount(bar, type);
+                countCell.className = 'bfma-count-cell';
+                countCell.textContent = Number.isFinite(barCount) ? formatNumber(barCount, 0) : '0';
+                countCell.classList.toggle('is-zero', barCount <= 0);
+                const { spacing, count } = parseSpacing(bar.e);
+                const zoneCount = parseNumber(bar.z);
+                const tooltipParts = [];
+                if (Number.isFinite(spacing) && spacing > 0) {
+                    tooltipParts.push(`e=${formatDatasetNumber(spacing, 1)} mm`);
+                }
+                if (Number.isFinite(count) && count > 0) {
+                    tooltipParts.push(`n=${formatNumber(count, 0)}`);
+                }
+                if (Number.isFinite(zoneCount) && zoneCount > 0) {
+                    tooltipParts.push(`z=${formatNumber(zoneCount, 0)}`);
+                }
+                if (tooltipParts.length) {
+                    countCell.title = tooltipParts.join(' \u00b7 ');
+                }
+                row.appendChild(countCell);
                 const actionCell = document.createElement('td');
+                const actionGroup = document.createElement('div');
+                actionGroup.className = 'table-action-group';
+
+                const duplicateButton = document.createElement('button');
+                duplicateButton.type = 'button';
+                duplicateButton.className = 'btn btn-secondary table-action-button';
+                duplicateButton.textContent = '⧉';
+                duplicateButton.title = translateFallback('Stab duplizieren');
+                duplicateButton.setAttribute('aria-label', translateFallback('Stab duplizieren'));
+                duplicateButton.addEventListener('click', () => duplicateBar(type, bar.id));
+                actionGroup.appendChild(duplicateButton);
+
                 const removeButton = document.createElement('button');
                 removeButton.type = 'button';
                 removeButton.className = 'btn btn-danger table-action-button';
@@ -355,7 +420,9 @@
                 removeButton.title = translateFallback('Stab entfernen');
                 removeButton.setAttribute('aria-label', translateFallback('Stab entfernen'));
                 removeButton.addEventListener('click', () => removeBar(type, bar.id));
-                actionCell.appendChild(removeButton);
+                actionGroup.appendChild(removeButton);
+
+                actionCell.appendChild(actionGroup);
                 row.appendChild(actionCell);
                 fragment.appendChild(row);
             });
