@@ -35,7 +35,59 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'productionView'];
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'productionView', 'settingsView'];
+
+const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
+const DEFAULT_APP_SETTINGS = {
+    theme: 'light',
+    density: 'comfortable',
+    motion: 'full'
+};
+let appSettings = { ...DEFAULT_APP_SETTINGS };
+
+function loadAppSettings() {
+    try {
+        const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                appSettings = { ...DEFAULT_APP_SETTINGS, ...parsed };
+            }
+        }
+    } catch (error) {
+        console.error('Could not parse application settings', error);
+        appSettings = { ...DEFAULT_APP_SETTINGS };
+    }
+}
+
+function persistAppSettings() {
+    try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appSettings));
+    } catch (error) {
+        console.error('Could not store application settings', error);
+    }
+}
+
+function applyAppSettings() {
+    document.body.dataset.theme = appSettings.theme;
+    document.body.dataset.density = appSettings.density;
+    document.body.dataset.motion = appSettings.motion;
+
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        darkModeToggle.checked = appSettings.theme === 'dark';
+    }
+
+    const compactModeToggle = document.getElementById('compactModeToggle');
+    if (compactModeToggle) {
+        compactModeToggle.checked = appSettings.density === 'compact';
+    }
+
+    const reduceMotionToggle = document.getElementById('reduceMotionToggle');
+    if (reduceMotionToggle) {
+        reduceMotionToggle.checked = appSettings.motion === 'reduced';
+    }
+}
 
 function setActiveNavigation(view) {
     document.body.dataset.activeView = view;
@@ -83,6 +135,10 @@ function showBf2dView() {
 
 function showBfmaView() {
     showView('bfmaView');
+}
+
+function showSettingsView() {
+    showView('settingsView');
 }
 
 function openGeneratorAndClick(buttonId) {
@@ -249,6 +305,8 @@ function renderProductionList() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadAppSettings();
+    applyAppSettings();
     loadProductionList();
     const updateSidebarState = () => {
         const isOpen = document.body.classList.contains('sidebar-open');
@@ -311,6 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showProductionView();
         closeSidebarOnSmallScreens();
     });
+    document.getElementById('showSettingsBtn')?.addEventListener('click', () => {
+        showSettingsView();
+        closeSidebarOnSmallScreens();
+    });
     document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
         openGeneratorAndClick('releaseButton');
         closeSidebarOnSmallScreens();
@@ -326,6 +388,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('quickPrintLabelButton')?.addEventListener('click', () => {
         openGeneratorAndClick('printLabelButton');
         closeSidebarOnSmallScreens();
+    });
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    darkModeToggle?.addEventListener('change', (e) => {
+        appSettings.theme = e.target.checked ? 'dark' : 'light';
+        applyAppSettings();
+        persistAppSettings();
+    });
+    const compactModeToggle = document.getElementById('compactModeToggle');
+    compactModeToggle?.addEventListener('change', (e) => {
+        appSettings.density = e.target.checked ? 'compact' : 'comfortable';
+        applyAppSettings();
+        persistAppSettings();
+    });
+    const reduceMotionToggle = document.getElementById('reduceMotionToggle');
+    reduceMotionToggle?.addEventListener('change', (e) => {
+        appSettings.motion = e.target.checked ? 'reduced' : 'full';
+        applyAppSettings();
+        persistAppSettings();
     });
     document.getElementById('releaseButton')?.addEventListener('click', () => {
         const input = document.getElementById('releaseStartzeit');
@@ -448,6 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.print();
         }, 100);
     });
+
+    applyAppSettings();
 
     showGeneratorView();
 });

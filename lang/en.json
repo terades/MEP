@@ -302,5 +302,18 @@
   "Matte \"{name}\" geladen.": "Mesh \"{name}\" loaded.",
   "Matte \"{name}\" wirklich löschen?": "Really delete mesh \"{name}\"?",
   "Matte \"{name}\" gelöscht.": "Mesh \"{name}\" deleted.",
-  "Stab duplizieren": "Duplicate bar"
+  "Stab duplizieren": "Duplicate bar",
+  "Einstellungen": "Settings",
+  "Einstellungen Beschreibung": "Manage language, appearance and personal preferences for the application.",
+  "Spracheinstellungen": "Language settings",
+  "Spracheinstellungen Beschreibung": "Choose your preferred interface language.",
+  "Sprache wählen": "Choose language",
+  "Personalisierung": "Personalization",
+  "Personalisierung Beschreibung": "Adjust the look and behaviour of the interface to your needs.",
+  "Dunkles Design aktivieren": "Enable dark mode",
+  "Dunkles Design aktivieren Beschreibung": "Switch to a dark colour scheme for working in low-light environments.",
+  "Kompakte Darstellung aktivieren": "Enable compact layout",
+  "Kompakte Darstellung aktivieren Beschreibung": "Tightens spacing and table rows to show more information at once.",
+  "Animationen reduzieren": "Reduce animations",
+  "Animationen reduzieren Beschreibung": "Minimise motion effects for a calmer, distraction-free experience."
 }

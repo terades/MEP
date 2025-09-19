@@ -302,5 +302,18 @@
   "Matte \"{name}\" geladen.": "Mesh \"{name}\" loaded.",
   "Matte \"{name}\" wirklich löschen?": "Really delete mesh \"{name}\"?",
   "Matte \"{name}\" gelöscht.": "Mesh \"{name}\" deleted.",
-  "Stab duplizieren": "Duplikuj pręt"
+  "Stab duplizieren": "Duplikuj pręt",
+  "Einstellungen": "Ustawienia",
+  "Einstellungen Beschreibung": "Zarządzaj językiem, wyglądem i osobistymi preferencjami aplikacji.",
+  "Spracheinstellungen": "Ustawienia języka",
+  "Spracheinstellungen Beschreibung": "Wybierz preferowany język interfejsu.",
+  "Sprache wählen": "Wybierz język",
+  "Personalisierung": "Personalizacja",
+  "Personalisierung Beschreibung": "Dostosuj wygląd i zachowanie interfejsu do swoich potrzeb.",
+  "Dunkles Design aktivieren": "Włącz tryb ciemny",
+  "Dunkles Design aktivieren Beschreibung": "Zmienia paletę kolorów na ciemną, wygodną przy słabym oświetleniu.",
+  "Kompakte Darstellung aktivieren": "Włącz kompaktowy widok",
+  "Kompakte Darstellung aktivieren Beschreibung": "Zmniejsza odstępy i zagęszcza tabele, aby pokazać więcej danych.",
+  "Animationen reduzieren": "Ogranicz animacje",
+  "Animationen reduzieren Beschreibung": "Minimalizuje ruch w interfejsie dla spokojniejszej pracy."
 }
