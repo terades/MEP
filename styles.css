@@ -1110,6 +1110,63 @@ body.sidebar-open .sidebar-toggle svg {
     background: rgba(148, 163, 184, 0.24);
 }
 
+.sidebar-submenu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sidebar-submenu-toggle {
+    justify-content: flex-start;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.sidebar-submenu-chevron {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-left: auto;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0.7;
+}
+
+.sidebar-submenu.is-open .sidebar-submenu-chevron {
+    transform: rotate(90deg);
+    opacity: 1;
+}
+
+.sidebar-submenu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 0.75rem;
+}
+
+.sidebar-submenu-link {
+    padding-left: 2.75rem;
+    font-size: 0.9rem;
+    gap: 0.6rem;
+}
+
+.sidebar-submenu-link svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    opacity: 0.85;
+}
+
+.sidebar-submenu.is-active > .sidebar-submenu-toggle {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.35);
+}
+
+body:not(.sidebar-open) .sidebar-submenu-list {
+    display: none !important;
+}
+
+body:not(.sidebar-open) .sidebar-submenu-toggle .sidebar-submenu-chevron {
+    display: none;
+}
+
 .sidebar-text {
     white-space: nowrap;
     overflow: hidden;

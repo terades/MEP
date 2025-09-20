@@ -89,6 +89,19 @@ function applyAppSettings() {
     }
 }
 
+function setSubmenuExpanded(submenu, expanded) {
+    if (!submenu) return;
+    submenu.classList.toggle('is-open', expanded);
+    const toggle = submenu.querySelector('[data-submenu-toggle]');
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+    const list = submenu.querySelector('[data-submenu-list]');
+    if (list) {
+        list.hidden = !expanded;
+    }
+}
+
 function setActiveNavigation(view) {
     document.body.dataset.activeView = view;
     document.querySelectorAll('.sidebar-link[data-view-target]').forEach(btn => {
@@ -98,6 +111,17 @@ function setActiveNavigation(view) {
             btn.setAttribute('aria-current', 'page');
         } else {
             btn.removeAttribute('aria-current');
+        }
+    });
+    document.querySelectorAll('[data-submenu-views]').forEach(submenu => {
+        const views = (submenu.dataset.submenuViews || '')
+            .split(',')
+            .map(viewName => viewName.trim())
+            .filter(Boolean);
+        const isActive = views.includes(view);
+        submenu.classList.toggle('is-active', isActive);
+        if (isActive) {
+            setSubmenuExpanded(submenu, true);
         }
     });
 }
@@ -359,6 +383,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (typeof wideSidebarQuery.addListener === 'function') {
         wideSidebarQuery.addListener(handleWideSidebarChange);
     }
+
+    document.querySelectorAll('[data-submenu-toggle]').forEach(toggle => {
+        const submenu = toggle.closest('[data-submenu]');
+        if (!submenu) return;
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+        setSubmenuExpanded(submenu, isExpanded);
+        toggle.addEventListener('click', () => {
+            const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            setSubmenuExpanded(submenu, !currentlyExpanded);
+        });
+    });
 
     document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
         showGeneratorView();
