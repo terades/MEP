@@ -45,6 +45,20 @@ const DEFAULT_APP_SETTINGS = {
 };
 let appSettings = { ...DEFAULT_APP_SETTINGS };
 
+const SAVED_SHAPES_FILTER_DEFAULTS = {
+    search: '',
+    type: 'all',
+    diameter: 'all',
+    steelGrade: 'all',
+    segments: 'all',
+    sort: 'name-asc',
+    view: 'grid'
+};
+
+let savedShapesFilterState = { ...SAVED_SHAPES_FILTER_DEFAULTS };
+let savedShapesAllItems = [];
+let savedShapesControlsInitialized = false;
+
 function loadAppSettings() {
     try {
         const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -126,12 +140,17 @@ function setActiveNavigation(view) {
     });
 }
 
-function getTranslation(key, fallback = key) {
+function getTranslation(key, fallback = key, replacements = {}) {
     if (typeof i18n !== 'undefined' && typeof i18n.t === 'function') {
-        const translated = i18n.t(key);
+        const translated = i18n.t(key, replacements);
         if (translated && translated !== key) {
             return translated;
         }
+    }
+    if (fallback && replacements && typeof replacements === 'object') {
+        return Object.keys(replacements).reduce((text, placeholder) => {
+            return text.replace(new RegExp(`{${placeholder}}`, 'g'), replacements[placeholder]);
+        }, fallback);
     }
     return fallback;
 }
@@ -167,6 +186,58 @@ function readLocalStorageJson(key) {
     }
 }
 
+function normalizeSearchValue(value) {
+    return typeof value === 'string' ? value.toLowerCase() : String(value ?? '').toLowerCase();
+}
+
+function buildSavedShapeSearchText(parts = []) {
+    return parts
+        .filter(value => value !== null && value !== undefined && String(value).trim().length > 0)
+        .map(value => normalizeSearchValue(value))
+        .join(' ');
+}
+
+function formatDiameterBadge(diameter) {
+    if (!Number.isFinite(diameter) || diameter <= 0) {
+        return '';
+    }
+    const decimals = Number.isInteger(diameter) ? 0 : 1;
+    return `Ø ${formatNumberLocalized(diameter, decimals)} mm`;
+}
+
+function formatQuantityBadge(quantity) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+        return '';
+    }
+    return `× ${formatNumberLocalized(quantity, 0)}`;
+}
+
+function compareNumericValues(a, b, direction = 'desc') {
+    const aFinite = Number.isFinite(a);
+    const bFinite = Number.isFinite(b);
+    if (!aFinite && !bFinite) {
+        return 0;
+    }
+    if (!aFinite) {
+        return direction === 'asc' ? 1 : -1;
+    }
+    if (!bFinite) {
+        return direction === 'asc' ? -1 : 1;
+    }
+    if (a === b) {
+        return 0;
+    }
+    if (direction === 'asc') {
+        return a < b ? -1 : 1;
+    }
+    return a > b ? -1 : 1;
+}
+
+function compareByName(a, b, direction = 'asc') {
+    const base = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    return direction === 'asc' ? base : -base;
+}
+
 function collectSaved2dShapes() {
     const forms = readLocalStorageJson('bf2dSavedForms');
     if (!forms || typeof forms !== 'object') {
@@ -179,30 +250,107 @@ function collectSaved2dShapes() {
             const segments = Array.isArray(data.segments) ? data.segments : [];
             const diameter = Number(meta.diameter);
             const quantity = Number(meta.quantity);
+            const rollDiameter = Number(meta.rollDiameter);
+            const steelGrade = typeof meta.steelGrade === 'string' ? meta.steelGrade.trim() : '';
+            const steelGradeNormalized = steelGrade ? steelGrade.toLowerCase() : '';
+            const project = typeof meta.project === 'string' ? meta.project.trim() : '';
+            const order = typeof meta.order === 'string' ? meta.order.trim() : '';
+            const position = typeof meta.position === 'string' ? meta.position.trim() : '';
+            const remark = typeof meta.remark === 'string' ? meta.remark.trim() : '';
+            const segmentCount = segments.length;
             const totalLength = segments.reduce((sum, segment) => sum + (Number(segment.length) || 0), 0);
+
+            const diameterDisplay = Number.isFinite(diameter) && diameter > 0
+                ? `${formatNumberLocalized(diameter, Number.isInteger(diameter) ? 0 : 1)} mm`
+                : '–';
+            const quantityDisplay = Number.isFinite(quantity) && quantity > 0
+                ? formatNumberLocalized(quantity, 0)
+                : '–';
+            const totalLengthDisplay = totalLength > 0 ? `${formatNumberLocalized(totalLength, 0)} mm` : '0 mm';
+
             const stats = [
                 {
                     labelKey: 'Durchmesser',
                     fallbackLabel: 'Durchmesser',
-                    value: Number.isFinite(diameter) && diameter > 0 ? `${formatNumberLocalized(diameter, 1)} mm` : '–'
+                    value: diameterDisplay
                 },
                 {
                     labelKey: 'Anzahl',
                     fallbackLabel: 'Anzahl',
-                    value: Number.isFinite(quantity) ? formatNumberLocalized(quantity, 0) : '–'
+                    value: quantityDisplay
                 },
                 {
                     labelKey: 'Segmente',
                     fallbackLabel: 'Segmente',
-                    value: formatNumberLocalized(segments.length, 0)
+                    value: formatNumberLocalized(segmentCount, 0)
                 },
                 {
                     labelKey: 'Gesamtlänge',
                     fallbackLabel: 'Gesamtlänge',
-                    value: totalLength > 0 ? `${formatNumberLocalized(totalLength, 0)} mm` : '0 mm'
+                    value: totalLengthDisplay
                 }
             ];
-            return { name, typeKey: 'Biegeformen 2D', stats };
+
+            const details = [];
+            if (project) {
+                details.push({ labelKey: 'Projekt', fallbackLabel: 'Projekt', value: project });
+            }
+            if (order) {
+                details.push({ labelKey: 'Auftrag', fallbackLabel: 'Auftrag', value: order });
+            }
+            if (position) {
+                details.push({ labelKey: 'Pos-Nr.', fallbackLabel: 'Pos-Nr.', value: position });
+            }
+            if (remark) {
+                details.push({ labelKey: 'Bemerkung', fallbackLabel: 'Bemerkung', value: remark });
+            }
+            if (Number.isFinite(rollDiameter) && rollDiameter > 0) {
+                details.push({
+                    labelKey: 'Rollendurchmesser',
+                    fallbackLabel: 'Rollendurchmesser',
+                    value: `${formatNumberLocalized(rollDiameter, Number.isInteger(rollDiameter) ? 0 : 1)} mm`
+                });
+            }
+
+            const badges = [];
+            const diameterBadge = formatDiameterBadge(diameter);
+            const quantityBadge = formatQuantityBadge(quantity);
+            if (diameterBadge) badges.push(diameterBadge);
+            if (steelGrade) badges.push(steelGrade);
+            if (quantityBadge) badges.push(quantityBadge);
+
+            const segmentValues = segments.flatMap(segment => [segment.length, segment.bendAngle, segment.radius]);
+            const searchText = buildSavedShapeSearchText([
+                name,
+                project,
+                order,
+                position,
+                remark,
+                steelGrade,
+                diameter,
+                quantity,
+                rollDiameter,
+                segmentCount,
+                totalLength,
+                ...segmentValues
+            ]);
+
+            return {
+                id: `bf2d:${name}`,
+                name,
+                type: '2d',
+                typeKey: 'Biegeformen 2D',
+                stats,
+                details,
+                badges,
+                diameter: Number.isFinite(diameter) && diameter > 0 ? diameter : null,
+                quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
+                steelGrade,
+                steelGradeNormalized,
+                segmentCount,
+                totalLength,
+                searchText
+            };
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
@@ -253,6 +401,7 @@ function collectSaved3dShapes() {
     return entries
         .map(({ name, data }) => {
             const header = (typeof data.header === 'object' && data.header !== null) ? data.header : {};
+            const meta = (typeof data.meta === 'object' && data.meta !== null) ? data.meta : {};
             const quantityRaw = header.n ?? header.quantity;
             const diameterRaw = header.d ?? header.diameter;
             const quantity = Number(quantityRaw);
@@ -266,16 +415,43 @@ function collectSaved3dShapes() {
             } else if (Array.isArray(data.segmentLengths)) {
                 totalLength = data.segmentLengths.reduce((sum, value) => sum + (Number(value) || 0), 0);
             }
+
+            const steelGrade = typeof header.steelGrade === 'string' ? header.steelGrade.trim()
+                : typeof header.g === 'string' ? header.g.trim()
+                : typeof meta.steelGrade === 'string' ? meta.steelGrade.trim()
+                : '';
+            const steelGradeNormalized = steelGrade ? steelGrade.toLowerCase() : '';
+
+            const project = typeof header.project === 'string' ? header.project.trim()
+                : typeof meta.project === 'string' ? meta.project.trim()
+                : '';
+            const order = typeof header.order === 'string' ? header.order.trim()
+                : typeof meta.order === 'string' ? meta.order.trim()
+                : '';
+            const position = typeof header.position === 'string' ? header.position.trim()
+                : typeof meta.position === 'string' ? meta.position.trim()
+                : '';
+            const remark = typeof header.remark === 'string' ? header.remark.trim()
+                : typeof meta.remark === 'string' ? meta.remark.trim()
+                : '';
+
+            const diameterDisplay = Number.isFinite(diameter) && diameter > 0
+                ? `${formatNumberLocalized(diameter, Number.isInteger(diameter) ? 0 : 1)} mm`
+                : '–';
+            const quantityDisplay = Number.isFinite(quantity) && quantity > 0
+                ? formatNumberLocalized(quantity, 0)
+                : '–';
+
             const stats = [
                 {
                     labelKey: 'Durchmesser',
                     fallbackLabel: 'Durchmesser',
-                    value: Number.isFinite(diameter) && diameter > 0 ? `${formatNumberLocalized(diameter, 1)} mm` : '–'
+                    value: diameterDisplay
                 },
                 {
                     labelKey: 'Anzahl',
                     fallbackLabel: 'Anzahl',
-                    value: Number.isFinite(quantity) && quantity > 0 ? formatNumberLocalized(quantity, 0) : '–'
+                    value: quantityDisplay
                 },
                 {
                     labelKey: 'Punkte',
@@ -296,7 +472,60 @@ function collectSaved3dShapes() {
                     value: formatNumberLocalized(segmentCount, 0)
                 });
             }
-            return { name, typeKey: 'Biegeformen 3D', stats };
+
+            const details = [];
+            if (project) {
+                details.push({ labelKey: 'Projekt', fallbackLabel: 'Projekt', value: project });
+            }
+            if (order) {
+                details.push({ labelKey: 'Auftrag', fallbackLabel: 'Auftrag', value: order });
+            }
+            if (position) {
+                details.push({ labelKey: 'Pos-Nr.', fallbackLabel: 'Pos-Nr.', value: position });
+            }
+            if (remark) {
+                details.push({ labelKey: 'Bemerkung', fallbackLabel: 'Bemerkung', value: remark });
+            }
+
+            const badges = [];
+            const diameterBadge = formatDiameterBadge(diameter);
+            const quantityBadge = formatQuantityBadge(quantity);
+            if (diameterBadge) badges.push(diameterBadge);
+            if (steelGrade) badges.push(steelGrade);
+            if (quantityBadge) badges.push(quantityBadge);
+
+            const segmentValues = segments.flatMap(segment => [segment.length, segment.bendAngle, segment.radius]);
+            const searchText = buildSavedShapeSearchText([
+                name,
+                project,
+                order,
+                position,
+                remark,
+                steelGrade,
+                diameter,
+                quantity,
+                segmentCount,
+                totalLength,
+                ...segmentValues,
+                ...points.flat()
+            ]);
+
+            return {
+                id: `bf3d:${name}`,
+                name,
+                type: '3d',
+                typeKey: 'Biegeformen 3D',
+                stats,
+                details,
+                badges,
+                diameter: Number.isFinite(diameter) && diameter > 0 ? diameter : null,
+                quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
+                steelGrade,
+                steelGradeNormalized,
+                segmentCount,
+                totalLength,
+                searchText
+            };
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
@@ -330,6 +559,12 @@ function collectSavedMeshes() {
             const lengthDisplay = Number.isFinite(length) && length > 0 ? formatNumberLocalized(length, 0) : '–';
             const widthDisplay = Number.isFinite(width) && width > 0 ? formatNumberLocalized(width, 0) : '–';
             const dimensionsValue = (lengthDisplay === '–' && widthDisplay === '–') ? '–' : `${lengthDisplay} × ${widthDisplay} mm`;
+
+            const project = typeof header.project === 'string' ? header.project.trim() : '';
+            const order = typeof header.order === 'string' ? header.order.trim() : '';
+            const position = typeof header.position === 'string' ? header.position.trim() : '';
+            const remark = typeof header.remark === 'string' ? header.remark.trim() : '';
+
             const stats = [
                 {
                     labelKey: 'Anzahl',
@@ -354,13 +589,197 @@ function collectSavedMeshes() {
                     value: `${formatNumberLocalized(totalWeight, 2)} kg`
                 });
             }
-            return { name, typeKey: 'Matten', stats };
+
+            const details = [];
+            if (project) {
+                details.push({ labelKey: 'Projekt', fallbackLabel: 'Projekt', value: project });
+            }
+            if (order) {
+                details.push({ labelKey: 'Auftrag', fallbackLabel: 'Auftrag', value: order });
+            }
+            if (position) {
+                details.push({ labelKey: 'Pos-Nr.', fallbackLabel: 'Pos-Nr.', value: position });
+            }
+            if (remark) {
+                details.push({ labelKey: 'Bemerkung', fallbackLabel: 'Bemerkung', value: remark });
+            }
+
+            const badges = [];
+            const quantityBadge = formatQuantityBadge(quantity);
+            if (lengthDisplay !== '–' && widthDisplay !== '–') {
+                badges.push(`${lengthDisplay} × ${widthDisplay} mm`);
+            }
+            if (quantityBadge) {
+                badges.push(quantityBadge);
+            }
+            if (Number.isFinite(totalWeight) && totalWeight > 0) {
+                badges.push(`${formatNumberLocalized(totalWeight, 1)} kg`);
+            }
+
+            const segmentCount = Number.isFinite(yCount + xCount + eCount) ? (yCount + xCount + eCount) : 0;
+            const searchText = buildSavedShapeSearchText([
+                name,
+                project,
+                order,
+                position,
+                remark,
+                length,
+                width,
+                quantity,
+                totalWeight,
+                yCount,
+                xCount,
+                eCount
+            ]);
+
+            return {
+                id: `bfma:${name}`,
+                name,
+                type: 'mesh',
+                typeKey: 'Matten',
+                stats,
+                details,
+                badges,
+                diameter: null,
+                quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : null,
+                steelGrade: '',
+                steelGradeNormalized: '',
+                segmentCount,
+                totalLength: Number.isFinite(length) && Number.isFinite(width) ? (length + width) : 0,
+                searchText
+            };
         })
         .filter(Boolean)
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
 
-function renderSavedShapesGroup({ items, gridId, countId, emptyId }) {
+function isSavedShapesUsingDefaults() {
+    return Object.entries(SAVED_SHAPES_FILTER_DEFAULTS).every(([key, value]) => savedShapesFilterState[key] === value);
+}
+
+function updateSavedShapesResetButtonState() {
+    const resetButton = document.getElementById('savedShapesResetFilters');
+    if (!resetButton) {
+        return;
+    }
+    resetButton.disabled = isSavedShapesUsingDefaults();
+}
+
+function updateSavedShapesViewMode() {
+    const viewMode = savedShapesFilterState.view;
+    const view = document.getElementById('savedShapesView');
+    if (view) {
+        view.dataset.viewMode = viewMode;
+    }
+    document.querySelectorAll('.saved-shapes-grid').forEach(grid => {
+        grid.dataset.viewMode = viewMode;
+    });
+    const gridButton = document.getElementById('savedShapesGridView');
+    const listButton = document.getElementById('savedShapesListView');
+    [gridButton, listButton].forEach(button => {
+        if (!button) return;
+        const mode = button.dataset.viewMode || 'grid';
+        const isActive = mode === viewMode;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+    const toggle = document.querySelector('.saved-shapes-view-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-label', getTranslation('Ansicht', 'Ansicht'));
+    }
+}
+
+function createSavedShapeCard(item) {
+    const card = document.createElement('article');
+    card.className = 'saved-shape-card';
+    if (savedShapesFilterState.view === 'list') {
+        card.classList.add('saved-shape-card--list');
+    }
+    card.dataset.shapeType = item.type;
+
+    const header = document.createElement('header');
+    header.className = 'saved-shape-card-header';
+
+    const nameEl = document.createElement('h4');
+    nameEl.className = 'saved-shape-name';
+    nameEl.textContent = item.name;
+
+    const typeEl = document.createElement('span');
+    typeEl.className = 'saved-shape-type';
+    typeEl.textContent = getTranslation(item.typeKey, item.typeKey);
+
+    header.appendChild(nameEl);
+    header.appendChild(typeEl);
+    card.appendChild(header);
+
+    if (Array.isArray(item.badges) && item.badges.length) {
+        const badgeList = document.createElement('div');
+        badgeList.className = 'saved-shape-badges';
+        item.badges.forEach(text => {
+            if (!text) return;
+            const badge = document.createElement('span');
+            badge.className = 'saved-shape-badge';
+            badge.textContent = text;
+            badgeList.appendChild(badge);
+        });
+        if (badgeList.childElementCount > 0) {
+            card.appendChild(badgeList);
+        }
+    }
+
+    const bodyChildren = [];
+
+    if (Array.isArray(item.details) && item.details.length) {
+        const detailList = document.createElement('dl');
+        detailList.className = 'saved-shape-details';
+        item.details.forEach(detail => {
+            if (!detail || !detail.value) {
+                return;
+            }
+            const dt = document.createElement('dt');
+            dt.className = 'saved-shape-detail-label';
+            dt.textContent = getTranslation(detail.labelKey, detail.fallbackLabel || detail.labelKey);
+            const dd = document.createElement('dd');
+            dd.className = 'saved-shape-detail-value';
+            dd.textContent = detail.value;
+            detailList.appendChild(dt);
+            detailList.appendChild(dd);
+        });
+        if (detailList.childElementCount > 0) {
+            bodyChildren.push(detailList);
+        }
+    }
+
+    if (Array.isArray(item.stats) && item.stats.length) {
+        const list = document.createElement('ul');
+        list.className = 'saved-shape-stats';
+        item.stats.forEach(stat => {
+            const li = document.createElement('li');
+            li.className = 'saved-shape-stat';
+            const label = document.createElement('span');
+            label.className = 'saved-shape-stat-label';
+            label.textContent = getTranslation(stat.labelKey, stat.fallbackLabel || stat.labelKey);
+            const value = document.createElement('span');
+            value.className = 'saved-shape-stat-value';
+            value.textContent = stat.value;
+            li.appendChild(label);
+            li.appendChild(value);
+            list.appendChild(li);
+        });
+        bodyChildren.push(list);
+    }
+
+    if (bodyChildren.length) {
+        const body = document.createElement('div');
+        body.className = 'saved-shape-card-body';
+        bodyChildren.forEach(child => body.appendChild(child));
+        card.appendChild(body);
+    }
+
+    return card;
+}
+
+function renderSavedShapesGroup({ items, totalCount, gridId, countId, emptyId }) {
     const grid = document.getElementById(gridId);
     const count = document.getElementById(countId);
     const empty = document.getElementById(emptyId);
@@ -368,53 +787,291 @@ function renderSavedShapesGroup({ items, gridId, countId, emptyId }) {
         return;
     }
     grid.textContent = '';
-    count.textContent = String(items.length);
-    if (!items.length) {
+    grid.dataset.viewMode = savedShapesFilterState.view;
+
+    const filteredCount = items.length;
+    const total = Number.isFinite(totalCount) ? totalCount : filteredCount;
+    if (filteredCount === total) {
+        count.textContent = formatNumberLocalized(filteredCount, 0);
+    } else {
+        count.textContent = `${formatNumberLocalized(filteredCount, 0)} / ${formatNumberLocalized(total, 0)}`;
+    }
+
+    if (!filteredCount) {
         grid.hidden = true;
         empty.hidden = false;
         return;
     }
+
     grid.hidden = false;
     empty.hidden = true;
+
     items.forEach(item => {
-        const card = document.createElement('article');
-        card.className = 'saved-shape-card';
+        const card = createSavedShapeCard(item);
+        grid.appendChild(card);
+    });
+}
 
-        const header = document.createElement('header');
-        header.className = 'saved-shape-card-header';
+function updateSavedShapesControlsOptions(items) {
+    const searchInput = document.getElementById('savedShapesSearch');
+    if (searchInput && searchInput.value !== savedShapesFilterState.search) {
+        searchInput.value = savedShapesFilterState.search;
+    }
 
-        const nameEl = document.createElement('h4');
-        nameEl.className = 'saved-shape-name';
-        nameEl.textContent = item.name;
+    const typeSelect = document.getElementById('savedShapesTypeFilter');
+    if (typeSelect && typeSelect.value !== savedShapesFilterState.type) {
+        typeSelect.value = savedShapesFilterState.type;
+    }
 
-        const typeEl = document.createElement('span');
-        typeEl.className = 'saved-shape-type';
-        typeEl.textContent = getTranslation(item.typeKey, item.typeKey);
+    const segmentSelect = document.getElementById('savedShapesSegmentFilter');
+    if (segmentSelect && segmentSelect.value !== savedShapesFilterState.segments) {
+        segmentSelect.value = savedShapesFilterState.segments;
+    }
 
-        header.appendChild(nameEl);
-        header.appendChild(typeEl);
-        card.appendChild(header);
+    const sortSelect = document.getElementById('savedShapesSort');
+    if (sortSelect && sortSelect.value !== savedShapesFilterState.sort) {
+        sortSelect.value = savedShapesFilterState.sort;
+    }
 
-        if (Array.isArray(item.stats) && item.stats.length) {
-            const list = document.createElement('ul');
-            list.className = 'saved-shape-stats';
-            item.stats.forEach(stat => {
-                const li = document.createElement('li');
-                li.className = 'saved-shape-stat';
-                const label = document.createElement('span');
-                label.className = 'saved-shape-stat-label';
-                label.textContent = getTranslation(stat.labelKey, stat.fallbackLabel || stat.labelKey);
-                const value = document.createElement('span');
-                value.className = 'saved-shape-stat-value';
-                value.textContent = stat.value;
-                li.appendChild(label);
-                li.appendChild(value);
-                list.appendChild(li);
-            });
-            card.appendChild(list);
+    const diameterSelect = document.getElementById('savedShapesDiameterFilter');
+    if (diameterSelect) {
+        const uniqueDiameters = Array.from(new Set(items
+            .map(item => Number(item.diameter))
+            .filter(value => Number.isFinite(value) && value > 0)))
+            .sort((a, b) => a - b);
+        const hasUnknownDiameter = items.some(item => !Number.isFinite(item.diameter));
+        const previousValue = savedShapesFilterState.diameter;
+        diameterSelect.textContent = '';
+
+        const baseOption = document.createElement('option');
+        baseOption.value = 'all';
+        baseOption.textContent = getTranslation('Alle Durchmesser', 'Alle Durchmesser');
+        diameterSelect.appendChild(baseOption);
+
+        if (hasUnknownDiameter) {
+            const option = document.createElement('option');
+            option.value = 'none';
+            option.textContent = getTranslation('Ohne Durchmesserangabe', 'Ohne Durchmesserangabe');
+            diameterSelect.appendChild(option);
         }
 
-        grid.appendChild(card);
+        uniqueDiameters.forEach(value => {
+            const option = document.createElement('option');
+            option.value = String(value);
+            option.textContent = `${formatNumberLocalized(value, Number.isInteger(value) ? 0 : 1)} mm`;
+            diameterSelect.appendChild(option);
+        });
+
+        if (!Array.from(diameterSelect.options).some(option => option.value === previousValue)) {
+            savedShapesFilterState.diameter = 'all';
+        }
+        diameterSelect.value = savedShapesFilterState.diameter;
+    }
+
+    const steelSelect = document.getElementById('savedShapesSteelFilter');
+    if (steelSelect) {
+        const steelGrades = new Map();
+        let hasEmpty = false;
+        items.forEach(item => {
+            const normalized = item.steelGradeNormalized || '';
+            if (normalized) {
+                if (!steelGrades.has(normalized)) {
+                    steelGrades.set(normalized, item.steelGrade);
+                }
+            } else if (item.steelGrade) {
+                const fallback = item.steelGrade.toLowerCase();
+                if (!steelGrades.has(fallback)) {
+                    steelGrades.set(fallback, item.steelGrade);
+                }
+            } else {
+                hasEmpty = true;
+            }
+        });
+        const sortedGrades = Array.from(steelGrades.entries())
+            .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }));
+        const previousValue = savedShapesFilterState.steelGrade;
+        steelSelect.textContent = '';
+
+        const baseOption = document.createElement('option');
+        baseOption.value = 'all';
+        baseOption.textContent = getTranslation('Alle Stahlgüten', 'Alle Stahlgüten');
+        steelSelect.appendChild(baseOption);
+
+        if (hasEmpty) {
+            const option = document.createElement('option');
+            option.value = 'none';
+            option.textContent = getTranslation('Ohne Stahlgüte', 'Ohne Stahlgüte');
+            steelSelect.appendChild(option);
+        }
+
+        sortedGrades.forEach(([normalized, display]) => {
+            const option = document.createElement('option');
+            option.value = normalized;
+            option.textContent = display;
+            steelSelect.appendChild(option);
+        });
+
+        if (!Array.from(steelSelect.options).some(option => option.value === previousValue)) {
+            savedShapesFilterState.steelGrade = 'all';
+        }
+        steelSelect.value = savedShapesFilterState.steelGrade;
+    }
+
+    updateSavedShapesResetButtonState();
+}
+
+function applySavedShapesFilters(items) {
+    const searchTerm = normalizeSearchValue((savedShapesFilterState.search || '').trim());
+    const hasSearch = searchTerm.length > 0;
+
+    const filtered = items.filter(item => {
+        if (savedShapesFilterState.type !== 'all' && item.type !== savedShapesFilterState.type) {
+            return false;
+        }
+
+        if (savedShapesFilterState.diameter !== 'all') {
+            if (savedShapesFilterState.diameter === 'none') {
+                if (Number.isFinite(item.diameter)) {
+                    return false;
+                }
+            } else {
+                const selectedDiameter = Number(savedShapesFilterState.diameter);
+                if (!Number.isFinite(selectedDiameter) || !Number.isFinite(item.diameter)) {
+                    return false;
+                }
+                if (Math.abs(item.diameter - selectedDiameter) > 0.0001) {
+                    return false;
+                }
+            }
+        }
+
+        if (savedShapesFilterState.steelGrade !== 'all') {
+            if (savedShapesFilterState.steelGrade === 'none') {
+                if (item.steelGrade && item.steelGrade.trim().length > 0) {
+                    return false;
+                }
+            } else if (item.steelGradeNormalized !== savedShapesFilterState.steelGrade) {
+                return false;
+            }
+        }
+
+        if (savedShapesFilterState.segments !== 'all') {
+            const threshold = Number(savedShapesFilterState.segments);
+            if (Number.isFinite(threshold)) {
+                const count = Number(item.segmentCount || 0);
+                if (!Number.isFinite(count) || count < threshold) {
+                    return false;
+                }
+            }
+        }
+
+        if (hasSearch) {
+            if (!item.searchText || !item.searchText.includes(searchTerm)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    const sorted = filtered.slice();
+    switch (savedShapesFilterState.sort) {
+        case 'name-desc':
+            sorted.sort((a, b) => compareByName(a, b, 'desc'));
+            break;
+        case 'diameter-desc':
+            sorted.sort((a, b) => compareNumericValues(a.diameter, b.diameter, 'desc') || compareByName(a, b));
+            break;
+        case 'diameter-asc':
+            sorted.sort((a, b) => compareNumericValues(a.diameter, b.diameter, 'asc') || compareByName(a, b));
+            break;
+        case 'segments-desc':
+            sorted.sort((a, b) => compareNumericValues(a.segmentCount, b.segmentCount, 'desc') || compareByName(a, b));
+            break;
+        case 'quantity-desc':
+            sorted.sort((a, b) => compareNumericValues(a.quantity, b.quantity, 'desc') || compareByName(a, b));
+            break;
+        default:
+            sorted.sort((a, b) => compareByName(a, b, 'asc'));
+            break;
+    }
+
+    return sorted;
+}
+
+function updateSavedShapesResultInfo(filteredCount, totalCount) {
+    const resultInfo = document.getElementById('savedShapesResultInfo');
+    if (!resultInfo) {
+        return;
+    }
+    if (totalCount === 0) {
+        resultInfo.textContent = getTranslation('Keine gespeicherten Formen', 'Keine gespeicherten Formen');
+        return;
+    }
+    if (filteredCount === 0) {
+        resultInfo.textContent = getTranslation('Gespeicherte Formen Keine Treffer', 'Keine Treffer für die aktuellen Filter.');
+        return;
+    }
+    resultInfo.textContent = getTranslation('Gespeicherte Formen Ergebnis', '{count} von {total} Formen angezeigt', {
+        count: formatNumberLocalized(filteredCount, 0),
+        total: formatNumberLocalized(totalCount, 0)
+    });
+}
+
+function initializeSavedShapesControls() {
+    if (savedShapesControlsInitialized) {
+        return;
+    }
+    savedShapesControlsInitialized = true;
+
+    const searchInput = document.getElementById('savedShapesSearch');
+    if (searchInput) {
+        searchInput.value = savedShapesFilterState.search;
+        searchInput.addEventListener('input', event => {
+            savedShapesFilterState.search = event.target.value;
+            renderSavedShapesOverview();
+        });
+    }
+
+    document.getElementById('savedShapesTypeFilter')?.addEventListener('change', event => {
+        savedShapesFilterState.type = event.target.value || 'all';
+        renderSavedShapesOverview();
+    });
+
+    document.getElementById('savedShapesDiameterFilter')?.addEventListener('change', event => {
+        savedShapesFilterState.diameter = event.target.value || 'all';
+        renderSavedShapesOverview();
+    });
+
+    document.getElementById('savedShapesSteelFilter')?.addEventListener('change', event => {
+        savedShapesFilterState.steelGrade = event.target.value || 'all';
+        renderSavedShapesOverview();
+    });
+
+    document.getElementById('savedShapesSegmentFilter')?.addEventListener('change', event => {
+        savedShapesFilterState.segments = event.target.value || 'all';
+        renderSavedShapesOverview();
+    });
+
+    document.getElementById('savedShapesSort')?.addEventListener('change', event => {
+        savedShapesFilterState.sort = event.target.value || 'name-asc';
+        renderSavedShapesOverview();
+    });
+
+    document.getElementById('savedShapesResetFilters')?.addEventListener('click', () => {
+        savedShapesFilterState = { ...SAVED_SHAPES_FILTER_DEFAULTS };
+        renderSavedShapesOverview();
+    });
+
+    document.querySelectorAll('.saved-shapes-view-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const mode = button.dataset.viewMode || 'grid';
+            if (savedShapesFilterState.view === mode) {
+                return;
+            }
+            savedShapesFilterState.view = mode;
+            renderSavedShapesOverview();
+        });
     });
 }
 
@@ -423,12 +1080,60 @@ function renderSavedShapesOverview() {
     if (!view) {
         return;
     }
-    const groups = [
-        { items: collectSaved2dShapes(), gridId: 'savedShapes2dGrid', countId: 'savedShapes2dCount', emptyId: 'savedShapes2dEmpty' },
-        { items: collectSaved3dShapes(), gridId: 'savedShapes3dGrid', countId: 'savedShapes3dCount', emptyId: 'savedShapes3dEmpty' },
-        { items: collectSavedMeshes(), gridId: 'savedShapesMatGrid', countId: 'savedShapesMatCount', emptyId: 'savedShapesMatEmpty' }
+
+    initializeSavedShapesControls();
+
+    const allItems = [
+        ...collectSaved2dShapes(),
+        ...collectSaved3dShapes(),
+        ...collectSavedMeshes()
     ];
-    groups.forEach(renderSavedShapesGroup);
+    savedShapesAllItems = allItems;
+
+    updateSavedShapesControlsOptions(allItems);
+
+    const filteredItems = applySavedShapesFilters(allItems);
+    const totalsByType = { '2d': 0, '3d': 0, 'mesh': 0 };
+    const filteredByType = { '2d': [], '3d': [], 'mesh': [] };
+
+    allItems.forEach(item => {
+        const type = item.type || '2d';
+        totalsByType[type] = (totalsByType[type] || 0) + 1;
+    });
+
+    filteredItems.forEach(item => {
+        const type = item.type || '2d';
+        if (!Array.isArray(filteredByType[type])) {
+            filteredByType[type] = [];
+        }
+        filteredByType[type].push(item);
+    });
+
+    const groups = [
+        { type: '2d', gridId: 'savedShapes2dGrid', countId: 'savedShapes2dCount', emptyId: 'savedShapes2dEmpty' },
+        { type: '3d', gridId: 'savedShapes3dGrid', countId: 'savedShapes3dCount', emptyId: 'savedShapes3dEmpty' },
+        { type: 'mesh', gridId: 'savedShapesMatGrid', countId: 'savedShapesMatCount', emptyId: 'savedShapesMatEmpty' }
+    ];
+
+    groups.forEach(group => {
+        const items = filteredByType[group.type] || [];
+        const totalCount = totalsByType[group.type] || 0;
+        renderSavedShapesGroup({
+            items,
+            totalCount,
+            gridId: group.gridId,
+            countId: group.countId,
+            emptyId: group.emptyId
+        });
+    });
+
+    updateSavedShapesResultInfo(filteredItems.length, allItems.length);
+    updateSavedShapesViewMode();
+
+    const controls = document.querySelector('.saved-shapes-controls');
+    if (controls) {
+        controls.setAttribute('aria-label', getTranslation('Filter und Anzeigeoptionen', 'Filter und Anzeigeoptionen'));
+    }
 }
 
 function showView(view) {

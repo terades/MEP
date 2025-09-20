@@ -1074,11 +1074,78 @@
 </div>
                 <div id="savedShapesView" class="app-container" style="display:none;">
                     <div class="card saved-shapes-card">
-                        <div class="card-header">
+                        <div class="card-header saved-shapes-card-header">
                             <div>
                                 <h2 class="card-title" data-i18n="Gespeicherte Formen">Gespeicherte Biegeformen</h2>
                                 <p class="card-subtitle" data-i18n="Gespeicherte Formen Beschreibung">Überblick über alle gespeicherten Biegeformen.</p>
                             </div>
+                        </div>
+                        <div class="saved-shapes-controls" aria-label="Filter und Anzeigeoptionen">
+                            <div class="saved-shapes-controls-row">
+                                <div class="saved-shapes-search">
+                                    <label class="visually-hidden" for="savedShapesSearch" data-i18n="Suchen">Suchen</label>
+                                    <input type="search" id="savedShapesSearch" data-i18n-placeholder="Suchen" placeholder="Suchen" autocomplete="off">
+                                </div>
+                                <div class="saved-shapes-controls-actions">
+                                    <button type="button" id="savedShapesResetFilters" class="stirrup-filter-reset saved-shapes-reset" data-i18n="Filter zurücksetzen">Filter zurücksetzen</button>
+                                    <div class="saved-shapes-view-toggle" role="group" aria-label="Ansicht">
+                                        <button type="button" id="savedShapesGridView" class="saved-shapes-view-button" data-view-mode="grid" aria-pressed="true" data-i18n-title="Rasteransicht" title="Rasteransicht">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" id="savedShapesListView" class="saved-shapes-view-button" data-view-mode="list" aria-pressed="false" data-i18n-title="Listenansicht" title="Listenansicht">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="saved-shapes-controls-row saved-shapes-controls-row--filters">
+                                <div class="saved-shapes-filter">
+                                    <label for="savedShapesTypeFilter" data-i18n="Typ">Typ</label>
+                                    <select id="savedShapesTypeFilter">
+                                        <option value="all" data-i18n="Alle">Alle</option>
+                                        <option value="2d" data-i18n="Biegeformen 2D">Biegeformen 2D</option>
+                                        <option value="3d" data-i18n="Biegeformen 3D">Biegeformen 3D</option>
+                                        <option value="mesh" data-i18n="Matten">Matten</option>
+                                    </select>
+                                </div>
+                                <div class="saved-shapes-filter">
+                                    <label for="savedShapesDiameterFilter" data-i18n="Durchmesser">Durchmesser</label>
+                                    <select id="savedShapesDiameterFilter">
+                                        <option value="all" data-i18n="Alle Durchmesser">Alle Durchmesser</option>
+                                    </select>
+                                </div>
+                                <div class="saved-shapes-filter">
+                                    <label for="savedShapesSteelFilter" data-i18n="Stahlgüte">Stahlgüte</label>
+                                    <select id="savedShapesSteelFilter">
+                                        <option value="all" data-i18n="Alle Stahlgüten">Alle Stahlgüten</option>
+                                    </select>
+                                </div>
+                                <div class="saved-shapes-filter">
+                                    <label for="savedShapesSegmentFilter" data-i18n="Segmente">Segmente</label>
+                                    <select id="savedShapesSegmentFilter">
+                                        <option value="all" data-i18n="Alle Segmente">Alle Segmente</option>
+                                        <option value="4">≥ 4</option>
+                                        <option value="6">≥ 6</option>
+                                        <option value="8">≥ 8</option>
+                                    </select>
+                                </div>
+                                <div class="saved-shapes-filter">
+                                    <label for="savedShapesSort" data-i18n="Sortierung">Sortierung</label>
+                                    <select id="savedShapesSort">
+                                        <option value="name-asc" data-i18n="Name A-Z">Name A-Z</option>
+                                        <option value="name-desc" data-i18n="Name Z-A">Name Z-A</option>
+                                        <option value="diameter-desc" data-i18n="Durchmesser (größer zuerst)">Durchmesser (größer zuerst)</option>
+                                        <option value="diameter-asc" data-i18n="Durchmesser (kleiner zuerst)">Durchmesser (kleiner zuerst)</option>
+                                        <option value="segments-desc" data-i18n="Segmente (mehr zuerst)">Segmente (mehr zuerst)</option>
+                                        <option value="quantity-desc" data-i18n="Anzahl (mehr zuerst)">Anzahl (mehr zuerst)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p class="saved-shapes-result" id="savedShapesResultInfo" aria-live="polite"></p>
                         </div>
                         <div class="saved-shapes-groups">
                             <section class="saved-shapes-group">
