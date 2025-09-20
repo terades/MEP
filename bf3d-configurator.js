@@ -11,6 +11,11 @@
         history: [],
         historyIndex: -1,
         isDirty: false,
+        geometry: {
+            segments: [],
+            totalLength: 0,
+            boundingBox: null
+        },
         ui: {
             snapGrid: false,
             gridSize: 10,
@@ -64,12 +69,317 @@
         return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
     }
 
+    function vectorDistance(a, b) {
+        return vectorLength(vectorSubtract(a, b));
+    }
+
     function vectorNormalize(v) {
         const length = vectorLength(v);
         if (length === 0) {
             return { x: 0, y: 0, z: 0 };
         }
         return vectorScale(v, 1 / length);
+    }
+
+    function clonePoint(point) {
+        return {
+            x: Number(point?.x) || 0,
+            y: Number(point?.y) || 0,
+            z: Number(point?.z) || 0
+        };
+    }
+
+    function computeCircle2D(p1, p2, p3) {
+        const x1 = p1.x;
+        const y1 = p1.y;
+        const x2 = p2.x;
+        const y2 = p2.y;
+        const x3 = p3.x;
+        const y3 = p3.y;
+
+        const det = (x1 - x2) * (y2 - y3) - (x2 - x3) * (y1 - y2);
+        if (Math.abs(det) < 1e-7) {
+            return null;
+        }
+
+        const x1Sq = x1 * x1 + y1 * y1;
+        const x2Sq = x2 * x2 + y2 * y2;
+        const x3Sq = x3 * x3 + y3 * y3;
+
+        const bc = (x1Sq - x2Sq) / 2;
+        const cd = (x2Sq - x3Sq) / 2;
+
+        const cx = (bc * (y2 - y3) - cd * (y1 - y2)) / det;
+        const cy = ((x1 - x2) * cd - (x2 - x3) * bc) / det;
+        const radius = Math.sqrt((cx - x1) * (cx - x1) + (cy - y1) * (cy - y1));
+
+        if (!Number.isFinite(radius) || radius <= 0) {
+            return null;
+        }
+
+        return {
+            center: { x: cx, y: cy },
+            radius
+        };
+    }
+
+    function unwrapAngle(value, reference) {
+        let result = value;
+        while (result - reference > Math.PI) {
+            result -= Math.PI * 2;
+        }
+        while (result - reference < -Math.PI) {
+            result += Math.PI * 2;
+        }
+        return result;
+    }
+
+    function projectPointToArcBasis(point, center, axisX, axisY) {
+        const relative = vectorSubtract(point, center);
+        const radius = vectorLength(relative);
+        if (!(radius > 0)) {
+            return null;
+        }
+        const x = vectorDot(relative, axisX);
+        const y = vectorDot(relative, axisY);
+        const angle = Math.atan2(y, x);
+        return { radius, angle };
+    }
+
+    function buildArcSegment(points, startIndex) {
+        if (!Array.isArray(points) || startIndex + 2 >= points.length) {
+            return null;
+        }
+
+        const p0 = points[startIndex];
+        const p1 = points[startIndex + 1];
+        const p2 = points[startIndex + 2];
+
+        const baseV1 = vectorSubtract(p1, p0);
+        const baseV2 = vectorSubtract(p2, p0);
+        const planeNormalRaw = vectorCross(baseV1, baseV2);
+        const planeNormalLength = vectorLength(planeNormalRaw);
+        if (planeNormalLength < 1e-5) {
+            return null;
+        }
+        const planeNormal = vectorScale(planeNormalRaw, 1 / planeNormalLength);
+
+        const axisXInitial = vectorNormalize(vectorSubtract(p1, p0));
+        if (vectorLength(axisXInitial) < 1e-6) {
+            return null;
+        }
+        const axisYInitialRaw = vectorCross(planeNormal, axisXInitial);
+        const axisYInitialLength = vectorLength(axisYInitialRaw);
+        if (axisYInitialLength < 1e-6) {
+            return null;
+        }
+        const axisYInitial = vectorScale(axisYInitialRaw, 1 / axisYInitialLength);
+
+        const localP0 = { x: 0, y: 0 };
+        const localP1 = {
+            x: vectorDot(vectorSubtract(p1, p0), axisXInitial),
+            y: vectorDot(vectorSubtract(p1, p0), axisYInitial)
+        };
+        const localP2 = {
+            x: vectorDot(vectorSubtract(p2, p0), axisXInitial),
+            y: vectorDot(vectorSubtract(p2, p0), axisYInitial)
+        };
+
+        const circle = computeCircle2D(localP0, localP1, localP2);
+        if (!circle) {
+            return null;
+        }
+
+        const centerLocal = circle.center;
+        const center = vectorAdd(
+            p0,
+            vectorAdd(
+                vectorScale(axisXInitial, centerLocal.x),
+                vectorScale(axisYInitial, centerLocal.y)
+            )
+        );
+        const radius = circle.radius;
+
+        if (!(radius > 0) || !Number.isFinite(radius)) {
+            return null;
+        }
+
+        const axisX = vectorNormalize(vectorSubtract(p0, center));
+        if (vectorLength(axisX) < 1e-6) {
+            return null;
+        }
+        const axisYRaw = vectorCross(planeNormal, axisX);
+        const axisYLength = vectorLength(axisYRaw);
+        if (axisYLength < 1e-6) {
+            return null;
+        }
+        const axisY = vectorScale(axisYRaw, 1 / axisYLength);
+
+        const toleranceRadius = Math.max(0.5, radius * 0.01);
+        const angles = [];
+
+        for (let idx = 0; idx < 3; idx++) {
+            const point = points[startIndex + idx];
+            const projection = projectPointToArcBasis(point, center, axisX, axisY);
+            if (!projection) {
+                return null;
+            }
+            if (Math.abs(projection.radius - radius) > toleranceRadius) {
+                return null;
+            }
+            if (idx === 0) {
+                angles.push(0);
+            } else {
+                const rawAngle = unwrapAngle(projection.angle, angles[angles.length - 1]);
+                angles.push(rawAngle);
+            }
+        }
+
+        const initialDelta = angles[1] - angles[0];
+        if (Math.abs(initialDelta) < 1e-3) {
+            return null;
+        }
+        const directionSign = initialDelta > 0 ? 1 : -1;
+        let lastAngle = angles[angles.length - 1];
+        let endIndex = startIndex + 2;
+
+        for (let idx = startIndex + 3; idx < points.length; idx++) {
+            const projection = projectPointToArcBasis(points[idx], center, axisX, axisY);
+            if (!projection) {
+                break;
+            }
+            if (Math.abs(projection.radius - radius) > toleranceRadius) {
+                break;
+            }
+            const angle = unwrapAngle(projection.angle, lastAngle);
+            const delta = angle - lastAngle;
+            if (delta * directionSign <= 1e-4) {
+                break;
+            }
+            angles.push(angle);
+            lastAngle = angle;
+            endIndex = idx;
+        }
+
+        const totalAngle = lastAngle - angles[0];
+        const totalAngleAbs = Math.abs(totalAngle);
+        if (totalAngleAbs < 0.05) { // ~3°
+            return null;
+        }
+
+        if (endIndex - startIndex < 2 && totalAngleAbs < 0.35) {
+            return null;
+        }
+
+        const length = radius * totalAngleAbs;
+
+        return {
+            segment: {
+                type: 'arc',
+                start: clonePoint(points[startIndex]),
+                end: clonePoint(points[endIndex]),
+                center: clonePoint(center),
+                radius,
+                startAngle: angles[0],
+                endAngle: lastAngle,
+                angle: totalAngle,
+                normal: clonePoint(planeNormal),
+                axisX: clonePoint(axisX),
+                axisY: clonePoint(axisY),
+                length
+            },
+            endIndex
+        };
+    }
+
+    function computePathGeometry(points) {
+        if (!Array.isArray(points) || points.length < 2) {
+            return {
+                segments: [],
+                totalLength: 0,
+                boundingBox: null
+            };
+        }
+
+        const cleanPoints = points.map(clonePoint);
+        let minX = Infinity;
+        let minY = Infinity;
+        let minZ = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let maxZ = -Infinity;
+
+        cleanPoints.forEach(point => {
+            if (point.x < minX) minX = point.x;
+            if (point.y < minY) minY = point.y;
+            if (point.z < minZ) minZ = point.z;
+            if (point.x > maxX) maxX = point.x;
+            if (point.y > maxY) maxY = point.y;
+            if (point.z > maxZ) maxZ = point.z;
+        });
+
+        const segments = [];
+        let index = 0;
+        while (index < cleanPoints.length - 1) {
+            const arcCandidate = buildArcSegment(cleanPoints, index);
+            if (arcCandidate) {
+                segments.push(arcCandidate.segment);
+                index = arcCandidate.endIndex;
+                continue;
+            }
+
+            const start = cleanPoints[index];
+            const end = cleanPoints[index + 1];
+            const length = vectorDistance(start, end);
+            const midpoint = vectorScale(vectorAdd(start, end), 0.5);
+            const direction = vectorNormalize(vectorSubtract(end, start));
+
+            segments.push({
+                type: 'line',
+                start: clonePoint(start),
+                end: clonePoint(end),
+                length,
+                midpoint: clonePoint(midpoint),
+                direction: clonePoint(direction)
+            });
+            index += 1;
+        }
+
+        const lineIndices = segments
+            .map((segment, idx) => (segment.type === 'line' ? idx : null))
+            .filter(idx => idx !== null);
+        if (lineIndices.length > 0) {
+            segments[lineIndices[0]].isOverhang = true;
+            const lastIndex = lineIndices[lineIndices.length - 1];
+            segments[lastIndex].isOverhang = true;
+        }
+
+        const totalLength = segments.reduce((sum, segment) => sum + (Number(segment.length) || 0), 0);
+
+        const boundingBox = (Number.isFinite(minX) && Number.isFinite(maxX))
+            ? {
+                min: { x: minX, y: minY, z: minZ },
+                max: { x: maxX, y: maxY, z: maxZ }
+            }
+            : null;
+
+        return {
+            segments,
+            totalLength,
+            boundingBox
+        };
+    }
+
+    function getDimensionSettings() {
+        const showDimensions = document.getElementById('bf3dToggleDimensions')?.checked;
+        const showZoneLengths = document.getElementById('bf3dToggleZoneLengths')?.checked;
+        const showOverhangs = document.getElementById('bf3dToggleOverhangs')?.checked;
+
+        return {
+            showDimensions: showDimensions !== false,
+            showZoneLengths: showZoneLengths !== false,
+            showOverhangs: showOverhangs !== false
+        };
     }
 
     function roundToPrecision(value, decimals = 3) {
@@ -250,10 +560,17 @@
             output.value = generateBf3dString();
         }
 
+        state.geometry = computePathGeometry(state.points);
+
         // Update 2D and 3D previews
         render2dPreview();
         if (window.bf3dViewer) {
-             window.bf3dViewer.update(state);
+            window.bf3dViewer.update({
+                header: state.header,
+                points: state.points,
+                segmentsInfo: state.geometry,
+                dimensionSettings: getDimensionSettings()
+            });
         }
     }
 
@@ -472,7 +789,12 @@
             view2dBtn.classList.remove('is-active');
             if (window.bf3dViewer) {
                 window.bf3dViewer.init();
-                window.bf3dViewer.update(state);
+                window.bf3dViewer.update({
+                    header: state.header,
+                    points: state.points,
+                    segmentsInfo: state.geometry,
+                    dimensionSettings: getDimensionSettings()
+                });
             }
         });
 
@@ -486,6 +808,21 @@
 
         const forceIntegersCheckbox = document.getElementById('bf3dForceIntegers');
         if(forceIntegersCheckbox) forceIntegersCheckbox.addEventListener('change', (e) => state.ui.forceIntegers = e.target.checked);
+
+        ['bf3dToggleDimensions', 'bf3dToggleZoneLengths', 'bf3dToggleOverhangs'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', () => {
+                if (window.bf3dViewer) {
+                    window.bf3dViewer.update({
+                        header: state.header,
+                        points: state.points,
+                        segmentsInfo: state.geometry,
+                        dimensionSettings: getDimensionSettings()
+                    });
+                }
+            });
+        });
 
         // Header inputs
         ['p:bf3dPosition', 'n:bf3dQuantity', 'd:bf3dDiameter', 'g:bf3dSteelGrade', 's:bf3dBendingRoller'].forEach(mapping => {
