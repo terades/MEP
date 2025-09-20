@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 class ArcCurve3 extends THREE.Curve {
     constructor(center, radius, startAngle, endAngle) {
@@ -30,9 +31,11 @@ const state = {
     scene: null,
     camera: null,
     renderer: null,
+    labelRenderer: null,
     controls: null,
     grid: null,
     tubeMesh: null,
+    labelRoot: null,
     shouldAutoFit: true,
     currentBounds: null
 };
@@ -44,6 +47,9 @@ function animate() {
         state.controls.update();
     }
     state.renderer.render(state.scene, state.camera);
+    if (state.labelRenderer) {
+        state.labelRenderer.render(state.scene, state.camera);
+    }
 }
 
 function ensureInit() {
@@ -67,9 +73,20 @@ function ensureInit() {
 
     state.renderer = new THREE.WebGLRenderer({ antialias: true });
     state.renderer.setPixelRatio(window.devicePixelRatio || 1);
-    state.renderer.setSize(Math.max(container.clientWidth, 1), Math.max(container.clientHeight, 1));
+    const width = Math.max(container.clientWidth, 1);
+    const height = Math.max(container.clientHeight, 1);
+    state.renderer.setSize(width, height);
     container.innerHTML = '';
     container.appendChild(state.renderer.domElement);
+
+    state.labelRenderer = new CSS2DRenderer();
+    state.labelRenderer.setSize(width, height);
+    state.labelRenderer.domElement.style.position = 'absolute';
+    state.labelRenderer.domElement.style.top = '0';
+    state.labelRenderer.domElement.style.left = '0';
+    state.labelRenderer.domElement.style.pointerEvents = 'none';
+    state.labelRenderer.domElement.classList.add('bf2d-label-layer');
+    container.appendChild(state.labelRenderer.domElement);
 
     state.controls = new OrbitControls(state.camera, state.renderer.domElement);
     state.controls.enableDamping = true;
@@ -100,6 +117,9 @@ function ensureInit() {
     state.scene.add(grid);
     state.grid = grid;
 
+    state.labelRoot = new THREE.Group();
+    state.scene.add(state.labelRoot);
+
     window.addEventListener('resize', onResize);
 
     state.initialized = true;
@@ -117,6 +137,7 @@ function onResize() {
     state.camera.aspect = width / height;
     state.camera.updateProjectionMatrix();
     state.renderer.setSize(width, height);
+    state.labelRenderer?.setSize(width, height);
 }
 
 function disposeCurrentMesh() {
@@ -131,6 +152,7 @@ function disposeCurrentMesh() {
         state.tubeMesh.material.dispose();
     }
     state.tubeMesh = null;
+    clearLabels();
 }
 
 function toVector3(point) {
@@ -185,6 +207,230 @@ function buildCurveFromSegments(segments) {
     }
 
     return { curvePath, boundingBox, subdivisions: Math.max(subdivisions, 8) };
+}
+
+function normalizeDimensionSettings(settings) {
+    if (!settings || typeof settings !== 'object') {
+        return {
+            showDimensions: true,
+            showZoneLengths: true,
+            showOverhangs: true
+        };
+    }
+    return {
+        showDimensions: settings.showDimensions !== false,
+        showZoneLengths: settings.showZoneLengths !== false,
+        showOverhangs: settings.showOverhangs !== false
+    };
+}
+
+function clearLabels() {
+    if (!state.labelRoot) {
+        return;
+    }
+    const children = [...state.labelRoot.children];
+    children.forEach(child => {
+        if (child.element?.parentNode) {
+            child.element.parentNode.removeChild(child.element);
+        }
+        state.labelRoot.remove(child);
+    });
+}
+
+function formatMeasurement(value) {
+    if (!Number.isFinite(value)) {
+        return '0';
+    }
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+}
+
+function createLabel(text, className = '') {
+    const el = document.createElement('div');
+    el.className = `bf2d-dim-label${className ? ` ${className}` : ''}`;
+    el.textContent = text;
+    return new CSS2DObject(el);
+}
+
+function computeDimensionSegments(pathSegments) {
+    const segments = [];
+    let totalLength = 0;
+
+    if (!Array.isArray(pathSegments)) {
+        return { segments, totalLength };
+    }
+
+    pathSegments.forEach((segment, index) => {
+        if (!segment || typeof segment !== 'object') {
+            return;
+        }
+        if (segment.type === 'line') {
+            const start = toVector3(segment.start);
+            const end = toVector3(segment.end);
+            const length = start.distanceTo(end);
+            if (!Number.isFinite(length) || length <= 1e-3) {
+                return;
+            }
+            const direction = end.clone().sub(start);
+            if (direction.lengthSq() === 0) {
+                return;
+            }
+            direction.normalize();
+            const midpoint = start.clone().add(end).multiplyScalar(0.5);
+            segments.push({
+                type: 'line',
+                index,
+                start,
+                end,
+                length,
+                midpoint,
+                direction
+            });
+            totalLength += length;
+        } else if (segment.type === 'arc') {
+            const radius = Number(segment.radius) || 0;
+            const startAngle = Number(segment.startAngle);
+            const endAngle = Number(segment.endAngle);
+            if (!(radius > 0) || !Number.isFinite(startAngle) || !Number.isFinite(endAngle)) {
+                return;
+            }
+            const sweep = endAngle - startAngle;
+            const angle = Math.abs(sweep);
+            if (!Number.isFinite(angle) || angle <= 1e-5) {
+                return;
+            }
+            const center = toVector3(segment.center);
+            const length = radius * angle;
+            totalLength += length;
+            segments.push({
+                type: 'arc',
+                index,
+                center,
+                radius,
+                startAngle,
+                endAngle,
+                midAngle: startAngle + sweep / 2,
+                clockwise: segment.clockwise !== undefined ? !!segment.clockwise : sweep < 0,
+                length
+            });
+        }
+    });
+
+    const lineSegments = segments.filter(segment => segment.type === 'line');
+    if (lineSegments.length >= 1) {
+        lineSegments[0].isOverhang = true;
+        if (lineSegments.length > 1) {
+            lineSegments[lineSegments.length - 1].isOverhang = true;
+        }
+    }
+
+    return { segments, totalLength };
+}
+
+function computeLineLabelPosition(segment, offsetDistance, boundsCenter) {
+    const midpoint = segment.midpoint.clone();
+    const direction = segment.direction.clone();
+    if (direction.lengthSq() === 0) {
+        direction.set(1, 0, 0);
+    }
+    direction.normalize();
+    let normal = new THREE.Vector3(-direction.y, direction.x, 0);
+    if (normal.lengthSq() === 0) {
+        normal = new THREE.Vector3(0, 0, 1);
+    } else {
+        normal.normalize();
+    }
+
+    const center = boundsCenter || new THREE.Vector3(0, 0, 0);
+    const toMidpoint = midpoint.clone().sub(center);
+    if (normal.dot(toMidpoint) < 0) {
+        normal.multiplyScalar(-1);
+    }
+
+    const result = midpoint.clone();
+    result.add(normal.multiplyScalar(offsetDistance));
+    result.add(new THREE.Vector3(0, 0, offsetDistance * 0.05));
+    return result;
+}
+
+function computeArcLabelPosition(segment, offsetDistance) {
+    const center = segment.center.clone();
+    const radius = segment.radius;
+    const midAngle = segment.midAngle;
+    const innerRadius = Math.max(radius * 0.45, radius - offsetDistance, radius * 0.25);
+    const clampedRadius = Math.min(innerRadius, radius * 0.92);
+    const cos = Math.cos(midAngle);
+    const sin = Math.sin(midAngle);
+    const position = new THREE.Vector3(
+        center.x + clampedRadius * cos,
+        center.y + clampedRadius * sin,
+        center.z + offsetDistance * 0.05
+    );
+    return position;
+}
+
+function addLineLabel(segment, offsetDistance, boundsCenter) {
+    const label = createLabel(
+        `${formatMeasurement(segment.length)} mm`,
+        segment.isOverhang ? 'bf2d-dim-label--overhang' : ''
+    );
+    label.position.copy(computeLineLabelPosition(segment, offsetDistance, boundsCenter));
+    state.labelRoot?.add(label);
+}
+
+function addArcLabel(segment, offsetDistance) {
+    const directionPrefix = segment.clockwise ? 'R' : 'L';
+    const label = createLabel(`${directionPrefix}${formatMeasurement(segment.length)} mm`, 'bf2d-dim-label--arc');
+    label.position.copy(computeArcLabelPosition(segment, offsetDistance));
+    state.labelRoot?.add(label);
+}
+
+function addTotalLengthLabel(totalLength, bounds, offsetDistance) {
+    if (!bounds) {
+        return;
+    }
+    const label = createLabel(`L=${formatMeasurement(totalLength)} mm`, 'bf2d-dim-label--total');
+    const center = bounds.getCenter(new THREE.Vector3());
+    const position = new THREE.Vector3(center.x, bounds.max.y + offsetDistance * 0.6, bounds.max.z + offsetDistance * 0.05);
+    label.position.copy(position);
+    state.labelRoot?.add(label);
+}
+
+function updateDimensionLabels({ segments, totalLength, settings, tubeRadius, bounds }) {
+    clearLabels();
+
+    if (!settings?.showDimensions) {
+        return;
+    }
+
+    const offsetDistance = Math.max((Number(tubeRadius) || 0) * 3, 40);
+
+    if (!Array.isArray(segments) || !segments.length) {
+        if (totalLength > 0 && bounds) {
+            addTotalLengthLabel(totalLength, bounds, offsetDistance);
+        }
+        return;
+    }
+
+    const boundsCenter = bounds ? bounds.getCenter(new THREE.Vector3()) : new THREE.Vector3(0, 0, 0);
+
+    segments.forEach(segment => {
+        if (segment.type === 'line') {
+            if (!settings.showOverhangs && segment.isOverhang) {
+                return;
+            }
+            if (!settings.showZoneLengths && !segment.isOverhang) {
+                return;
+            }
+            addLineLabel(segment, offsetDistance, boundsCenter);
+        } else if (segment.type === 'arc') {
+            addArcLabel(segment, offsetDistance * 0.8);
+        }
+    });
+
+    if (totalLength > 0 && bounds) {
+        addTotalLengthLabel(totalLength, bounds, offsetDistance);
+    }
 }
 
 function fitCameraToBounds(box, { useDefaultDirection = false, immediate = false } = {}) {
@@ -260,6 +506,9 @@ function update(data) {
         return;
     }
 
+    const dimensionSettings = normalizeDimensionSettings(data.dimensionSettings);
+    const dimensionData = computeDimensionSegments(data.pathSegments);
+
     const curveInfo = buildCurveFromSegments(data.pathSegments);
     if (!curveInfo) {
         return;
@@ -296,6 +545,14 @@ function update(data) {
         fitCameraToBounds(state.currentBounds, { useDefaultDirection: true, immediate: true });
     }
     state.shouldAutoFit = autoFit;
+
+    updateDimensionLabels({
+        segments: dimensionData.segments,
+        totalLength: dimensionData.totalLength,
+        settings: dimensionSettings,
+        tubeRadius: radius,
+        bounds: state.currentBounds
+    });
 }
 
 function prepareAutoFit() {

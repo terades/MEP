@@ -28,6 +28,11 @@
         showLengths: true,
         showRadii: true
     };
+    const preview3dPreferences = {
+        showDimensions: true,
+        showZoneLengths: true,
+        showOverhangs: true
+    };
     const DIMENSION_CONFIG = Object.freeze({
         lengthOffsetPx: 16,
         lengthTextGapPx: 10,
@@ -338,6 +343,33 @@
             radiusToggle.checked = dimensionPreferences.showRadii;
             radiusToggle.addEventListener('change', () => {
                 dimensionPreferences.showRadii = radiusToggle.checked;
+                updateOutputs();
+            });
+        }
+
+        const toggle3dDimensions = document.getElementById('bf2d3dToggleDimensions');
+        if (toggle3dDimensions) {
+            toggle3dDimensions.checked = preview3dPreferences.showDimensions;
+            toggle3dDimensions.addEventListener('change', () => {
+                preview3dPreferences.showDimensions = toggle3dDimensions.checked;
+                updateOutputs();
+            });
+        }
+
+        const toggle3dZoneLengths = document.getElementById('bf2d3dToggleZoneLengths');
+        if (toggle3dZoneLengths) {
+            toggle3dZoneLengths.checked = preview3dPreferences.showZoneLengths;
+            toggle3dZoneLengths.addEventListener('change', () => {
+                preview3dPreferences.showZoneLengths = toggle3dZoneLengths.checked;
+                updateOutputs();
+            });
+        }
+
+        const toggle3dOverhangs = document.getElementById('bf2d3dToggleOverhangs');
+        if (toggle3dOverhangs) {
+            toggle3dOverhangs.checked = preview3dPreferences.showOverhangs;
+            toggle3dOverhangs.addEventListener('change', () => {
+                preview3dPreferences.showOverhangs = toggle3dOverhangs.checked;
                 updateOutputs();
             });
         }
@@ -1537,6 +1569,14 @@
         }
     }
 
+    function get3dDimensionSettings() {
+        return {
+            showDimensions: preview3dPreferences.showDimensions !== false,
+            showZoneLengths: preview3dPreferences.showZoneLengths !== false,
+            showOverhangs: preview3dPreferences.showOverhangs !== false
+        };
+    }
+
     function update3dPreview(summary) {
         const viewer = window.bf2dViewer3D;
         if (!viewer || typeof viewer.update !== 'function') {
@@ -1557,7 +1597,8 @@
             diameter: Number(state.meta.diameter) || 0,
             rollDiameter: Number(state.meta.rollDiameter) || 0,
             pathSegments: Array.isArray(geometry.pathSegments) ? geometry.pathSegments : [],
-            points: Array.isArray(geometry.mathPoints) ? geometry.mathPoints : []
+            points: Array.isArray(geometry.mathPoints) ? geometry.mathPoints : [],
+            dimensionSettings: get3dDimensionSettings()
         });
 
         if (state.viewMode === '3d' && typeof viewer.onResize === 'function') {
