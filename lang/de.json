@@ -333,5 +333,11 @@
   "Quick-Aktionen": "Quick-Aktionen",
   "Gerade hinzufügen": "Gerade hinzufügen",
   "90°-Bogen hinzufügen": "90°-Bogen hinzufügen",
-  "Als .abs speichern": "Als .abs speichern"
+  "Als .abs speichern": "Als .abs speichern",
+  "Links (CCW)": "Links (CCW)",
+  "Rechts (CW)": "Rechts (CW)",
+  "Drehrichtung": "Drehrichtung",
+  "Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.": "Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.",
+  "Fehler: Das letzte Segment muss in der gewählten Ebene liegen.": "Fehler: Das letzte Segment muss in der gewählten Ebene liegen.",
+  "Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.": "Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen."
 }

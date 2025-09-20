@@ -315,5 +315,11 @@
   "Kompakte Darstellung aktivieren": "Włącz kompaktowy widok",
   "Kompakte Darstellung aktivieren Beschreibung": "Zmniejsza odstępy i zagęszcza tabele, aby pokazać więcej danych.",
   "Animationen reduzieren": "Ogranicz animacje",
-  "Animationen reduzieren Beschreibung": "Minimalizuje ruch w interfejsie dla spokojniejszej pracy."
+  "Animationen reduzieren Beschreibung": "Minimalizuje ruch w interfejsie dla spokojniejszej pracy.",
+  "Links (CCW)": "Lewo (CCW)",
+  "Rechts (CW)": "Prawo (CW)",
+  "Drehrichtung": "Kierunek obrotu",
+  "Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.": "Błąd: Do utworzenia łuku wymagane są co najmniej dwa punkty.",
+  "Fehler: Das letzte Segment muss in der gewählten Ebene liegen.": "Błąd: Ostatni odcinek musi leżeć w wybranej płaszczyźnie.",
+  "Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.": "Błąd: Ostatni odcinek jest zbyt krótki na łuk."
 }

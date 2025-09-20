@@ -315,5 +315,11 @@
   "Kompakte Darstellung aktivieren": "Zapnout kompaktní zobrazení",
   "Kompakte Darstellung aktivieren Beschreibung": "Zmenší rozestupy a zhušťuje tabulky pro více informací na obrazovce.",
   "Animationen reduzieren": "Omezit animace",
-  "Animationen reduzieren Beschreibung": "Minimalizuje pohyb v rozhraní pro klidnější práci."
+  "Animationen reduzieren Beschreibung": "Minimalizuje pohyb v rozhraní pro klidnější práci.",
+  "Links (CCW)": "Vlevo (CCW)",
+  "Rechts (CW)": "Vpravo (CW)",
+  "Drehrichtung": "Směr ohybu",
+  "Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.": "Chyba: Pro vytvoření oblouku jsou potřeba alespoň dva body.",
+  "Fehler: Das letzte Segment muss in der gewählten Ebene liegen.": "Chyba: Poslední segment musí ležet ve zvolené rovině.",
+  "Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.": "Chyba: Poslední úsek je pro oblouk příliš krátký."
 }

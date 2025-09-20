@@ -20,6 +20,62 @@
 
     let pointIdCounter = 0;
     let scheduledUpdateHandle = null;
+    const previewTransform = {
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0
+    };
+
+    function translate(key, fallback = key) {
+        if (window.i18n && typeof window.i18n.t === 'function') {
+            const translated = window.i18n.t(key);
+            if (translated && translated !== key) {
+                return translated;
+            }
+        }
+        return fallback;
+    }
+
+    function vectorSubtract(a, b) {
+        return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+    }
+
+    function vectorAdd(a, b) {
+        return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+    }
+
+    function vectorScale(v, scalar) {
+        return { x: v.x * scalar, y: v.y * scalar, z: v.z * scalar };
+    }
+
+    function vectorDot(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    function vectorCross(a, b) {
+        return {
+            x: a.y * b.z - a.z * b.y,
+            y: a.z * b.x - a.x * b.z,
+            z: a.x * b.y - a.y * b.x
+        };
+    }
+
+    function vectorLength(v) {
+        return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    }
+
+    function vectorNormalize(v) {
+        const length = vectorLength(v);
+        if (length === 0) {
+            return { x: 0, y: 0, z: 0 };
+        }
+        return vectorScale(v, 1 / length);
+    }
+
+    function roundToPrecision(value, decimals = 3) {
+        const factor = Math.pow(10, decimals);
+        return Math.round(value * factor) / factor;
+    }
 
     function scheduleUpdate() {
         if (scheduledUpdateHandle) {
@@ -202,28 +258,21 @@
     }
 
     function worldToCanvas(pos) {
-        const canvas = document.getElementById('bf3dPreview2d');
-        const width = canvas.width;
-        const height = canvas.height;
-        const scale = 0.5; // Will be dynamic later
-        const offsetX = width / 2;
-        const offsetY = height / 2;
+        const scale = previewTransform.scale || 1;
         return {
-            x: offsetX + pos.x * scale,
-            y: offsetY - pos.y * scale
+            x: previewTransform.offsetX + pos.x * scale,
+            y: previewTransform.offsetY - pos.y * scale
         };
     }
 
     function canvasToWorld(pos) {
-        const canvas = document.getElementById('bf3dPreview2d');
-        const width = canvas.width;
-        const height = canvas.height;
-        const scale = 0.5; // Will be dynamic later
-        const offsetX = width / 2;
-        const offsetY = height / 2;
+        const scale = previewTransform.scale || 1;
+        if (scale === 0) {
+            return { x: 0, y: 0 };
+        }
         return {
-            x: (pos.x - offsetX) / scale,
-            y: (pos.y - offsetY) / -scale
+            x: (pos.x - previewTransform.offsetX) / scale,
+            y: (previewTransform.offsetY - pos.y) / scale
         };
     }
 
@@ -286,33 +335,80 @@
         const canvas = document.getElementById('bf3dPreview2d');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
+        const width = canvas.clientWidth || canvas.width || 600;
+        const height = canvas.clientHeight || canvas.height || 400;
+
+        if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+        }
 
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = '#f8f9fa';
         ctx.fillRect(0, 0, width, height);
 
-        // For now, simple fixed scale and origin at center
-        const scale = 0.5;
-        const offsetX = width / 2;
-        const offsetY = height / 2;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        state.points.forEach(point => {
+            minX = Math.min(minX, point.x);
+            maxX = Math.max(maxX, point.x);
+            minY = Math.min(minY, point.y);
+            maxY = Math.max(maxY, point.y);
+        });
+
+        if (!Number.isFinite(minX)) {
+            minX = -100;
+            maxX = 100;
+            minY = -100;
+            maxY = 100;
+        }
+
+        const marginPx = 40;
+        const worldWidth = Math.max(maxX - minX, 10);
+        const worldHeight = Math.max(maxY - minY, 10);
+        const availableWidth = Math.max(width - marginPx * 2, 20);
+        const availableHeight = Math.max(height - marginPx * 2, 20);
+        const scale = Math.min(availableWidth / worldWidth, availableHeight / worldHeight);
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        previewTransform.scale = scale;
+        previewTransform.offsetX = width / 2 - centerX * scale;
+        previewTransform.offsetY = height / 2 + centerY * scale;
 
         // Draw grid
         ctx.strokeStyle = '#e9ecef';
         ctx.lineWidth = 1;
-        const gridSize = state.ui.gridSize * scale;
-        for (let x = 0; x < width; x += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, height);
-            ctx.stroke();
-        }
-        for (let y = 0; y < height; y += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
-            ctx.stroke();
+        const gridSize = Math.max(1, state.ui.gridSize);
+        const gridStartX = Math.floor((minX - gridSize * 5) / gridSize) * gridSize;
+        const gridEndX = Math.ceil((maxX + gridSize * 5) / gridSize) * gridSize;
+        const gridStartY = Math.floor((minY - gridSize * 5) / gridSize) * gridSize;
+        const gridEndY = Math.ceil((maxY + gridSize * 5) / gridSize) * gridSize;
+
+        const gridSpacingPx = gridSize * scale;
+
+        if (gridSpacingPx >= 4 && gridSpacingPx < 2000) {
+            for (let gx = gridStartX; gx <= gridEndX; gx += gridSize) {
+                const start = worldToCanvas({ x: gx, y: gridStartY });
+                const end = worldToCanvas({ x: gx, y: gridEndY });
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+            }
+
+            for (let gy = gridStartY; gy <= gridEndY; gy += gridSize) {
+                const start = worldToCanvas({ x: gridStartX, y: gy });
+                const end = worldToCanvas({ x: gridEndX, y: gy });
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+            }
         }
 
         // Draw path
@@ -448,6 +544,9 @@
     function addArc() {
         const radius = parseFloat(document.getElementById('bf3dArcRadius').value) || 0;
         const plane = document.getElementById('bf3dArcPlane').value;
+        const directionSelect = document.getElementById('bf3dArcDirection');
+        const directionValue = directionSelect ? directionSelect.value : 'ccw';
+        const orientationSign = directionValue === 'cw' ? -1 : 1;
 
         const rollerDiameter = state.header.s || 0;
         if (radius <= rollerDiameter / 2) {
@@ -455,41 +554,87 @@
             return;
         }
 
-        if (radius === 0 || state.points.length < 1) return;
-
-        const p1 = state.points[state.points.length - 1];
-        const p0 = state.points.length > 1 ? state.points[state.points.length - 2] : {x: p1.x, y: p1.y - 1, z: p1.z}; // Assume initial direction if only one point
-
-        // Simplified logic: assumes the arc starts tangentially from the last segment
-        // A full implementation would be more complex, handling all orientations
-        // For now, let's just add a 90 deg arc in the specified plane
-        const numSegments = 8; // More segments for smoother curve
-        const angleStep = (Math.PI / 2) / numSegments;
-        let lastPoint = { ...p1 };
-
-        for (let i = 1; i <= numSegments; i++) {
-            const angle = i * angleStep;
-            const newPoint = { id: ++pointIdCounter, x: lastPoint.x, y: lastPoint.y, z: lastPoint.z };
-
-            // This is a simplified example assuming starting direction is +Y
-            switch (plane) {
-                case 'xy':
-                    newPoint.x = p1.x + radius * Math.sin(angle);
-                    newPoint.y = p1.y + radius * (1 - Math.cos(angle));
-                    break;
-                case 'yz':
-                     newPoint.y = p1.y + radius * Math.sin(angle);
-                     newPoint.z = p1.z + radius * (1 - Math.cos(angle));
-                    break;
-                case 'xz':
-                    newPoint.x = p1.x + radius * Math.sin(angle);
-                    newPoint.z = p1.z + radius * (1 - Math.cos(angle));
-                    break;
-            }
-            state.points.push(newPoint);
-            lastPoint = newPoint;
+        if (radius <= 0) {
+            return;
         }
 
+        if (state.points.length < 2) {
+            alert(translate('Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.'));
+            return;
+        }
+
+        const p1 = state.points[state.points.length - 1];
+        const p0 = state.points[state.points.length - 2];
+        const tangentRaw = vectorSubtract(p1, p0);
+        if (vectorLength(tangentRaw) < 1e-6) {
+            alert(translate('Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.'));
+            return;
+        }
+
+        let planeNormal;
+        switch (plane) {
+            case 'yz':
+                planeNormal = { x: 1, y: 0, z: 0 };
+                break;
+            case 'xz':
+                planeNormal = { x: 0, y: 1, z: 0 };
+                break;
+            case 'xy':
+            default:
+                planeNormal = { x: 0, y: 0, z: 1 };
+                break;
+        }
+
+        // Project tangent into plane
+        const normalUnit = vectorNormalize(planeNormal);
+        const dot = vectorDot(tangentRaw, normalUnit);
+        const tangentInPlane = vectorSubtract(tangentRaw, vectorScale(normalUnit, dot));
+        const tangent = vectorNormalize(tangentInPlane);
+
+        if (vectorLength(tangent) < 1e-6) {
+            alert(translate('Fehler: Das letzte Segment muss in der gewählten Ebene liegen.'));
+            return;
+        }
+
+        const perpendicular = vectorCross(normalUnit, tangent);
+        const perpendicularLength = vectorLength(perpendicular);
+        if (perpendicularLength < 1e-6) {
+            alert(translate('Fehler: Das letzte Segment muss in der gewählten Ebene liegen.'));
+            return;
+        }
+
+        const centerOffsetDir = vectorScale(perpendicular, orientationSign / perpendicularLength);
+        const center = vectorAdd(p1, vectorScale(centerOffsetDir, radius));
+        const startVector = vectorSubtract(p1, center);
+        const startVectorLength = vectorLength(startVector);
+        if (startVectorLength < 1e-6) {
+            alert(translate('Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.'));
+            return;
+        }
+
+        const baseCross = vectorCross(normalUnit, startVector);
+        const numSegments = Math.max(6, Math.min(48, Math.round((Math.PI * radius) / 15)));
+        const angleStep = (Math.PI / 2) / numSegments;
+
+        for (let i = 1; i <= numSegments; i++) {
+            const theta = orientationSign * angleStep * i;
+            const cos = Math.cos(theta);
+            const sin = Math.sin(theta);
+            const rotated = {
+                x: startVector.x * cos + baseCross.x * sin,
+                y: startVector.y * cos + baseCross.y * sin,
+                z: startVector.z * cos + baseCross.z * sin
+            };
+            const newPoint = {
+                id: ++pointIdCounter,
+                x: roundToPrecision(center.x + rotated.x),
+                y: roundToPrecision(center.y + rotated.y),
+                z: roundToPrecision(center.z + rotated.z)
+            };
+            state.points.push(newPoint);
+        }
+
+        state.selectedPointId = state.points[state.points.length - 1].id;
         saveState();
         scheduleUpdate();
     }

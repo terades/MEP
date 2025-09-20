@@ -315,5 +315,11 @@
   "Kompakte Darstellung aktivieren": "Enable compact layout",
   "Kompakte Darstellung aktivieren Beschreibung": "Tightens spacing and table rows to show more information at once.",
   "Animationen reduzieren": "Reduce animations",
-  "Animationen reduzieren Beschreibung": "Minimise motion effects for a calmer, distraction-free experience."
+  "Animationen reduzieren Beschreibung": "Minimise motion effects for a calmer, distraction-free experience.",
+  "Links (CCW)": "Left (CCW)",
+  "Rechts (CW)": "Right (CW)",
+  "Drehrichtung": "Rotation direction",
+  "Fehler: Mindestens zwei Punkte sind erforderlich, um einen Bogen zu erstellen.": "Error: At least two points are required to create an arc.",
+  "Fehler: Das letzte Segment muss in der gewählten Ebene liegen.": "Error: The last segment must lie in the selected plane.",
+  "Fehler: Der letzte Abschnitt ist zu kurz für einen Bogen.": "Error: The last segment is too short for an arc."
 }
