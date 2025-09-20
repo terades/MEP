@@ -349,11 +349,17 @@
                         <div class="collapsible-content section-content-bg">
                             <div class="form-group">
                                 <label for="buegelname1" data-i18n="Bügelname (s) - Zone 1">Bügelname (s) - Zone 1</label>
-                                <input type="text" id="buegelname1" value="Forma1" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
+                                <div class="input-with-dropdown">
+                                    <input type="text" id="buegelname1" value="Forma1" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
+                                    <select id="buegelname1Select" class="saved-form-select" data-zone-label="Zone 1"></select>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="buegelname2" data-i18n="Bügelname (s) - Zone 2">Bügelname (s) - Zone 2</label>
-                                <input type="text" id="buegelname2" value="" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
+                                <div class="input-with-dropdown">
+                                    <input type="text" id="buegelname2" value="" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
+                                    <select id="buegelname2Select" class="saved-form-select" data-zone-label="Zone 2"></select>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="rezeptname" data-i18n="Rezeptname (r):">Rezeptname (r):</label>

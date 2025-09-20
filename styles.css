@@ -293,6 +293,23 @@ select {
     flex-grow: 1;
 }
 
+.form-group .input-with-dropdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.form-group .input-with-dropdown > input,
+.form-group .input-with-dropdown > select {
+    width: 100%;
+}
+
+.saved-form-select:disabled {
+    color: var(--text-muted-color);
+    background-color: var(--input-bg-color);
+}
+
 .generator-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
