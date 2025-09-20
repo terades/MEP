@@ -860,10 +860,24 @@
                         </div>
                     </div>
                 </div>
-                <div class="bfma-preview-container" data-view-mode="2d">
-                    <canvas id="bf3dPreview2d" style="width: 100%; height: 300px;"></canvas>
-                    <div id="bf3dPreview3d" class="bfma-preview-3d" style="display: none; width: 100%; height: 300px; position: relative;" aria-hidden="true"></div>
-                </div>
+                    <div class="bfma-preview-container" data-view-mode="2d">
+                        <canvas id="bf3dPreview2d" style="width: 100%; height: 300px;"></canvas>
+                        <div class="bf3d-dimension-toggle-group" aria-label="Bemaßungen umschalten">
+                            <label class="bf3d-dimension-toggle">
+                                <input type="checkbox" id="bf3dToggleDimensions" checked>
+                                <span data-i18n="Maße anzeigen">Maße anzeigen</span>
+                            </label>
+                            <label class="bf3d-dimension-toggle">
+                                <input type="checkbox" id="bf3dToggleZoneLengths" checked>
+                                <span data-i18n="Zonenlängen">Zonenlängen</span>
+                            </label>
+                            <label class="bf3d-dimension-toggle">
+                                <input type="checkbox" id="bf3dToggleOverhangs" checked>
+                                <span data-i18n="Überstände">Überstände</span>
+                            </label>
+                        </div>
+                        <div id="bf3dPreview3d" class="bfma-preview-3d" style="display: none; width: 100%; height: 300px; position: relative;" aria-hidden="true"></div>
+                    </div>
             </div>
             <div class="card">
                 <div class="card-header">
