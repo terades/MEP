@@ -85,75 +85,386 @@ function getSavedBf2dFormNames() {
         .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
-function populateStirrupNameSelect(selectId, inputId) {
-    const select = document.getElementById(selectId);
-    const input = document.getElementById(inputId);
-    if (!select || !input) {
-        return;
+function translateText(key, replacements = {}) {
+    if (typeof window.i18n?.t === 'function') {
+        return window.i18n.t(key, replacements);
     }
-    const zoneLabel = select.dataset.zoneLabel ? select.dataset.zoneLabel.trim() : '';
-    const placeholderBase = window.i18n?.t?.('Gespeicherte Biegeform auswählen…') || 'Gespeicherte Biegeform auswählen…';
-    const emptyPlaceholder = window.i18n?.t?.('Keine gespeicherten Biegeformen verfügbar') || 'Keine gespeicherten Biegeformen verfügbar';
-    if (zoneLabel) {
-        select.setAttribute('aria-label', `${placeholderBase} (${zoneLabel})`);
-    } else {
-        select.setAttribute('aria-label', placeholderBase);
+    let text = key;
+    if (replacements && typeof replacements === 'object') {
+        Object.entries(replacements).forEach(([placeholder, value]) => {
+            text = text.replace(new RegExp(`{${placeholder}}`, 'g'), value);
+        });
     }
-
-    const names = getSavedBf2dFormNames();
-    const currentValue = input.value.trim();
-
-    select.innerHTML = '';
-    const placeholderOption = document.createElement('option');
-    placeholderOption.value = '';
-    placeholderOption.textContent = names.length > 0 ? placeholderBase : emptyPlaceholder;
-    select.appendChild(placeholderOption);
-
-    names.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        select.appendChild(option);
-    });
-
-    if (currentValue && names.includes(currentValue)) {
-        select.value = currentValue;
-    } else {
-        select.value = '';
-    }
-
-    select.disabled = names.length === 0;
+    return text;
 }
 
-function syncStirrupSelectWithInput(selectId, inputId) {
-    const select = document.getElementById(selectId);
-    const input = document.getElementById(inputId);
-    if (!select || !input) {
+let stirrupFormPickerState = null;
+
+function isStirrupFormModalOpen() {
+    return document.getElementById('stirrupFormModal')?.classList.contains('visible') || false;
+}
+
+function computeStirrupFormSummary(formData = {}) {
+    const segments = Array.isArray(formData?.segments) ? formData.segments : [];
+    let straightLength = 0;
+    let arcLength = 0;
+
+    segments.forEach((segment, index) => {
+        const lengthValue = Number(segment?.length);
+        if (Number.isFinite(lengthValue) && lengthValue > 0) {
+            straightLength += lengthValue;
+        }
+        if (index < segments.length - 1) {
+            const angleValue = Math.abs(Number(segment?.bendAngle) || 0);
+            if (angleValue > 0) {
+                let radiusValue = Number(segment?.radius);
+                if (!Number.isFinite(radiusValue) || radiusValue <= 0) {
+                    const rollDiameter = Number(formData?.meta?.rollDiameter);
+                    if (Number.isFinite(rollDiameter) && rollDiameter > 0) {
+                        radiusValue = rollDiameter / 2;
+                    }
+                }
+                if (Number.isFinite(radiusValue) && radiusValue > 0) {
+                    arcLength += (angleValue * Math.PI / 180) * radiusValue;
+                }
+            }
+        }
+    });
+
+    const meta = typeof formData?.meta === 'object' && formData.meta !== null ? formData.meta : {};
+    const diameterValue = Number(meta.diameter);
+    const quantityValue = Number(meta.quantity);
+    const rollDiameterValue = Number(meta.rollDiameter);
+    const remark = typeof meta.remark === 'string' ? meta.remark.trim() : '';
+    const steelGrade = typeof meta.steelGrade === 'string' ? meta.steelGrade.trim() : '';
+
+    const segmentPreviewValues = segments
+        .map(segment => Number(segment?.length))
+        .filter(value => Number.isFinite(value) && value > 0)
+        .map(length => `${formatNumberForBvbs(length)} mm`);
+
+    const maxSegmentsToShow = 6;
+    let segmentPreviewText = '';
+    if (segmentPreviewValues.length > 0) {
+        if (segmentPreviewValues.length > maxSegmentsToShow) {
+            segmentPreviewText = `${segmentPreviewValues.slice(0, maxSegmentsToShow).join(' • ')} …`;
+        } else {
+            segmentPreviewText = segmentPreviewValues.join(' • ');
+        }
+    }
+
+    return {
+        segmentCount: segments.length,
+        straightLength,
+        arcLength,
+        totalLength: straightLength + arcLength,
+        diameter: Number.isFinite(diameterValue) && diameterValue > 0 ? diameterValue : null,
+        quantity: Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : null,
+        rollDiameter: Number.isFinite(rollDiameterValue) && rollDiameterValue > 0 ? rollDiameterValue : null,
+        remark,
+        steelGrade,
+        segmentPreview: segmentPreviewText
+    };
+}
+
+function buildStirrupFormSearchText(name, formData = {}, summary = {}) {
+    const meta = typeof formData?.meta === 'object' && formData.meta !== null ? formData.meta : {};
+    const segments = Array.isArray(formData?.segments) ? formData.segments : [];
+    const parts = [
+        name,
+        meta.project,
+        meta.order,
+        meta.position,
+        meta.remark,
+        meta.steelGrade,
+        meta.diameter,
+        meta.quantity,
+        meta.rollDiameter,
+        summary.segmentPreview,
+        summary.totalLength
+    ];
+    segments.forEach(segment => {
+        parts.push(segment?.length);
+        parts.push(segment?.bendAngle);
+    });
+    return parts
+        .filter(value => value !== null && value !== undefined && String(value).trim().length > 0)
+        .map(value => String(value).toLowerCase())
+        .join(' ');
+}
+
+function createStirrupFormMetaBadge(text) {
+    const badge = document.createElement('span');
+    badge.className = 'stirrup-form-item__meta-badge';
+    badge.textContent = text;
+    return badge;
+}
+
+function renderStirrupFormModalList() {
+    const listEl = document.getElementById('stirrupFormList');
+    const emptyStateEl = document.getElementById('stirrupFormEmptyState');
+    const searchEl = document.getElementById('stirrupFormSearch');
+    if (!listEl || !emptyStateEl) {
         return;
     }
-    input.addEventListener('input', () => {
-        const trimmed = input.value.trim();
-        const hasOption = Array.from(select.options).some(option => option.value === trimmed);
-        if (hasOption) {
-            select.value = trimmed;
-        } else {
-            select.value = '';
+
+    const zoneLabel = stirrupFormPickerState?.zoneLabel?.trim() || '';
+    const listLabelBase = translateText('Gespeicherte Biegeformen');
+    if (zoneLabel) {
+        listEl.setAttribute('aria-label', `${listLabelBase} (${zoneLabel})`);
+    } else {
+        listEl.setAttribute('aria-label', listLabelBase);
+    }
+
+    const forms = readSavedBf2dForms();
+    const entries = Object.entries(forms)
+        .map(([name, data]) => ({ name: String(name).trim(), data }))
+        .filter(entry => entry.name.length > 0)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+    const filterValue = searchEl?.value?.toLowerCase().trim() || '';
+    const activeValue = stirrupFormPickerState?.inputId
+        ? document.getElementById(stirrupFormPickerState.inputId)?.value.trim()
+        : '';
+    listEl.innerHTML = '';
+    let visibleCount = 0;
+
+    entries.forEach(entry => {
+        const summary = computeStirrupFormSummary(entry.data);
+        const searchText = buildStirrupFormSearchText(entry.name, entry.data, summary);
+        if (filterValue && !searchText.includes(filterValue)) {
+            return;
         }
-    });
-    select.addEventListener('change', () => {
-        const value = select.value || '';
-        input.value = value;
-        if (typeof triggerPreviewUpdateDebounced === 'function') {
-            triggerPreviewUpdateDebounced();
+        visibleCount += 1;
+
+        const itemButton = document.createElement('button');
+        itemButton.type = 'button';
+        itemButton.className = 'stirrup-form-item';
+        itemButton.dataset.formName = entry.name;
+        itemButton.setAttribute('role', 'option');
+
+        const isSelected = !!activeValue && activeValue === entry.name;
+        itemButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        if (isSelected) {
+            itemButton.classList.add('selected');
         }
-        updateGenerateButtonState();
+
+        itemButton.addEventListener('click', () => {
+            applyStirrupFormSelection(entry.name);
+        });
+
+        const header = document.createElement('div');
+        header.className = 'stirrup-form-item__header';
+        const nameEl = document.createElement('span');
+        nameEl.className = 'stirrup-form-item__name';
+        nameEl.textContent = entry.name;
+        header.appendChild(nameEl);
+
+        if (summary.segmentCount > 0) {
+            header.appendChild(createStirrupFormMetaBadge(`${translateText('Segmente')}: ${summary.segmentCount}`));
+        }
+
+        itemButton.appendChild(header);
+
+        const metaRow = document.createElement('div');
+        metaRow.className = 'stirrup-form-item__meta';
+
+        if (summary.diameter !== null) {
+            metaRow.appendChild(createStirrupFormMetaBadge(`Ø ${formatNumberForBvbs(summary.diameter)} mm`));
+        }
+        if (summary.rollDiameter !== null) {
+            metaRow.appendChild(createStirrupFormMetaBadge(`${translateText('Roll-Ø')} ${formatNumberForBvbs(summary.rollDiameter)} mm`));
+        }
+        if (summary.totalLength > 0) {
+            metaRow.appendChild(createStirrupFormMetaBadge(`${translateText('Länge')}: ${formatNumberForBvbs(summary.totalLength)} mm`));
+        }
+        if (summary.quantity !== null) {
+            metaRow.appendChild(createStirrupFormMetaBadge(`${translateText('Stückzahl')}: ${formatNumberForBvbs(summary.quantity)}`));
+        }
+        if (summary.steelGrade) {
+            metaRow.appendChild(createStirrupFormMetaBadge(summary.steelGrade));
+        }
+
+        if (metaRow.children.length > 0) {
+            itemButton.appendChild(metaRow);
+        }
+
+        const details = document.createElement('div');
+        details.className = 'stirrup-form-item__details';
+
+        if (summary.segmentPreview) {
+            const segmentsEl = document.createElement('div');
+            segmentsEl.textContent = `${translateText('Schenkel')}: ${summary.segmentPreview}`;
+            details.appendChild(segmentsEl);
+        }
+
+        if (summary.remark) {
+            const remarkEl = document.createElement('div');
+            remarkEl.className = 'stirrup-form-item__remark';
+            remarkEl.textContent = `${translateText('Notiz')}: ${summary.remark}`;
+            details.appendChild(remarkEl);
+        }
+
+        if (details.children.length > 0) {
+            itemButton.appendChild(details);
+        }
+
+        listEl.appendChild(itemButton);
     });
+
+    if (visibleCount === 0) {
+        emptyStateEl.hidden = false;
+        const noFormsText = translateText('Keine gespeicherten Biegeformen verfügbar');
+        const noMatchesText = translateText('Keine passenden Biegeformen gefunden.');
+        emptyStateEl.textContent = entries.length === 0 || !filterValue ? noFormsText : noMatchesText;
+    } else {
+        emptyStateEl.hidden = true;
+        emptyStateEl.textContent = '';
+    }
+}
+
+function updateStirrupPickerButton(buttonId, inputId) {
+    const button = document.getElementById(buttonId);
+    const input = document.getElementById(inputId);
+    if (!button || !input) {
+        return;
+    }
+    const names = getSavedBf2dFormNames();
+    const labelSpan = button.querySelector('.saved-form-button-text');
+    const zoneLabel = button.dataset.zoneLabel ? button.dataset.zoneLabel.trim() : '';
+    const hasForms = names.length > 0;
+    const trimmedValue = input.value.trim();
+    const matchesSavedForm = hasForms && trimmedValue && names.includes(trimmedValue);
+
+    button.disabled = !hasForms;
+
+    const baseLabel = hasForms
+        ? translateText('Gespeicherte Biegeform wählen')
+        : translateText('Keine gespeicherten Biegeformen verfügbar');
+    const selectedLabel = matchesSavedForm
+        ? translateText('Gespeicherte Biegeform: {name}', { name: trimmedValue })
+        : baseLabel;
+
+    if (labelSpan) {
+        const defaultText = labelSpan.dataset.defaultText || labelSpan.textContent || baseLabel;
+        labelSpan.textContent = matchesSavedForm ? selectedLabel : (baseLabel || defaultText);
+    } else {
+        button.textContent = matchesSavedForm ? selectedLabel : baseLabel;
+    }
+
+    const ariaLabelBase = matchesSavedForm
+        ? translateText('Gespeicherte Biegeform auswählen, aktuell: {name}', { name: trimmedValue })
+        : baseLabel;
+
+    if (zoneLabel) {
+        button.setAttribute('aria-label', `${ariaLabelBase} (${zoneLabel})`);
+        button.title = `${baseLabel} (${zoneLabel})`;
+    } else {
+        button.setAttribute('aria-label', ariaLabelBase);
+        button.title = baseLabel;
+    }
+}
+
+function setupStirrupPicker(buttonId, inputId) {
+    const button = document.getElementById(buttonId);
+    const input = document.getElementById(inputId);
+    if (!button || !input) {
+        return;
+    }
+    button.addEventListener('click', () => {
+        const zoneLabel = button.dataset.zoneLabel ? button.dataset.zoneLabel.trim() : '';
+        openStirrupFormModal(inputId, buttonId, zoneLabel);
+    });
+    input.addEventListener('input', () => updateStirrupPickerButton(buttonId, inputId));
+    input.addEventListener('change', () => updateStirrupPickerButton(buttonId, inputId));
+}
+
+function openStirrupFormModal(inputId, buttonId, zoneLabel = '') {
+    const modal = document.getElementById('stirrupFormModal');
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    if (!modal || !input || !button) {
+        return;
+    }
+
+    stirrupFormPickerState = { inputId, buttonId, zoneLabel };
+
+    const titleEl = document.getElementById('stirrupFormModalTitle');
+    if (titleEl) {
+        const titleBase = titleEl.getAttribute('data-title-base') || 'Gespeicherte Biegeform wählen';
+        const translatedBase = translateText(titleBase);
+        titleEl.textContent = zoneLabel ? `${translatedBase} (${zoneLabel})` : translatedBase;
+    }
+
+    const searchEl = document.getElementById('stirrupFormSearch');
+    if (searchEl) {
+        searchEl.value = '';
+        searchEl.setAttribute('aria-label', translateText('Suchen'));
+        setTimeout(() => {
+            searchEl.focus();
+        }, 0);
+    }
+
+    renderStirrupFormModalList();
+    modal.classList.add('visible');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeStirrupFormModal() {
+    const modal = document.getElementById('stirrupFormModal');
+    if (!modal) {
+        return;
+    }
+    modal.classList.remove('visible');
+    modal.setAttribute('aria-hidden', 'true');
+
+    const buttonId = stirrupFormPickerState?.buttonId;
+    stirrupFormPickerState = null;
+
+    if (buttonId) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.focus({ preventScroll: true });
+        }
+    }
+
+    const searchEl = document.getElementById('stirrupFormSearch');
+    if (searchEl) {
+        searchEl.value = '';
+    }
+}
+
+function applyStirrupFormSelection(name) {
+    if (!stirrupFormPickerState) {
+        return;
+    }
+    const { inputId, buttonId } = stirrupFormPickerState;
+    const input = document.getElementById(inputId);
+    if (!input) {
+        return;
+    }
+    input.value = name;
+    closeStirrupFormModal();
+    updateStirrupPickerButton(buttonId, inputId);
+    if (typeof triggerPreviewUpdateDebounced === 'function') {
+        triggerPreviewUpdateDebounced();
+    }
+    updateGenerateButtonState();
 }
 
 function refreshStirrupNameSelects() {
-    populateStirrupNameSelect('buegelname1Select', 'buegelname1');
-    populateStirrupNameSelect('buegelname2Select', 'buegelname2');
+    updateStirrupPickerButton('buegelname1PickerButton', 'buegelname1');
+    updateStirrupPickerButton('buegelname2PickerButton', 'buegelname2');
+    const searchEl = document.getElementById('stirrupFormSearch');
+    if (searchEl) {
+        searchEl.setAttribute('aria-label', translateText('Suchen'));
+    }
+    if (isStirrupFormModalOpen()) {
+        renderStirrupFormModalList();
+    }
 }
+
+window.closeStirrupFormModal = closeStirrupFormModal;
 
 function encodeZonesForBvbs(zonesArr, startOverhang, endOverhang, extra = {}) {
     const padValue = (value, digits) => {
@@ -2367,9 +2678,30 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSavedOrders();
     renderSavedOrdersList();
 
-    syncStirrupSelectWithInput('buegelname1Select', 'buegelname1');
-    syncStirrupSelectWithInput('buegelname2Select', 'buegelname2');
+    setupStirrupPicker('buegelname1PickerButton', 'buegelname1');
+    setupStirrupPicker('buegelname2PickerButton', 'buegelname2');
     refreshStirrupNameSelects();
+
+    const stirrupFormModalEl = document.getElementById('stirrupFormModal');
+    if (stirrupFormModalEl) {
+        stirrupFormModalEl.addEventListener('click', (event) => {
+            if (event.target === stirrupFormModalEl) {
+                closeStirrupFormModal();
+            }
+        });
+    }
+
+    document.getElementById('stirrupFormSearch')?.addEventListener('input', () => {
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isStirrupFormModalOpen()) {
+            closeStirrupFormModal();
+        }
+    });
 
     window.addEventListener('storage', (event) => {
         if (event.key === LOCAL_STORAGE_BF2D_FORMS_KEY) {
