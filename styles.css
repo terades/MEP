@@ -960,7 +960,7 @@ body.sidebar-open .sidebar-toggle svg {
 }
 
 .sidebar-toggle--inline {
-    display: none;
+    display: inline-flex;
 }
 
 .app-sidebar .sidebar-toggle {
@@ -1189,8 +1189,7 @@ body:not(.sidebar-open) .sidebar-submenu-toggle .sidebar-submenu-chevron {
 
 body:not(.sidebar-open) .sidebar-brand-text,
 body:not(.sidebar-open) .sidebar-section-title,
-body:not(.sidebar-open) .sidebar-text,
-body:not(.sidebar-open) .sidebar-footer {
+body:not(.sidebar-open) .sidebar-text {
     display: none;
 }
 
@@ -1199,13 +1198,36 @@ body:not(.sidebar-open) .sidebar-link {
     padding: 0.75rem;
 }
 
-body:not(.sidebar-open) .sidebar-brand,
 body:not(.sidebar-open) .sidebar-top {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+}
+
+body:not(.sidebar-open) .sidebar-toggle--inline {
+    width: 42px;
+    height: 42px;
+}
+
+body:not(.sidebar-open) .sidebar-brand {
     justify-content: center;
 }
 
 body:not(.sidebar-open) .sidebar-scroll {
     padding-right: 0;
+}
+
+body:not(.sidebar-open) .sidebar-footer {
+    align-items: center;
+}
+
+body:not(.sidebar-open) .app-sidebar .app-version {
+    display: none;
+}
+
+body:not(.sidebar-open) .sidebar-link:hover {
+    transform: none;
 }
 
 @media (max-width: 900px) {
