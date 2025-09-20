@@ -1235,15 +1235,54 @@
                         </svg>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div class="modal-search">
-                        <input type="text" id="stirrupFormSearch" class="modal-search-input" data-i18n-placeholder="Suchen" placeholder="Suchen" aria-label="Suchen">
+                <div class="modal-body stirrup-modal-body">
+                    <div class="stirrup-modal-layout">
+                        <section class="stirrup-modal-left" aria-labelledby="stirrupFormModalTitle">
+                            <div class="modal-search">
+                                <input type="text" id="stirrupFormSearch" class="modal-search-input" data-i18n-placeholder="Suchen" placeholder="Suchen" aria-label="Suchen">
+                            </div>
+                            <div class="stirrup-filter-bar">
+                                <div class="stirrup-filter">
+                                    <label for="stirrupFormDiameterFilter" data-i18n="Durchmesser">Durchmesser</label>
+                                    <select id="stirrupFormDiameterFilter">
+                                        <option value="all" data-i18n="Alle Durchmesser">Alle Durchmesser</option>
+                                    </select>
+                                </div>
+                                <div class="stirrup-filter">
+                                    <label for="stirrupFormSteelFilter" data-i18n="Stahlgüte">Stahlgüte</label>
+                                    <select id="stirrupFormSteelFilter">
+                                        <option value="all" data-i18n="Alle Stahlgüten">Alle Stahlgüten</option>
+                                    </select>
+                                </div>
+                                <div class="stirrup-filter">
+                                    <label for="stirrupFormSegmentFilter" data-i18n="Segmente">Segmente</label>
+                                    <select id="stirrupFormSegmentFilter">
+                                        <option value="all" data-i18n="Alle Segmente">Alle Segmente</option>
+                                        <option value="4" data-i18n="Mindestens 4 Segmente">Mindestens 4 Segmente</option>
+                                        <option value="6" data-i18n="Mindestens 6 Segmente">Mindestens 6 Segmente</option>
+                                        <option value="8" data-i18n="Mindestens 8 Segmente">Mindestens 8 Segmente</option>
+                                    </select>
+                                </div>
+                                <button type="button" id="stirrupFormResetFilters" class="stirrup-filter-reset" data-i18n="Filter zurücksetzen">Filter zurücksetzen</button>
+                            </div>
+                            <div class="stirrup-list-wrapper">
+                                <div class="stirrup-list-header">
+                                    <span id="stirrupFormResultInfo" class="stirrup-form-result" data-i18n="Keine gespeicherten Biegeformen verfügbar">Keine gespeicherten Biegeformen verfügbar</span>
+                                </div>
+                                <div id="stirrupFormList" class="stirrup-form-list" role="listbox" aria-label="Gespeicherte Biegeformen"></div>
+                                <p id="stirrupFormEmptyState" class="info-text" hidden data-i18n="Keine gespeicherten Biegeformen verfügbar">Keine gespeicherten Biegeformen verfügbar</p>
+                            </div>
+                        </section>
+                        <aside class="stirrup-modal-preview" aria-live="polite">
+                            <div id="stirrupFormPreview" class="stirrup-form-preview">
+                                <p class="stirrup-form-preview__placeholder" data-i18n="Bitte wählen Sie eine Biegeform aus der Liste.">Bitte wählen Sie eine Biegeform aus der Liste.</p>
+                            </div>
+                        </aside>
                     </div>
-                    <div id="stirrupFormList" class="stirrup-form-list" role="listbox" aria-label="Gespeicherte Biegeformen"></div>
-                    <p id="stirrupFormEmptyState" class="info-text" hidden data-i18n="Keine gespeicherten Biegeformen verfügbar">Keine gespeicherten Biegeformen verfügbar</p>
                 </div>
                 <div class="modal-footer button-group" style="justify-content: flex-end;">
                     <button type="button" class="btn-secondary" onclick="closeStirrupFormModal()" data-i18n="Abbrechen">Abbrechen</button>
+                    <button type="button" class="btn-primary" id="stirrupFormSelectButton" data-label-base="Übernehmen" data-i18n="Übernehmen" disabled>Übernehmen</button>
                 </div>
             </div>
         </div>

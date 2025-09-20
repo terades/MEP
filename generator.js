@@ -99,6 +99,11 @@ function translateText(key, replacements = {}) {
 }
 
 let stirrupFormPickerState = null;
+const stirrupFormFilterState = {
+    diameter: 'all',
+    steelGrade: 'all',
+    segmentThreshold: 'all'
+};
 
 function isStirrupFormModalOpen() {
     return document.getElementById('stirrupFormModal')?.classList.contains('visible') || false;
@@ -200,10 +205,462 @@ function createStirrupFormMetaBadge(text) {
     return badge;
 }
 
+function getActiveStirrupInputValue() {
+    if (!stirrupFormPickerState?.inputId) {
+        return '';
+    }
+    const input = document.getElementById(stirrupFormPickerState.inputId);
+    const rawValue = input?.value;
+    return typeof rawValue === 'string' ? rawValue.trim() : '';
+}
+
+function updateStirrupFormSelectButtonState() {
+    const button = document.getElementById('stirrupFormSelectButton');
+    if (!button) {
+        return;
+    }
+    if (!button.dataset.labelBase) {
+        button.dataset.labelBase = button.textContent || translateText('Übernehmen');
+    }
+    const baseLabel = button.dataset.labelBase;
+    const selectedName = stirrupFormPickerState?.selectedName?.trim() || '';
+    const forms = readSavedBf2dForms();
+    const isValidSelection = !!(selectedName && Object.prototype.hasOwnProperty.call(forms, selectedName));
+    button.disabled = !isValidSelection;
+    if (isValidSelection) {
+        button.textContent = `${baseLabel} (${selectedName})`;
+        button.setAttribute('aria-label', `${baseLabel} (${selectedName})`);
+    } else {
+        button.textContent = baseLabel;
+        button.setAttribute('aria-label', baseLabel);
+    }
+}
+
+function updateStirrupFormListSelection() {
+    const listEl = document.getElementById('stirrupFormList');
+    if (!listEl) {
+        return;
+    }
+    const items = listEl.querySelectorAll('.stirrup-form-item');
+    const selectedName = stirrupFormPickerState?.selectedName?.trim() || '';
+    const activeValue = getActiveStirrupInputValue();
+    items.forEach(item => {
+        const itemName = item.dataset.formName || '';
+        const isSelected = selectedName ? itemName === selectedName : (!!activeValue && itemName === activeValue);
+        item.classList.toggle('selected', isSelected);
+        item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    });
+}
+
+function setStirrupFormSelectedName(name) {
+    if (!stirrupFormPickerState) {
+        return;
+    }
+    stirrupFormPickerState.selectedName = typeof name === 'string' ? name.trim() : '';
+    updateStirrupFormListSelection();
+    updateStirrupFormPreview(stirrupFormPickerState.selectedName);
+    updateStirrupFormSelectButtonState();
+}
+
+function passesStirrupFormFilters(summary = {}) {
+    if (!summary || typeof summary !== 'object') {
+        return true;
+    }
+
+    if (stirrupFormFilterState.diameter !== 'all') {
+        const diameterFilter = Number(stirrupFormFilterState.diameter);
+        if (Number.isFinite(diameterFilter)) {
+            if (!Number.isFinite(summary.diameter) || Math.abs(Number(summary.diameter) - diameterFilter) > 1e-6) {
+                return false;
+            }
+        }
+    }
+
+    if (stirrupFormFilterState.steelGrade !== 'all') {
+        const filterGrade = String(stirrupFormFilterState.steelGrade).toLowerCase();
+        const summaryGrade = summary.steelGrade ? String(summary.steelGrade).toLowerCase() : '';
+        if (summaryGrade !== filterGrade) {
+            return false;
+        }
+    }
+
+    if (stirrupFormFilterState.segmentThreshold !== 'all') {
+        const threshold = Number(stirrupFormFilterState.segmentThreshold);
+        if (Number.isFinite(threshold) && Number(summary.segmentCount) < threshold) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function setFilterSelectOptions(selectEl, options, filterKey, placeholderLabel) {
+    if (!selectEl) {
+        return;
+    }
+    const normalizedPlaceholder = placeholderLabel || '';
+    const previousValue = stirrupFormFilterState[filterKey] || 'all';
+    selectEl.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = 'all';
+    placeholderOption.textContent = normalizedPlaceholder;
+    selectEl.appendChild(placeholderOption);
+    const allowedValues = new Set(['all']);
+    options.forEach(option => {
+        if (!option || typeof option.value === 'undefined') {
+            return;
+        }
+        const optionValue = String(option.value);
+        allowedValues.add(optionValue);
+        const opt = document.createElement('option');
+        opt.value = optionValue;
+        opt.textContent = option.label;
+        selectEl.appendChild(opt);
+    });
+    const nextValue = allowedValues.has(String(previousValue)) ? String(previousValue) : 'all';
+    stirrupFormFilterState[filterKey] = nextValue;
+    selectEl.value = nextValue;
+}
+
+function populateStirrupFilterOptions(entries = []) {
+    const diameterSelect = document.getElementById('stirrupFormDiameterFilter');
+    const steelSelect = document.getElementById('stirrupFormSteelFilter');
+    const diameterValues = new Set();
+    const steelValues = new Set();
+
+    entries.forEach(entry => {
+        const summary = entry?.summary;
+        if (!summary) {
+            return;
+        }
+        if (Number.isFinite(summary.diameter)) {
+            diameterValues.add(Number(summary.diameter));
+        }
+        if (summary.steelGrade) {
+            steelValues.add(String(summary.steelGrade));
+        }
+    });
+
+    if (diameterSelect) {
+        const diameterOptions = Array.from(diameterValues)
+            .sort((a, b) => a - b)
+            .map(value => ({
+                value,
+                label: `Ø ${formatNumberForBvbs(value)} mm`
+            }));
+        setFilterSelectOptions(diameterSelect, diameterOptions, 'diameter', translateText('Alle Durchmesser'));
+    }
+
+    if (steelSelect) {
+        const steelOptions = Array.from(steelValues)
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+            .map(value => ({ value, label: value }));
+        setFilterSelectOptions(steelSelect, steelOptions, 'steelGrade', translateText('Alle Stahlgüten'));
+    }
+}
+
+function buildStirrupPreviewPoints(segments = []) {
+    if (!Array.isArray(segments) || segments.length === 0) {
+        return [];
+    }
+    const points = [{ x: 0, y: 0 }];
+    let angleDeg = 0;
+    segments.forEach((segment, index) => {
+        const lengthValue = Number(segment?.length);
+        const length = Number.isFinite(lengthValue) ? Math.max(lengthValue, 0) : 0;
+        const radians = angleDeg * Math.PI / 180;
+        const lastPoint = points[points.length - 1];
+        const nextPoint = {
+            x: lastPoint.x + Math.cos(radians) * length,
+            y: lastPoint.y + Math.sin(radians) * length
+        };
+        points.push(nextPoint);
+        if (index < segments.length - 1) {
+            const bendAngleValue = Number(segment?.bendAngle);
+            if (Number.isFinite(bendAngleValue) && bendAngleValue !== 0) {
+                const directionMultiplier = segment?.bendDirection === 'R' ? -1 : 1;
+                angleDeg += bendAngleValue * directionMultiplier;
+            }
+        }
+    });
+    return points;
+}
+
+function createStirrupPreviewSvg(formData = {}) {
+    const segments = Array.isArray(formData?.segments) ? formData.segments : [];
+    if (segments.length === 0) {
+        return null;
+    }
+    const points = buildStirrupPreviewPoints(segments);
+    if (points.length < 2) {
+        return null;
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    points.forEach(point => {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+    });
+
+    const padding = 18;
+    const targetWidth = 320;
+    const targetHeight = 220;
+    const spanX = Math.max(maxX - minX, 1);
+    const spanY = Math.max(maxY - minY, 1);
+    const scale = Math.min((targetWidth - padding * 2) / spanX, (targetHeight - padding * 2) / spanY);
+    const effectiveScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    const width = spanX * effectiveScale + padding * 2;
+    const height = spanY * effectiveScale + padding * 2;
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', translateText('Vorschau der Biegeform'));
+
+    const normalizedPoints = points.map(point => ({
+        x: padding + (point.x - minX) * effectiveScale,
+        y: padding + (maxY - point.y) * effectiveScale
+    }));
+
+    const polyline = document.createElementNS(SVG_NS, 'polyline');
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke-linecap', 'round');
+    polyline.setAttribute('stroke-linejoin', 'round');
+    polyline.setAttribute('stroke-width', '2');
+    polyline.style.stroke = 'var(--primary-color)';
+    polyline.setAttribute('points', normalizedPoints.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' '));
+    svg.appendChild(polyline);
+
+    normalizedPoints.forEach((point, index) => {
+        const circle = document.createElementNS(SVG_NS, 'circle');
+        circle.setAttribute('cx', point.x.toFixed(1));
+        circle.setAttribute('cy', point.y.toFixed(1));
+        circle.setAttribute('r', index === 0 ? '3.8' : '3');
+        circle.style.fill = index === 0 ? 'var(--primary-color)' : 'currentColor';
+        circle.style.opacity = index === 0 ? '1' : '0.75';
+        svg.appendChild(circle);
+    });
+
+    return svg;
+}
+
+function createPreviewMetaItem(label, value) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'stirrup-form-preview__meta-item';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'stirrup-form-preview__meta-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('span');
+    valueEl.className = 'stirrup-form-preview__meta-value';
+    valueEl.textContent = value;
+    wrapper.appendChild(labelEl);
+    wrapper.appendChild(valueEl);
+    return wrapper;
+}
+
+function updateStirrupFormPreview(name = '') {
+    const previewContainer = document.getElementById('stirrupFormPreview');
+    if (!previewContainer) {
+        return;
+    }
+    previewContainer.innerHTML = '';
+
+    const zoneLabel = stirrupFormPickerState?.zoneLabel?.trim() || '';
+    const sanitizedName = typeof name === 'string' ? name.trim() : '';
+    const forms = readSavedBf2dForms();
+    const formData = sanitizedName && Object.prototype.hasOwnProperty.call(forms, sanitizedName)
+        ? forms[sanitizedName]
+        : null;
+    const activeValue = getActiveStirrupInputValue();
+
+    const header = document.createElement('div');
+    header.className = 'stirrup-form-preview__header';
+    const title = document.createElement('h3');
+    title.className = 'stirrup-form-preview__title';
+    title.textContent = formData ? sanitizedName : translateText('Keine Biegeform ausgewählt');
+    header.appendChild(title);
+
+    if (zoneLabel) {
+        const zoneBadge = document.createElement('span');
+        zoneBadge.className = 'stirrup-form-item__badge stirrup-form-preview__badge';
+        zoneBadge.textContent = translateText('Zone {label}', { label: zoneLabel });
+        header.appendChild(zoneBadge);
+    }
+
+    if (formData && activeValue && activeValue === sanitizedName) {
+        const currentBadge = document.createElement('span');
+        currentBadge.className = 'stirrup-form-item__badge stirrup-form-preview__badge';
+        currentBadge.textContent = translateText('Aktuelle Auswahl');
+        header.appendChild(currentBadge);
+    }
+
+    previewContainer.appendChild(header);
+
+    if (!formData) {
+        const placeholder = document.createElement('p');
+        placeholder.className = 'stirrup-form-preview__placeholder';
+        placeholder.textContent = translateText('Bitte wählen Sie eine Biegeform aus der Liste.');
+        previewContainer.appendChild(placeholder);
+        return;
+    }
+
+    const canvas = document.createElement('div');
+    canvas.className = 'stirrup-form-preview__canvas';
+    const previewSvg = createStirrupPreviewSvg(formData);
+    if (previewSvg) {
+        canvas.appendChild(previewSvg);
+    } else {
+        const fallback = document.createElement('p');
+        fallback.className = 'stirrup-form-preview__placeholder';
+        fallback.textContent = translateText('Keine Vorschau verfügbar.');
+        canvas.appendChild(fallback);
+    }
+    previewContainer.appendChild(canvas);
+
+    const summary = computeStirrupFormSummary(formData);
+    const metaItems = [];
+    if (summary.diameter !== null) {
+        metaItems.push({ label: translateText('Durchmesser'), value: `Ø ${formatNumberForBvbs(summary.diameter)} mm` });
+    }
+    if (summary.rollDiameter !== null) {
+        metaItems.push({ label: translateText('Roll-Ø'), value: `${formatNumberForBvbs(summary.rollDiameter)} mm` });
+    }
+    if (summary.totalLength > 0) {
+        metaItems.push({ label: translateText('Gesamtlänge'), value: `${formatNumberForBvbs(summary.totalLength)} mm` });
+    }
+    metaItems.push({ label: translateText('Segmente'), value: formatNumberForBvbs(summary.segmentCount) });
+    if (summary.segmentPreview) {
+        metaItems.push({ label: translateText('Schenkel'), value: summary.segmentPreview });
+    }
+    if (summary.quantity !== null) {
+        metaItems.push({ label: translateText('Stückzahl'), value: formatNumberForBvbs(summary.quantity) });
+    }
+    const weightKg = summary.totalLength > 0 && summary.diameter !== null
+        ? calculateBarWeightKg(summary.totalLength, summary.diameter)
+        : 0;
+    if (Number.isFinite(weightKg) && weightKg > 0) {
+        metaItems.push({ label: translateText('Gewicht'), value: `${weightKg.toFixed(3)} kg` });
+    }
+    if (summary.steelGrade) {
+        metaItems.push({ label: translateText('Stahlgüte'), value: summary.steelGrade });
+    }
+
+    if (metaItems.length > 0) {
+        const metaGrid = document.createElement('div');
+        metaGrid.className = 'stirrup-form-preview__meta';
+        metaItems.forEach(item => {
+            metaGrid.appendChild(createPreviewMetaItem(item.label, item.value));
+        });
+        previewContainer.appendChild(metaGrid);
+    }
+
+    const formMeta = typeof formData?.meta === 'object' && formData.meta !== null ? formData.meta : {};
+    const docItems = [];
+    if (formMeta.project) {
+        docItems.push({ label: translateText('Projekt'), value: formMeta.project });
+    }
+    if (formMeta.order) {
+        docItems.push({ label: translateText('Auftrag'), value: formMeta.order });
+    }
+    if (formMeta.position) {
+        docItems.push({ label: translateText('Position'), value: formMeta.position });
+    }
+    if (docItems.length > 0) {
+        const docGrid = document.createElement('div');
+        docGrid.className = 'stirrup-form-preview__meta';
+        docItems.forEach(item => {
+            docGrid.appendChild(createPreviewMetaItem(item.label, item.value));
+        });
+        previewContainer.appendChild(docGrid);
+    }
+
+    if (summary.remark) {
+        const remarkBlock = document.createElement('div');
+        remarkBlock.className = 'stirrup-form-preview__remark';
+        const remarkLabel = document.createElement('span');
+        remarkLabel.className = 'stirrup-form-preview__remark-label';
+        remarkLabel.textContent = translateText('Notiz');
+        const remarkValue = document.createElement('span');
+        remarkValue.className = 'stirrup-form-preview__remark-text';
+        remarkValue.textContent = summary.remark;
+        remarkBlock.appendChild(remarkLabel);
+        remarkBlock.appendChild(remarkValue);
+        previewContainer.appendChild(remarkBlock);
+    }
+
+    const segments = Array.isArray(formData?.segments) ? formData.segments : [];
+    if (segments.length > 0) {
+        const segmentWrapper = document.createElement('div');
+        segmentWrapper.className = 'stirrup-form-preview__segments';
+        const segmentTitle = document.createElement('h4');
+        segmentTitle.className = 'stirrup-form-preview__segments-title';
+        segmentTitle.textContent = translateText('Segmentdetails');
+        segmentWrapper.appendChild(segmentTitle);
+
+        const table = document.createElement('table');
+        table.className = 'stirrup-form-preview__segments-table';
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        [translateText('#'), translateText('Länge'), translateText('Biegung'), translateText('Radius')].forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        segments.forEach((segment, index) => {
+            const row = document.createElement('tr');
+
+            const indexCell = document.createElement('td');
+            indexCell.textContent = String(index + 1);
+            row.appendChild(indexCell);
+
+            const lengthCell = document.createElement('td');
+            const lengthValue = Number(segment?.length);
+            lengthCell.textContent = Number.isFinite(lengthValue) && lengthValue > 0
+                ? `${formatNumberForBvbs(lengthValue)} mm`
+                : '–';
+            row.appendChild(lengthCell);
+
+            const bendCell = document.createElement('td');
+            const angleValue = Number(segment?.bendAngle);
+            if (Number.isFinite(angleValue) && angleValue > 0) {
+                const directionSymbol = segment?.bendDirection === 'R' ? '↻' : '↺';
+                bendCell.textContent = `${formatNumberForBvbs(angleValue)}° ${directionSymbol}`;
+            } else {
+                bendCell.textContent = translateText('Gerade');
+            }
+            row.appendChild(bendCell);
+
+            const radiusCell = document.createElement('td');
+            const radiusValue = Number(segment?.radius);
+            radiusCell.textContent = Number.isFinite(radiusValue) && radiusValue > 0
+                ? `${formatNumberForBvbs(radiusValue)} mm`
+                : '–';
+            row.appendChild(radiusCell);
+
+            tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        segmentWrapper.appendChild(table);
+        previewContainer.appendChild(segmentWrapper);
+    }
+}
+
 function renderStirrupFormModalList() {
     const listEl = document.getElementById('stirrupFormList');
     const emptyStateEl = document.getElementById('stirrupFormEmptyState');
     const searchEl = document.getElementById('stirrupFormSearch');
+    const resultInfoEl = document.getElementById('stirrupFormResultInfo');
     if (!listEl || !emptyStateEl) {
         return;
     }
@@ -218,23 +675,36 @@ function renderStirrupFormModalList() {
 
     const forms = readSavedBf2dForms();
     const entries = Object.entries(forms)
-        .map(([name, data]) => ({ name: String(name).trim(), data }))
+        .map(([name, data]) => ({
+            name: String(name).trim(),
+            data,
+            summary: computeStirrupFormSummary(data)
+        }))
         .filter(entry => entry.name.length > 0)
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        .map(entry => ({
+            ...entry,
+            searchText: buildStirrupFormSearchText(entry.name, entry.data, entry.summary)
+        }));
+
+    populateStirrupFilterOptions(entries);
 
     const filterValue = searchEl?.value?.toLowerCase().trim() || '';
-    const activeValue = stirrupFormPickerState?.inputId
-        ? document.getElementById(stirrupFormPickerState.inputId)?.value.trim()
-        : '';
+    const selectedName = stirrupFormPickerState?.selectedName?.trim() || '';
+    const activeValue = getActiveStirrupInputValue();
+
     listEl.innerHTML = '';
     let visibleCount = 0;
 
     entries.forEach(entry => {
-        const summary = computeStirrupFormSummary(entry.data);
-        const searchText = buildStirrupFormSearchText(entry.name, entry.data, summary);
+        const { summary, searchText } = entry;
         if (filterValue && !searchText.includes(filterValue)) {
             return;
         }
+        if (!passesStirrupFormFilters(summary)) {
+            return;
+        }
+
         visibleCount += 1;
 
         const itemButton = document.createElement('button');
@@ -243,14 +713,28 @@ function renderStirrupFormModalList() {
         itemButton.dataset.formName = entry.name;
         itemButton.setAttribute('role', 'option');
 
-        const isSelected = !!activeValue && activeValue === entry.name;
+        const isSelected = selectedName ? entry.name === selectedName : (!!activeValue && entry.name === activeValue);
         itemButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         if (isSelected) {
             itemButton.classList.add('selected');
         }
 
         itemButton.addEventListener('click', () => {
+            setStirrupFormSelectedName(entry.name);
+            itemButton.focus({ preventScroll: true });
+        });
+        itemButton.addEventListener('dblclick', (event) => {
+            event.preventDefault();
             applyStirrupFormSelection(entry.name);
+        });
+        itemButton.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                applyStirrupFormSelection(entry.name);
+            } else if (event.key === ' ') {
+                event.preventDefault();
+                setStirrupFormSelectedName(entry.name);
+            }
         });
 
         const header = document.createElement('div');
@@ -259,6 +743,13 @@ function renderStirrupFormModalList() {
         nameEl.className = 'stirrup-form-item__name';
         nameEl.textContent = entry.name;
         header.appendChild(nameEl);
+
+        if (activeValue && entry.name === activeValue) {
+            const currentBadge = document.createElement('span');
+            currentBadge.className = 'stirrup-form-item__badge stirrup-form-item__badge--current';
+            currentBadge.textContent = translateText('Aktuell');
+            header.appendChild(currentBadge);
+        }
 
         if (summary.segmentCount > 0) {
             header.appendChild(createStirrupFormMetaBadge(`${translateText('Segmente')}: ${summary.segmentCount}`));
@@ -312,15 +803,43 @@ function renderStirrupFormModalList() {
         listEl.appendChild(itemButton);
     });
 
+    updateStirrupFormListSelection();
+
+    const totalCount = entries.length;
+    if (resultInfoEl) {
+        if (totalCount === 0) {
+            resultInfoEl.textContent = translateText('Keine gespeicherten Biegeformen verfügbar');
+        } else {
+            const resultLabel = translateText('Treffer');
+            resultInfoEl.textContent = `${formatNumberForBvbs(visibleCount)} / ${formatNumberForBvbs(totalCount)} ${resultLabel}`;
+        }
+    }
+
+    const hasFilterControls = stirrupFormFilterState.diameter !== 'all'
+        || stirrupFormFilterState.steelGrade !== 'all'
+        || stirrupFormFilterState.segmentThreshold !== 'all';
+
     if (visibleCount === 0) {
         emptyStateEl.hidden = false;
         const noFormsText = translateText('Keine gespeicherten Biegeformen verfügbar');
-        const noMatchesText = translateText('Keine passenden Biegeformen gefunden.');
-        emptyStateEl.textContent = entries.length === 0 || !filterValue ? noFormsText : noMatchesText;
+        const noFilterMatchText = translateText('Keine passenden Biegeformen für die aktuellen Filter.');
+        const noSearchMatchText = translateText('Keine passenden Biegeformen gefunden.');
+        if (totalCount === 0) {
+            emptyStateEl.textContent = noFormsText;
+        } else if (hasFilterControls) {
+            emptyStateEl.textContent = noFilterMatchText;
+        } else if (filterValue) {
+            emptyStateEl.textContent = noSearchMatchText;
+        } else {
+            emptyStateEl.textContent = noFormsText;
+        }
     } else {
         emptyStateEl.hidden = true;
         emptyStateEl.textContent = '';
     }
+
+    updateStirrupFormPreview(stirrupFormPickerState?.selectedName || '');
+    updateStirrupFormSelectButtonState();
 }
 
 function updateStirrupPickerButton(buttonId, inputId) {
@@ -387,7 +906,8 @@ function openStirrupFormModal(inputId, buttonId, zoneLabel = '') {
         return;
     }
 
-    stirrupFormPickerState = { inputId, buttonId, zoneLabel };
+    const currentValue = typeof input.value === 'string' ? input.value.trim() : '';
+    stirrupFormPickerState = { inputId, buttonId, zoneLabel, selectedName: currentValue };
 
     const titleEl = document.getElementById('stirrupFormModalTitle');
     if (titleEl) {
@@ -432,10 +952,24 @@ function closeStirrupFormModal() {
     if (searchEl) {
         searchEl.value = '';
     }
+
+    updateStirrupFormPreview('');
+    updateStirrupFormSelectButtonState();
 }
 
 function applyStirrupFormSelection(name) {
     if (!stirrupFormPickerState) {
+        return;
+    }
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (!trimmedName) {
+        updateStirrupFormSelectButtonState();
+        return;
+    }
+    stirrupFormPickerState.selectedName = trimmedName;
+    const forms = readSavedBf2dForms();
+    if (!Object.prototype.hasOwnProperty.call(forms, trimmedName)) {
+        updateStirrupFormSelectButtonState();
         return;
     }
     const { inputId, buttonId } = stirrupFormPickerState;
@@ -443,7 +977,7 @@ function applyStirrupFormSelection(name) {
     if (!input) {
         return;
     }
-    input.value = name;
+    input.value = trimmedName;
     closeStirrupFormModal();
     updateStirrupPickerButton(buttonId, inputId);
     if (typeof triggerPreviewUpdateDebounced === 'function') {
@@ -2697,6 +3231,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('stirrupFormDiameterFilter')?.addEventListener('change', (event) => {
+        const value = event?.target?.value ?? 'all';
+        stirrupFormFilterState.diameter = value || 'all';
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
+    });
+
+    document.getElementById('stirrupFormSteelFilter')?.addEventListener('change', (event) => {
+        const value = event?.target?.value ?? 'all';
+        stirrupFormFilterState.steelGrade = value || 'all';
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
+    });
+
+    document.getElementById('stirrupFormSegmentFilter')?.addEventListener('change', (event) => {
+        const value = event?.target?.value ?? 'all';
+        stirrupFormFilterState.segmentThreshold = value || 'all';
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
+    });
+
+    document.getElementById('stirrupFormResetFilters')?.addEventListener('click', () => {
+        stirrupFormFilterState.diameter = 'all';
+        stirrupFormFilterState.steelGrade = 'all';
+        stirrupFormFilterState.segmentThreshold = 'all';
+        const diameterFilter = document.getElementById('stirrupFormDiameterFilter');
+        const steelFilter = document.getElementById('stirrupFormSteelFilter');
+        const segmentFilter = document.getElementById('stirrupFormSegmentFilter');
+        if (diameterFilter) diameterFilter.value = 'all';
+        if (steelFilter) steelFilter.value = 'all';
+        if (segmentFilter) segmentFilter.value = 'all';
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
+    });
+
+    document.getElementById('stirrupFormSelectButton')?.addEventListener('click', () => {
+        const selectedName = stirrupFormPickerState?.selectedName;
+        if (selectedName) {
+            applyStirrupFormSelection(selectedName);
+        }
+    });
+
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && isStirrupFormModalOpen()) {
             closeStirrupFormModal();
@@ -2706,11 +3286,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('storage', (event) => {
         if (event.key === LOCAL_STORAGE_BF2D_FORMS_KEY) {
             refreshStirrupNameSelects();
+            if (isStirrupFormModalOpen()) {
+                renderStirrupFormModalList();
+            }
         }
     });
 
     window.addEventListener('bf2dSavedFormsUpdated', () => {
         refreshStirrupNameSelects();
+        if (isStirrupFormModalOpen()) {
+            renderStirrupFormModalList();
+        }
     });
 
                             // Event listeners
