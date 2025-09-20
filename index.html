@@ -21,7 +21,9 @@
         <script src="bf2d-configurator.js" defer></script>
         <script type="module" src="bf2d-viewer3d.js" defer></script>
         <script type="module" src="bfma-viewer3d.js" defer></script>
+        <script type="module" src="bf3d-viewer3d.js" defer></script>
         <script src="bfma-configurator.js" defer></script>
+        <script src="bf3d-configurator.js" defer></script>
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
     </head>
@@ -58,6 +60,12 @@
                             <path d="M2 2h20v20H2V2zm2 2v16h16V4H4zm2 2h5v5H6V6zm7 0h5v5h-5V6zm-7 7h5v5H6v-5zm7 0h5v5h-5v-5z"/>
                         </svg>
                         <span class="sidebar-text" data-i18n="Betonstahlmatten">Betonstahlmatten</span>
+                    </button>
+                    <button id="showBf3dBtn" class="sidebar-link" data-view-target="bf3dView" data-i18n-title="BF3D – 3D-Bügel erstellen" title="BF3D – 3D-Bügel erstellen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12,7L17,2H7L12,7M12,7L17,12L12,22L7,12L12,7M12,7L2,12L7,17H17L22,12L12,7Z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="3D-Bügel">3D-Bügel</span>
                     </button>
                     <button id="showProductionBtn" class="sidebar-link" data-view-target="productionView" data-i18n-title="Produktion" title="Produktion">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -719,6 +727,111 @@
                         </div>
                     </div>
                 </div>
+<div id="bf3dView" class="app-container" style="display:none;">
+    <div class="bf2d-layout">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title" data-i18n="BF3D Konfigurator">BF3D Konfigurator</h2>
+            </div>
+            <div class="bf2d-form-grid">
+                <div class="form-group">
+                    <label for="bf3dPosition" data-i18n="Pos.-Nr. (p)">Pos.-Nr. (p)</label>
+                    <input type="text" id="bf3dPosition" value="1">
+                </div>
+                <div class="form-group">
+                    <label for="bf3dQuantity" data-i18n="Anzahl (n)">Anzahl (n)</label>
+                    <input type="number" id="bf3dQuantity" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="bf3dDiameter" data-i18n="Durchmesser (d)">Durchmesser (d)</label>
+                    <input type="number" id="bf3dDiameter" value="10" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="bf3dSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
+                    <input type="text" id="bf3dSteelGrade" value="B500B">
+                </div>
+                <div class="form-group">
+                    <label for="bf3dBendingRoller" data-i18n="Biegerolle (s)">Biegerolle (s)</label>
+                    <input type="number" id="bf3dBendingRoller" value="40" min="0">
+                </div>
+            </div>
+             <div class="card-header">
+                <h2 class="card-title" data-i18n="Geometrie">Geometrie</h2>
+            </div>
+            <div class="bf2d-segment-table-wrapper">
+                <table class="full-width-table" id="bf3dPointTable">
+                    <thead>
+                        <tr>
+                            <th data-i18n="Punkt">Punkt</th>
+                            <th data-i18n="X">X</th>
+                            <th data-i18n="Y">Y</th>
+                            <th data-i18n="Z">Z</th>
+                            <th data-i18n="Aktionen">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bf3dPointTableBody"></tbody>
+                </table>
+            </div>
+            <div class="button-group">
+                <button type="button" id="bf3dAddPoint" class="btn-secondary" data-i18n="Punkt hinzufügen">Punkt hinzufügen</button>
+                <button type="button" id="bf3dRemovePoint" class="btn-danger" data-i18n="Punkt löschen" disabled>Punkt löschen</button>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="bf3dSnapGrid"> <span data-i18n="Am Raster fangen">Am Raster fangen</span></label>
+                <input type="number" id="bf3dGridSize" value="10" min="1" style="width: 60px;"> mm
+            </div>
+             <div class="form-group">
+                <label><input type="checkbox" id="bf3dForceIntegers"> <span data-i18n="Ganzzahlen erzwingen">Ganzzahlen erzwingen</span></label>
+            </div>
+
+            <div class="card-header">
+                <h2 class="card-title" data-i18n="Quick-Aktionen">Quick-Aktionen</h2>
+            </div>
+            <div class="button-group">
+                <input type="number" id="bf3dStraightLength" value="100" style="width: 80px;">
+                <select id="bf3dStraightDirection">
+                    <option value="x">X</option>
+                    <option value="y">Y</option>
+                    <option value="z">Z</option>
+                </select>
+                <button type="button" id="bf3dAddStraight" class="btn-secondary" data-i18n="Gerade hinzufügen">Gerade hinzufügen</button>
+            </div>
+            <div class="button-group">
+                <input type="number" id="bf3dArcRadius" value="50" style="width: 80px;">
+                <select id="bf3dArcPlane">
+                    <option value="xy">XY</option>
+                    <option value="yz">YZ</option>
+                    <option value="xz">XZ</option>
+                </select>
+                <button type="button" id="bf3dAddArc" class="btn-secondary" data-i18n="90°-Bogen hinzufügen">90°-Bogen hinzufügen</button>
+            </div>
+        </div>
+        <div class="preview-column">
+            <div class="card preview-card">
+                 <div class="card-header">
+                    <h2 class="card-title" data-i18n="Vorschau">Vorschau</h2>
+                    <div class="bf2d-preview-controls" style="margin-left: auto;">
+                        <div class="bf2d-view-toggle" role="group" aria-label="Ansicht umschalten">
+                            <button type="button" id="bf3dViewToggle2d" class="bf2d-view-toggle-btn is-active" aria-pressed="true" data-i18n="2D">2D</button>
+                            <button type="button" id="bf3dViewToggle3d" class="bf2d-view-toggle-btn" aria-pressed="false" data-i18n="3D">3D</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bfma-preview-container" data-view-mode="2d">
+                    <canvas id="bf3dPreview2d" style="width: 100%; height: 300px;"></canvas>
+                    <div id="bf3dPreview3d" class="bfma-preview-3d" style="display: none; width: 100%; height: 300px; position: relative;" aria-hidden="true"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="BVBS-ABS Datensatz">BVBS-ABS Datensatz</h2>
+                </div>
+                <textarea id="bf3dDatasetOutput" readonly></textarea>
+                <button type="button" id="bf3dSaveAbs" class="btn-primary" data-i18n="Als .abs speichern">Als .abs speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div id="bfmaView" class="app-container" style="display:none;">
     <div class="bfma-layout">
         <div class="card">

@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'productionView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'productionView', 'settingsView'];
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
 const DEFAULT_APP_SETTINGS = {
@@ -119,6 +119,9 @@ function showView(view) {
     if (view === 'bfmaView' && window.bfmaConfigurator && typeof window.bfmaConfigurator.onShow === 'function') {
         window.bfmaConfigurator.onShow();
     }
+    if (view === 'bf3dView' && window.bf3dConfigurator && typeof window.bf3dConfigurator.onShow === 'function') {
+        window.bf3dConfigurator.onShow();
+    }
 }
 
 function showGeneratorView() {
@@ -135,6 +138,10 @@ function showBf2dView() {
 
 function showBfmaView() {
     showView('bfmaView');
+}
+
+function showBf3dView() {
+    showView('bf3dView');
 }
 
 function showSettingsView() {
@@ -363,6 +370,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('showBfmaBtn')?.addEventListener('click', () => {
         showBfmaView();
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('showBf3dBtn')?.addEventListener('click', () => {
+        showBf3dView();
         closeSidebarOnSmallScreens();
     });
     document.getElementById('showProductionBtn')?.addEventListener('click', () => {
