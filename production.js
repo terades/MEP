@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'productionView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'settingsView'];
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
 const DEFAULT_APP_SETTINGS = {
@@ -126,6 +126,311 @@ function setActiveNavigation(view) {
     });
 }
 
+function getTranslation(key, fallback = key) {
+    if (typeof i18n !== 'undefined' && typeof i18n.t === 'function') {
+        const translated = i18n.t(key);
+        if (translated && translated !== key) {
+            return translated;
+        }
+    }
+    return fallback;
+}
+
+function formatNumberLocalized(value, decimals = 0) {
+    if (!Number.isFinite(value)) {
+        return '';
+    }
+    try {
+        return new Intl.NumberFormat(undefined, {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(value);
+    } catch (error) {
+        const fixed = Number(value).toFixed(decimals);
+        return decimals === 0 ? String(Math.round(Number(value))) : fixed;
+    }
+}
+
+function readLocalStorageJson(key) {
+    try {
+        if (typeof localStorage === 'undefined') {
+            return null;
+        }
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+            return null;
+        }
+        return JSON.parse(raw);
+    } catch (error) {
+        console.error(`Could not parse saved data for ${key}`, error);
+        return null;
+    }
+}
+
+function collectSaved2dShapes() {
+    const forms = readLocalStorageJson('bf2dSavedForms');
+    if (!forms || typeof forms !== 'object') {
+        return [];
+    }
+    return Object.entries(forms)
+        .filter(([, data]) => data && typeof data === 'object')
+        .map(([name, data]) => {
+            const meta = (typeof data.meta === 'object' && data.meta !== null) ? data.meta : {};
+            const segments = Array.isArray(data.segments) ? data.segments : [];
+            const diameter = Number(meta.diameter);
+            const quantity = Number(meta.quantity);
+            const totalLength = segments.reduce((sum, segment) => sum + (Number(segment.length) || 0), 0);
+            const stats = [
+                {
+                    labelKey: 'Durchmesser',
+                    fallbackLabel: 'Durchmesser',
+                    value: Number.isFinite(diameter) && diameter > 0 ? `${formatNumberLocalized(diameter, 1)} mm` : '–'
+                },
+                {
+                    labelKey: 'Anzahl',
+                    fallbackLabel: 'Anzahl',
+                    value: Number.isFinite(quantity) ? formatNumberLocalized(quantity, 0) : '–'
+                },
+                {
+                    labelKey: 'Segmente',
+                    fallbackLabel: 'Segmente',
+                    value: formatNumberLocalized(segments.length, 0)
+                },
+                {
+                    labelKey: 'Gesamtlänge',
+                    fallbackLabel: 'Gesamtlänge',
+                    value: totalLength > 0 ? `${formatNumberLocalized(totalLength, 0)} mm` : '0 mm'
+                }
+            ];
+            return { name, typeKey: 'Biegeformen 2D', stats };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function collectSaved3dShapes() {
+    const keys = ['bf3dSavedShapes', 'bf3dSavedForms'];
+    let entries = [];
+    for (const key of keys) {
+        const raw = readLocalStorageJson(key);
+        if (!raw) {
+            continue;
+        }
+        if (Array.isArray(raw)) {
+            entries = raw
+                .map(item => {
+                    if (!item || typeof item !== 'object') {
+                        return null;
+                    }
+                    const name = item.name || item.title || item.id;
+                    const data = item.state && typeof item.state === 'object' ? item.state : (item.data && typeof item.data === 'object' ? item.data : item);
+                    if (!name || !data || typeof data !== 'object') {
+                        return null;
+                    }
+                    return { name, data };
+                })
+                .filter(Boolean);
+        } else if (typeof raw === 'object') {
+            entries = Object.entries(raw)
+                .map(([name, value]) => {
+                    if (!name || !value || typeof value !== 'object') {
+                        return null;
+                    }
+                    const data = value.state && typeof value.state === 'object' ? value.state : value;
+                    if (!data || typeof data !== 'object') {
+                        return null;
+                    }
+                    return { name, data };
+                })
+                .filter(Boolean);
+        }
+        if (entries.length) {
+            break;
+        }
+    }
+    if (!entries.length) {
+        return [];
+    }
+    return entries
+        .map(({ name, data }) => {
+            const header = (typeof data.header === 'object' && data.header !== null) ? data.header : {};
+            const quantityRaw = header.n ?? header.quantity;
+            const diameterRaw = header.d ?? header.diameter;
+            const quantity = Number(quantityRaw);
+            const diameter = Number(diameterRaw);
+            const points = Array.isArray(data.points) ? data.points : [];
+            const segments = Array.isArray(data.segments) ? data.segments : [];
+            const segmentCount = segments.length || (points.length > 0 ? Math.max(points.length - 1, 0) : 0);
+            let totalLength = 0;
+            if (segments.length) {
+                totalLength = segments.reduce((sum, segment) => sum + (Number(segment.length) || 0), 0);
+            } else if (Array.isArray(data.segmentLengths)) {
+                totalLength = data.segmentLengths.reduce((sum, value) => sum + (Number(value) || 0), 0);
+            }
+            const stats = [
+                {
+                    labelKey: 'Durchmesser',
+                    fallbackLabel: 'Durchmesser',
+                    value: Number.isFinite(diameter) && diameter > 0 ? `${formatNumberLocalized(diameter, 1)} mm` : '–'
+                },
+                {
+                    labelKey: 'Anzahl',
+                    fallbackLabel: 'Anzahl',
+                    value: Number.isFinite(quantity) && quantity > 0 ? formatNumberLocalized(quantity, 0) : '–'
+                },
+                {
+                    labelKey: 'Punkte',
+                    fallbackLabel: 'Punkte',
+                    value: formatNumberLocalized(points.length, 0)
+                }
+            ];
+            if (totalLength > 0) {
+                stats.push({
+                    labelKey: 'Gesamtlänge',
+                    fallbackLabel: 'Gesamtlänge',
+                    value: `${formatNumberLocalized(totalLength, 0)} mm`
+                });
+            } else if (segmentCount > 0) {
+                stats.push({
+                    labelKey: 'Segmente',
+                    fallbackLabel: 'Segmente',
+                    value: formatNumberLocalized(segmentCount, 0)
+                });
+            }
+            return { name, typeKey: 'Biegeformen 3D', stats };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function collectSavedMeshes() {
+    const meshes = readLocalStorageJson('bfmaSavedMeshes');
+    if (!meshes || typeof meshes !== 'object') {
+        return [];
+    }
+    return Object.entries(meshes)
+        .map(([name, value]) => {
+            if (!value || typeof value !== 'object') {
+                return null;
+            }
+            const state = value.state && typeof value.state === 'object' ? value.state : value;
+            if (!state || typeof state !== 'object') {
+                return null;
+            }
+            const header = (typeof state.header === 'object' && state.header !== null) ? state.header : {};
+            const summary = (typeof state.summary === 'object' && state.summary !== null) ? state.summary : {};
+            const length = Number(header.l);
+            const width = Number(header.b);
+            const quantity = Number(header.n);
+            const totalWeight = Number(summary.totalWeight);
+            const fallbackY = Array.isArray(state.yBars) ? state.yBars.length : 0;
+            const fallbackX = Array.isArray(state.xBars) ? state.xBars.length : 0;
+            const fallbackE = Array.isArray(state.eBars) ? state.eBars.length : 0;
+            const yCount = Number.isFinite(summary.yCount) ? summary.yCount : fallbackY;
+            const xCount = Number.isFinite(summary.xCount) ? summary.xCount : fallbackX;
+            const eCount = Number.isFinite(summary.eCount) ? summary.eCount : fallbackE;
+            const lengthDisplay = Number.isFinite(length) && length > 0 ? formatNumberLocalized(length, 0) : '–';
+            const widthDisplay = Number.isFinite(width) && width > 0 ? formatNumberLocalized(width, 0) : '–';
+            const dimensionsValue = (lengthDisplay === '–' && widthDisplay === '–') ? '–' : `${lengthDisplay} × ${widthDisplay} mm`;
+            const stats = [
+                {
+                    labelKey: 'Anzahl',
+                    fallbackLabel: 'Anzahl',
+                    value: Number.isFinite(quantity) && quantity > 0 ? formatNumberLocalized(quantity, 0) : '–'
+                },
+                {
+                    labelKey: 'Abmessungen',
+                    fallbackLabel: 'Abmessungen',
+                    value: dimensionsValue
+                },
+                {
+                    labelKey: 'Stäbe',
+                    fallbackLabel: 'Stäbe',
+                    value: `Y: ${formatNumberLocalized(yCount, 0)} | X: ${formatNumberLocalized(xCount, 0)} | E: ${formatNumberLocalized(eCount, 0)}`
+                }
+            ];
+            if (Number.isFinite(totalWeight) && totalWeight > 0) {
+                stats.push({
+                    labelKey: 'Gewicht',
+                    fallbackLabel: 'Gewicht',
+                    value: `${formatNumberLocalized(totalWeight, 2)} kg`
+                });
+            }
+            return { name, typeKey: 'Matten', stats };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function renderSavedShapesGroup({ items, gridId, countId, emptyId }) {
+    const grid = document.getElementById(gridId);
+    const count = document.getElementById(countId);
+    const empty = document.getElementById(emptyId);
+    if (!grid || !count || !empty) {
+        return;
+    }
+    grid.textContent = '';
+    count.textContent = String(items.length);
+    if (!items.length) {
+        grid.hidden = true;
+        empty.hidden = false;
+        return;
+    }
+    grid.hidden = false;
+    empty.hidden = true;
+    items.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'saved-shape-card';
+
+        const header = document.createElement('header');
+        header.className = 'saved-shape-card-header';
+
+        const nameEl = document.createElement('h4');
+        nameEl.className = 'saved-shape-name';
+        nameEl.textContent = item.name;
+
+        const typeEl = document.createElement('span');
+        typeEl.className = 'saved-shape-type';
+        typeEl.textContent = getTranslation(item.typeKey, item.typeKey);
+
+        header.appendChild(nameEl);
+        header.appendChild(typeEl);
+        card.appendChild(header);
+
+        if (Array.isArray(item.stats) && item.stats.length) {
+            const list = document.createElement('ul');
+            list.className = 'saved-shape-stats';
+            item.stats.forEach(stat => {
+                const li = document.createElement('li');
+                li.className = 'saved-shape-stat';
+                const label = document.createElement('span');
+                label.className = 'saved-shape-stat-label';
+                label.textContent = getTranslation(stat.labelKey, stat.fallbackLabel || stat.labelKey);
+                const value = document.createElement('span');
+                value.className = 'saved-shape-stat-value';
+                value.textContent = stat.value;
+                li.appendChild(label);
+                li.appendChild(value);
+                list.appendChild(li);
+            });
+            card.appendChild(list);
+        }
+
+        grid.appendChild(card);
+    });
+}
+
+function renderSavedShapesOverview() {
+    const view = document.getElementById('savedShapesView');
+    if (!view) {
+        return;
+    }
+    const groups = [
+        { items: collectSaved2dShapes(), gridId: 'savedShapes2dGrid', countId: 'savedShapes2dCount', emptyId: 'savedShapes2dEmpty' },
+        { items: collectSaved3dShapes(), gridId: 'savedShapes3dGrid', countId: 'savedShapes3dCount', emptyId: 'savedShapes3dEmpty' },
+        { items: collectSavedMeshes(), gridId: 'savedShapesMatGrid', countId: 'savedShapesMatCount', emptyId: 'savedShapesMatEmpty' }
+    ];
+    groups.forEach(renderSavedShapesGroup);
+}
+
 function showView(view) {
     APP_VIEW_IDS.forEach(viewId => {
         const el = document.getElementById(viewId);
@@ -136,6 +441,9 @@ function showView(view) {
     setActiveNavigation(view);
     if (view === 'productionView') {
         renderProductionList();
+    }
+    if (view === 'savedShapesView') {
+        renderSavedShapesOverview();
     }
     if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
         window.bf2dConfigurator.onShow();
@@ -166,6 +474,10 @@ function showBfmaView() {
 
 function showBf3dView() {
     showView('bf3dView');
+}
+
+function showSavedShapesView() {
+    showView('savedShapesView');
 }
 
 function showSettingsView() {
@@ -414,6 +726,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('showBf3dBtn')?.addEventListener('click', () => {
         showBf3dView();
+        closeSidebarOnSmallScreens();
+    });
+    document.getElementById('showSavedShapesBtn')?.addEventListener('click', () => {
+        showSavedShapesView();
         closeSidebarOnSmallScreens();
     });
     document.getElementById('showProductionBtn')?.addEventListener('click', () => {

@@ -80,6 +80,12 @@
                             </button>
                         </div>
                     </div>
+                    <button id="showSavedShapesBtn" class="sidebar-link" data-view-target="savedShapesView" data-i18n-title="Gespeicherte Formen" title="Gespeicherte Formen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Gespeicherte Formen">Gespeicherte Formen</span>
+                    </button>
                     <button id="showProductionBtn" class="sidebar-link" data-view-target="productionView" data-i18n-title="Produktion" title="Produktion">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M3 3h18v2H3V3zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
@@ -1046,6 +1052,42 @@
         </div>
     </div>
 </div>
+                <div id="savedShapesView" class="app-container" style="display:none;">
+                    <div class="card saved-shapes-card">
+                        <div class="card-header">
+                            <div>
+                                <h2 class="card-title" data-i18n="Gespeicherte Formen">Gespeicherte Biegeformen</h2>
+                                <p class="card-subtitle" data-i18n="Gespeicherte Formen Beschreibung">Überblick über alle gespeicherten Biegeformen.</p>
+                            </div>
+                        </div>
+                        <div class="saved-shapes-groups">
+                            <section class="saved-shapes-group">
+                                <div class="saved-shapes-group-header">
+                                    <h3 class="saved-shapes-group-title" data-i18n="Biegeformen 2D">Biegeformen 2D</h3>
+                                    <span class="saved-shapes-count" id="savedShapes2dCount">0</span>
+                                </div>
+                                <div class="saved-shapes-grid" id="savedShapes2dGrid"></div>
+                                <p class="saved-shapes-empty" id="savedShapes2dEmpty" data-i18n="Keine gespeicherten Formen" hidden>Keine gespeicherten Biegeformen vorhanden.</p>
+                            </section>
+                            <section class="saved-shapes-group">
+                                <div class="saved-shapes-group-header">
+                                    <h3 class="saved-shapes-group-title" data-i18n="Biegeformen 3D">Biegeformen 3D</h3>
+                                    <span class="saved-shapes-count" id="savedShapes3dCount">0</span>
+                                </div>
+                                <div class="saved-shapes-grid" id="savedShapes3dGrid"></div>
+                                <p class="saved-shapes-empty" id="savedShapes3dEmpty" data-i18n="Keine gespeicherten Formen" hidden>Keine gespeicherten Biegeformen vorhanden.</p>
+                            </section>
+                            <section class="saved-shapes-group">
+                                <div class="saved-shapes-group-header">
+                                    <h3 class="saved-shapes-group-title" data-i18n="Matten">Matten</h3>
+                                    <span class="saved-shapes-count" id="savedShapesMatCount">0</span>
+                                </div>
+                                <div class="saved-shapes-grid" id="savedShapesMatGrid"></div>
+                                <p class="saved-shapes-empty" id="savedShapesMatEmpty" data-i18n="Keine gespeicherten Formen" hidden>Keine gespeicherten Biegeformen vorhanden.</p>
+                            </section>
+                        </div>
+                    </div>
+                </div>
                 <div id="productionView" class="app-container" style="display:none;">
                     <div class="card">
                         <div class="card-header">

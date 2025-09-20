@@ -105,6 +105,7 @@ async function loadLanguage(lang) {
         if (typeof drawCagePreview === 'function') drawCagePreview(); // Enthält die SVG-Texte mit Platzhaltern
         if (typeof updateLabelPreview === 'function') updateLabelPreview();
         if (typeof renderProductionList === 'function') renderProductionList();
+        if (typeof renderSavedShapesOverview === 'function') renderSavedShapesOverview();
         if (window.bf2dConfigurator && typeof window.bf2dConfigurator.refreshTranslations === 'function') {
             window.bf2dConfigurator.refreshTranslations();
         }
