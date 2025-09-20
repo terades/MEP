@@ -447,6 +447,20 @@
         }
     }
 
+    function notifySavedFormsUpdated(names) {
+        if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+            return;
+        }
+        try {
+            const detail = {
+                names: Array.isArray(names) ? [...names] : []
+            };
+            window.dispatchEvent(new CustomEvent('bf2dSavedFormsUpdated', { detail }));
+        } catch (error) {
+            console.warn('Failed to dispatch bf2dSavedFormsUpdated event', error);
+        }
+    }
+
     function populateSavedFormsSelect(selectedName = '') {
         const select = document.getElementById('bf2dSavedForms');
         if (!select) return;
@@ -482,6 +496,7 @@
         if (deleteBtn) {
             deleteBtn.disabled = !hasForms;
         }
+        notifySavedFormsUpdated(names);
     }
 
     function readShapeNameInput() {
