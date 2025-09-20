@@ -343,6 +343,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = document.body.classList.contains('sidebar-open');
         const labelKey = isOpen ? 'Menü einklappen' : 'Menü ausklappen';
         const label = typeof i18n !== 'undefined' ? i18n.t(labelKey) : labelKey;
+        const sidebarElement = document.getElementById('appSidebar');
+        if (sidebarElement) {
+            sidebarElement.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            sidebarElement.dataset.state = isOpen ? 'expanded' : 'collapsed';
+        }
         document.querySelectorAll('[data-sidebar-toggle]').forEach(toggle => {
             toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             toggle.setAttribute('aria-label', label);
