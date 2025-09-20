@@ -351,14 +351,28 @@
                                 <label for="buegelname1" data-i18n="Bügelname (s) - Zone 1">Bügelname (s) - Zone 1</label>
                                 <div class="input-with-dropdown">
                                     <input type="text" id="buegelname1" value="Forma1" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
-                                    <select id="buegelname1Select" class="saved-form-select" data-zone-label="Zone 1"></select>
+                                    <button type="button" class="saved-form-button" id="buegelname1PickerButton" data-target-input="buegelname1" data-zone-label="Zone 1" aria-haspopup="dialog">
+                                        <span class="saved-form-button-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" focusable="false">
+                                                <path d="M4 5h16v2H4V5zm3 6h10v2H7v-2zm-3 6h16v2H4v-2z" />
+                                            </svg>
+                                        </span>
+                                        <span class="saved-form-button-text" data-default-text="Gespeicherte Biegeform wählen" data-i18n="Gespeicherte Biegeform wählen">Gespeicherte Biegeform wählen</span>
+                                    </button>
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="buegelname2" data-i18n="Bügelname (s) - Zone 2">Bügelname (s) - Zone 2</label>
                                 <div class="input-with-dropdown">
                                     <input type="text" id="buegelname2" value="" maxlength="30" oninput="triggerPreviewUpdateDebounced()">
-                                    <select id="buegelname2Select" class="saved-form-select" data-zone-label="Zone 2"></select>
+                                    <button type="button" class="saved-form-button" id="buegelname2PickerButton" data-target-input="buegelname2" data-zone-label="Zone 2" aria-haspopup="dialog">
+                                        <span class="saved-form-button-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" focusable="false">
+                                                <path d="M4 5h16v2H4V5zm3 6h10v2H7v-2zm-3 6h16v2H4v-2z" />
+                                            </svg>
+                                        </span>
+                                        <span class="saved-form-button-text" data-default-text="Gespeicherte Biegeform wählen" data-i18n="Gespeicherte Biegeform wählen">Gespeicherte Biegeform wählen</span>
+                                    </button>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -1210,6 +1224,28 @@
                     <p data-i18n="Modern BVBS Korb Generator © 2025">Modern BVBS Korb Generator &copy; 2025</p>
                 </div>
             </footer>
+        </div>
+        <div id="stirrupFormModal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="stirrupFormModalTitle">
+                <div class="modal-header card-header">
+                    <h2 id="stirrupFormModalTitle" class="modal-title card-title" data-title-base="Gespeicherte Biegeform wählen" data-i18n="Gespeicherte Biegeform wählen">Gespeicherte Biegeform wählen</h2>
+                    <button type="button" class="close-modal-btn" onclick="closeStirrupFormModal()" data-i18n-title="Schließen" title="Schließen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-search">
+                        <input type="text" id="stirrupFormSearch" class="modal-search-input" data-i18n-placeholder="Suchen" placeholder="Suchen" aria-label="Suchen">
+                    </div>
+                    <div id="stirrupFormList" class="stirrup-form-list" role="listbox" aria-label="Gespeicherte Biegeformen"></div>
+                    <p id="stirrupFormEmptyState" class="info-text" hidden data-i18n="Keine gespeicherten Biegeformen verfügbar">Keine gespeicherten Biegeformen verfügbar</p>
+                </div>
+                <div class="modal-footer button-group" style="justify-content: flex-end;">
+                    <button type="button" class="btn-secondary" onclick="closeStirrupFormModal()" data-i18n="Abbrechen">Abbrechen</button>
+                </div>
+            </div>
         </div>
         <div id="releaseModal" class="modal-overlay">
             <div class="modal-content card">
