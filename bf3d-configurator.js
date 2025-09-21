@@ -548,6 +548,40 @@
 
 
     function updateAll() {
+        const headerInputs = [
+            { key: 'p', id: 'bf3dPosition', type: 'string' },
+            { key: 'n', id: 'bf3dQuantity', type: 'number' },
+            { key: 'd', id: 'bf3dDiameter', type: 'number' },
+            { key: 'g', id: 'bf3dSteelGrade', type: 'string' },
+            { key: 's', id: 'bf3dBendingRoller', type: 'number' }
+        ];
+
+        headerInputs.forEach(({ key, id, type }) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const value = state.header[key];
+            if (id === 'bf3dSteelGrade' && value && window.masterDataManager?.addValue) {
+                window.masterDataManager.addValue('steelGrades', value);
+            }
+            if (id === 'bf3dBendingRoller' && Number.isFinite(Number(value)) && window.masterDataManager?.addValue) {
+                window.masterDataManager.addValue('rollDiameters', Number(value));
+            }
+            if (el.tagName === 'SELECT') {
+                const normalized = type === 'number' ? (Number.isFinite(Number(value)) ? String(Number(value)) : '') : (value ?? '').toString();
+                el.value = normalized;
+                if (normalized && el.value !== normalized) {
+                    el.dataset.masterdataPendingValue = normalized;
+                    if (typeof window.masterDataManager?.refreshSelects === 'function') {
+                        window.masterDataManager.refreshSelects();
+                    }
+                }
+            } else if (el.type === 'number') {
+                el.value = Number.isFinite(Number(value)) ? Number(value) : 0;
+            } else {
+                el.value = (value ?? '').toString();
+            }
+        });
+
         renderPointTable();
 
         const removeBtn = document.getElementById('bf3dRemovePoint');
@@ -829,11 +863,22 @@
             const [key, id] = mapping.split(':');
             const el = document.getElementById(id);
             if (el) {
-                el.addEventListener('input', () => {
-                    state.header[key] = el.type === 'number' ? parseFloat(el.value) : el.value;
+                const updateHeaderField = () => {
+                    if (id === 'bf3dBendingRoller') {
+                        const parsed = Number(parseFloat(el.value));
+                        state.header[key] = Number.isFinite(parsed) ? parsed : 0;
+                    } else if (el.type === 'number') {
+                        state.header[key] = parseFloat(el.value);
+                    } else {
+                        state.header[key] = el.value;
+                    }
                     saveState();
                     scheduleUpdate();
-                });
+                };
+                el.addEventListener('input', updateHeaderField);
+                if (el.tagName === 'SELECT') {
+                    el.addEventListener('change', updateHeaderField);
+                }
             }
         });
 

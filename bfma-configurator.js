@@ -993,7 +993,20 @@
             if (el.type === 'number') {
                 el.value = Number.isFinite(value) ? value : parseNumber(value);
             } else {
-                el.value = value ?? '';
+                const textValue = value ?? '';
+                if (item.id === 'bfmaSteelGrade' && textValue && window.masterDataManager?.addValue) {
+                    window.masterDataManager.addValue('steelGrades', textValue);
+                }
+                if (item.id === 'bfmaMeshType' && textValue && window.masterDataManager?.addValue) {
+                    window.masterDataManager.addValue('meshTypes', textValue);
+                }
+                el.value = textValue;
+                if (el.tagName === 'SELECT' && textValue && el.value !== textValue) {
+                    el.dataset.masterdataPendingValue = textValue;
+                    if (typeof window.masterDataManager?.refreshSelects === 'function') {
+                        window.masterDataManager.refreshSelects();
+                    }
+                }
             }
         });
     }
@@ -1024,13 +1037,17 @@
         fields.forEach(field => {
             const el = document.getElementById(field.id);
             if (!el) return;
-            el.addEventListener('input', () => {
+            const handleHeaderChange = () => {
                 state.header[field.key] = field.handler(el.value ?? '');
                 if (['l', 'b', 'n'].includes(field.key)) {
                     weightAutoUpdate = true;
                 }
                 scheduleUpdate();
-            });
+            };
+            el.addEventListener('input', handleHeaderChange);
+            if (el.tagName === 'SELECT') {
+                el.addEventListener('change', handleHeaderChange);
+            }
         });
         const weightInput = document.getElementById('bfmaWeight');
         if (weightInput) {

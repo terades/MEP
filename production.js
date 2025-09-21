@@ -215,6 +215,426 @@ function getTranslation(key, fallback = key, replacements = {}) {
     return fallback;
 }
 
+const MASTER_DATA_STORAGE_KEY = 'bvbsMasterData';
+const MASTER_DATA_TYPES = ['steelGrades', 'rollDiameters', 'meshTypes'];
+const DEFAULT_MASTER_DATA = {
+    steelGrades: ['B500B', 'B500A', 'B500C'],
+    rollDiameters: [40, 48, 56, 70],
+    meshTypes: ['Q257', 'Q188', 'R335']
+};
+
+let masterData = {
+    steelGrades: [...DEFAULT_MASTER_DATA.steelGrades],
+    rollDiameters: [...DEFAULT_MASTER_DATA.rollDiameters],
+    meshTypes: [...DEFAULT_MASTER_DATA.meshTypes]
+};
+
+const MASTER_DATA_CONFIG = {
+    steelGrades: {
+        listId: 'masterDataSteelList',
+        emptyId: 'masterDataSteelEmpty',
+        feedbackId: 'masterDataSteelFeedback'
+    },
+    rollDiameters: {
+        listId: 'masterDataRollList',
+        emptyId: 'masterDataRollEmpty',
+        feedbackId: 'masterDataRollFeedback'
+    },
+    meshTypes: {
+        listId: 'masterDataMeshList',
+        emptyId: 'masterDataMeshEmpty',
+        feedbackId: 'masterDataMeshFeedback'
+    }
+};
+
+const masterDataSubscribers = new Set();
+const masterDataFeedbackTimers = {};
+
+function sanitizeStringMasterData(values = []) {
+    const seen = new Set();
+    return values
+        .map(value => (value ?? '').toString().trim())
+        .filter(value => {
+            if (!value) return false;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+function formatMasterDataNumberValue(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) {
+        return '';
+    }
+    if (Math.abs(num - Math.round(num)) < 1e-6) {
+        return String(Math.round(num));
+    }
+    return (Math.round(num * 1000) / 1000).toString();
+}
+
+function sanitizeNumberMasterData(values = []) {
+    const seen = new Set();
+    return values
+        .map(value => {
+            if (typeof value === 'string') {
+                return Number(parseFloat(value.replace(',', '.')));
+            }
+            return Number(value);
+        })
+        .filter(num => Number.isFinite(num) && num > 0)
+        .map(num => Number((Math.round(num * 1000) / 1000)))
+        .filter(num => {
+            const key = formatMasterDataNumberValue(num);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .sort((a, b) => a - b);
+}
+
+function getMasterDataSnapshot() {
+    return {
+        steelGrades: [...masterData.steelGrades],
+        rollDiameters: [...masterData.rollDiameters],
+        meshTypes: [...masterData.meshTypes]
+    };
+}
+
+function persistMasterData() {
+    try {
+        localStorage.setItem(MASTER_DATA_STORAGE_KEY, JSON.stringify(masterData));
+    } catch (error) {
+        console.error('Could not store master data', error);
+    }
+}
+
+function notifyMasterDataSubscribers() {
+    const snapshot = getMasterDataSnapshot();
+    masterDataSubscribers.forEach(callback => {
+        try {
+            callback(snapshot);
+        } catch (error) {
+            console.error('Master data subscriber callback failed', error);
+        }
+    });
+    try {
+        window.dispatchEvent(new CustomEvent('bvbs:masterdata-changed', { detail: { masterData: snapshot } }));
+    } catch (error) {
+        console.error('Could not dispatch master data change event', error);
+    }
+}
+
+function ensureMasterDataManager() {
+    try {
+        if (!window.masterDataManager || typeof window.masterDataManager !== 'object') {
+            window.masterDataManager = {};
+        }
+        window.masterDataManager.getSnapshot = () => getMasterDataSnapshot();
+        window.masterDataManager.getValues = type => {
+            if (!MASTER_DATA_TYPES.includes(type)) {
+                return [];
+            }
+            return [...masterData[type]];
+        };
+        window.masterDataManager.subscribe = callback => {
+            if (typeof callback !== 'function') {
+                return () => {};
+            }
+            masterDataSubscribers.add(callback);
+            try {
+                callback(getMasterDataSnapshot());
+            } catch (error) {
+                console.error('Master data subscriber callback failed', error);
+            }
+            return () => {
+                masterDataSubscribers.delete(callback);
+            };
+        };
+        window.masterDataManager.addValue = (type, value) => addMasterDataValue(type, value);
+        window.masterDataManager.removeValue = (type, value) => removeMasterDataValue(type, value);
+        window.masterDataManager.refreshSelects = () => {
+            updateMasterDataSelects(getMasterDataSnapshot());
+        };
+    } catch (error) {
+        console.error('Could not expose master data manager', error);
+    }
+}
+
+function loadMasterData() {
+    const defaults = {
+        steelGrades: sanitizeStringMasterData(DEFAULT_MASTER_DATA.steelGrades),
+        rollDiameters: sanitizeNumberMasterData(DEFAULT_MASTER_DATA.rollDiameters),
+        meshTypes: sanitizeStringMasterData(DEFAULT_MASTER_DATA.meshTypes)
+    };
+    let stored = null;
+    try {
+        const raw = localStorage.getItem(MASTER_DATA_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                stored = parsed;
+            }
+        }
+    } catch (error) {
+        console.error('Could not load master data', error);
+    }
+    masterData = {
+        steelGrades: sanitizeStringMasterData(Array.isArray(stored?.steelGrades) ? stored.steelGrades : defaults.steelGrades),
+        rollDiameters: sanitizeNumberMasterData(Array.isArray(stored?.rollDiameters) ? stored.rollDiameters : defaults.rollDiameters),
+        meshTypes: sanitizeStringMasterData(Array.isArray(stored?.meshTypes) ? stored.meshTypes : defaults.meshTypes)
+    };
+    persistMasterData();
+}
+
+function addMasterDataValue(type, rawValue) {
+    if (!MASTER_DATA_TYPES.includes(type)) {
+        return { success: false, message: getTranslation('Unbekannter Stammdatentyp', 'Unbekannter Stammdatentyp') };
+    }
+    if (type === 'rollDiameters') {
+        const parsed = Number(parseFloat(String(rawValue ?? '').replace(',', '.')));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return { success: false, message: getTranslation('Bitte einen gültigen Durchmesser eingeben.', 'Bitte einen gültigen Durchmesser eingeben.') };
+        }
+        const exists = masterData.rollDiameters.some(value => Math.abs(value - parsed) < 1e-6);
+        if (exists) {
+            return { success: false, message: getTranslation('Wert bereits vorhanden', 'Wert bereits vorhanden') };
+        }
+        masterData.rollDiameters = sanitizeNumberMasterData([...masterData.rollDiameters, parsed]);
+    } else {
+        const value = (rawValue ?? '').toString().trim();
+        if (!value) {
+            return { success: false, message: getTranslation('Bitte einen Wert eingeben.', 'Bitte einen Wert eingeben.') };
+        }
+        const lower = value.toLowerCase();
+        const list = type === 'steelGrades' ? masterData.steelGrades : masterData.meshTypes;
+        if (list.some(item => item.toLowerCase() === lower)) {
+            return { success: false, message: getTranslation('Wert bereits vorhanden', 'Wert bereits vorhanden') };
+        }
+        const updated = sanitizeStringMasterData([...list, value]);
+        if (type === 'steelGrades') {
+            masterData.steelGrades = updated;
+        } else {
+            masterData.meshTypes = updated;
+        }
+    }
+    persistMasterData();
+    notifyMasterDataSubscribers();
+    return { success: true };
+}
+
+function removeMasterDataValue(type, rawValue) {
+    if (!MASTER_DATA_TYPES.includes(type)) {
+        return { success: false, message: getTranslation('Unbekannter Stammdatentyp', 'Unbekannter Stammdatentyp') };
+    }
+    if (type === 'rollDiameters') {
+        const parsed = Number(parseFloat(String(rawValue ?? '').replace(',', '.')));
+        if (!Number.isFinite(parsed)) {
+            return { success: false, message: getTranslation('Wert nicht gefunden', 'Wert nicht gefunden') };
+        }
+        const before = masterData.rollDiameters.length;
+        masterData.rollDiameters = masterData.rollDiameters.filter(value => Math.abs(value - parsed) > 1e-6);
+        if (masterData.rollDiameters.length === before) {
+            return { success: false, message: getTranslation('Wert nicht gefunden', 'Wert nicht gefunden') };
+        }
+    } else {
+        const value = (rawValue ?? '').toString().trim();
+        if (!value) {
+            return { success: false, message: getTranslation('Wert nicht gefunden', 'Wert nicht gefunden') };
+        }
+        const lower = value.toLowerCase();
+        if (type === 'steelGrades') {
+            const before = masterData.steelGrades.length;
+            masterData.steelGrades = masterData.steelGrades.filter(item => item.toLowerCase() !== lower);
+            if (masterData.steelGrades.length === before) {
+                return { success: false, message: getTranslation('Wert nicht gefunden', 'Wert nicht gefunden') };
+            }
+        } else {
+            const before = masterData.meshTypes.length;
+            masterData.meshTypes = masterData.meshTypes.filter(item => item.toLowerCase() !== lower);
+            if (masterData.meshTypes.length === before) {
+                return { success: false, message: getTranslation('Wert nicht gefunden', 'Wert nicht gefunden') };
+            }
+        }
+    }
+    persistMasterData();
+    notifyMasterDataSubscribers();
+    return { success: true };
+}
+
+function renderMasterDataList(type, values) {
+    const config = MASTER_DATA_CONFIG[type];
+    if (!config) return;
+    const listEl = document.getElementById(config.listId);
+    const emptyEl = document.getElementById(config.emptyId);
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (!Array.isArray(values) || values.length === 0) {
+        if (emptyEl) emptyEl.hidden = false;
+        return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
+    values.forEach(value => {
+        const item = document.createElement('li');
+        item.className = 'masterdata-item';
+        const valueEl = document.createElement('span');
+        valueEl.className = 'masterdata-value';
+        if (type === 'rollDiameters') {
+            valueEl.textContent = `${formatMasterDataNumberValue(value)} mm`;
+        } else {
+            valueEl.textContent = value;
+        }
+        item.appendChild(valueEl);
+        const actions = document.createElement('div');
+        actions.className = 'masterdata-actions';
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'masterdata-remove';
+        removeBtn.dataset.masterdataRemove = type;
+        removeBtn.dataset.value = type === 'rollDiameters' ? formatMasterDataNumberValue(value) : value;
+        removeBtn.textContent = getTranslation('Entfernen', 'Entfernen');
+        removeBtn.setAttribute('aria-label', getTranslation('Wert entfernen', 'Wert entfernen'));
+        actions.appendChild(removeBtn);
+        item.appendChild(actions);
+        listEl.appendChild(item);
+    });
+}
+
+function normalizeMasterDataSelectValue(type, rawValue) {
+    if (type === 'rollDiameters') {
+        const parsed = Number(parseFloat(String(rawValue ?? '').replace(',', '.')));
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return '';
+        }
+        return formatMasterDataNumberValue(parsed);
+    }
+    if (rawValue === null || rawValue === undefined) {
+        return '';
+    }
+    return rawValue.toString().trim();
+}
+
+function updateMasterDataSelects(snapshot = getMasterDataSnapshot()) {
+    const selects = document.querySelectorAll('[data-masterdata-source]');
+    selects.forEach(select => {
+        const type = select.dataset.masterdataSource;
+        if (!MASTER_DATA_TYPES.includes(type)) {
+            return;
+        }
+        const values = Array.isArray(snapshot[type]) ? snapshot[type] : [];
+        const placeholderKey = select.dataset.masterdataPlaceholderKey;
+        const placeholder = placeholderKey ? getTranslation(placeholderKey, placeholderKey) : '';
+        const previousValue = select.value;
+        const pendingValue = select.dataset.masterdataPendingValue;
+        const normalizedPreviousValue = normalizeMasterDataSelectValue(type, pendingValue || previousValue);
+        select.innerHTML = '';
+        if (placeholder) {
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = placeholder;
+            select.appendChild(placeholderOption);
+        }
+        values.forEach(value => {
+            const normalizedValue = normalizeMasterDataSelectValue(type, value);
+            const option = document.createElement('option');
+            option.value = normalizedValue;
+            option.textContent = type === 'rollDiameters' ? formatMasterDataNumberValue(value) : value;
+            select.appendChild(option);
+        });
+        const defaultValue = normalizeMasterDataSelectValue(type, select.dataset.masterdataDefault);
+        let targetValue = normalizedPreviousValue || defaultValue || '';
+        if (!targetValue && !placeholder && values.length > 0) {
+            targetValue = normalizeMasterDataSelectValue(type, values[0]);
+        }
+        if (targetValue) {
+            select.value = targetValue;
+            if (select.value !== targetValue) {
+                const fallbackOption = document.createElement('option');
+                fallbackOption.value = targetValue;
+                fallbackOption.textContent = targetValue;
+                fallbackOption.dataset.masterdataFallback = 'true';
+                select.appendChild(fallbackOption);
+                select.value = targetValue;
+            }
+        } else {
+            select.value = '';
+        }
+        select.dataset.masterdataPendingValue = '';
+    });
+}
+
+function renderMasterDataManagement(snapshot = getMasterDataSnapshot()) {
+    renderMasterDataList('steelGrades', snapshot.steelGrades);
+    renderMasterDataList('rollDiameters', snapshot.rollDiameters);
+    renderMasterDataList('meshTypes', snapshot.meshTypes);
+    updateMasterDataSelects(snapshot);
+}
+
+function showMasterDataFeedback(type, message) {
+    const config = MASTER_DATA_CONFIG[type];
+    if (!config) return;
+    const feedbackEl = document.getElementById(config.feedbackId);
+    if (!feedbackEl) return;
+    feedbackEl.textContent = message || '';
+    if (masterDataFeedbackTimers[type]) {
+        clearTimeout(masterDataFeedbackTimers[type]);
+    }
+    if (message) {
+        masterDataFeedbackTimers[type] = setTimeout(() => {
+            if (feedbackEl) {
+                feedbackEl.textContent = '';
+            }
+        }, 4000);
+    }
+}
+
+function handleMasterDataFormSubmit(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const type = form?.dataset?.masterdataForm;
+    if (!type) return;
+    const input = form.querySelector('[data-masterdata-input]');
+    if (!input) return;
+    const result = addMasterDataValue(type, input.value);
+    if (result.success) {
+        showMasterDataFeedback(type, getTranslation('Wert hinzugefügt', 'Wert hinzugefügt'));
+        input.value = '';
+        input.focus();
+    } else if (result.message) {
+        showMasterDataFeedback(type, result.message);
+    }
+}
+
+function handleMasterDataListClick(event) {
+    const button = event.target.closest('[data-masterdata-remove]');
+    if (!button) return;
+    const type = button.dataset.masterdataRemove;
+    if (!type) return;
+    const result = removeMasterDataValue(type, button.dataset.value);
+    if (result.success) {
+        showMasterDataFeedback(type, getTranslation('Wert entfernt', 'Wert entfernt'));
+    } else if (result.message) {
+        showMasterDataFeedback(type, result.message);
+    }
+}
+
+function setupMasterDataUI() {
+    document.querySelectorAll('[data-masterdata-form]').forEach(form => {
+        form.addEventListener('submit', handleMasterDataFormSubmit);
+    });
+    document.querySelectorAll('[data-masterdata-list]').forEach(list => {
+        list.addEventListener('click', handleMasterDataListClick);
+    });
+}
+
+loadMasterData();
+masterDataSubscribers.add(renderMasterDataManagement);
+ensureMasterDataManager();
+renderMasterDataManagement();
+notifyMasterDataSubscribers();
+
 function formatNumberLocalized(value, decimals = 0) {
     if (!Number.isFinite(value)) {
         return '';
@@ -1968,6 +2388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderResourceList();
     resetResourceForm();
     notifyResourceSubscribers();
+    setupMasterDataUI();
     loadProductionList();
     const updateSidebarState = () => {
         const isOpen = document.body.classList.contains('sidebar-open');

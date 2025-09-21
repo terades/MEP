@@ -1450,7 +1450,19 @@ function loadOrderIntoForm(id) {
     if (buegelname2Input) buegelname2Input.value = order.buegelname2 || '';
     refreshStirrupNameSelects();
     const steelGradeInput = document.getElementById('stahlgute');
-    if (steelGradeInput) steelGradeInput.value = order.steelGrade || 'B500B';
+    const steelGradeValue = order.steelGrade || 'B500B';
+    if (steelGradeValue && window.masterDataManager?.addValue) {
+        window.masterDataManager.addValue('steelGrades', steelGradeValue);
+    }
+    if (steelGradeInput) {
+        steelGradeInput.value = steelGradeValue;
+        if (steelGradeInput.value !== steelGradeValue) {
+            steelGradeInput.dataset.masterdataPendingValue = steelGradeValue;
+            if (typeof window.masterDataManager?.refreshSelects === 'function') {
+                window.masterDataManager.refreshSelects();
+            }
+        }
+    }
     document.getElementById('gesamtlange').value = order.gesamtlange;
     document.getElementById('anzahl').value = order.anzahl;
     document.getElementById('langdrahtDurchmesser').value = order.langdrahtDurchmesser;
