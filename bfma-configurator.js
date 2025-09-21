@@ -5,6 +5,7 @@
         header: { p: '1', l: 5000, b: 2000, n: 1, e: 0, g: 'B500A', m: 'Q257', s: 0, v: '', a: '' },
         yBars: [], xBars: [], eBars: [],
         bending: { active: false, direction: 'Gy', sequence: [] },
+        preview: normalizePreviewSettings({ showDimensions: true, showPitch: false }),
         datasetText: '', errors: [],
         summary: { totalWeight: 0, yCount: 0, xCount: 0, eCount: 0 }
     };
@@ -196,6 +197,14 @@
             }
         }
         return { spacing, count };
+    }
+
+    function normalizePreviewSettings(preview) {
+        const source = (preview && typeof preview === 'object') ? preview : {};
+        return {
+            showDimensions: source.showDimensions !== undefined ? !!source.showDimensions : true,
+            showPitch: !!source.showPitch
+        };
     }
 
     function getBarCollection(type) {
@@ -885,6 +894,7 @@
                 direction: savedBending.direction || 'Gy',
                 sequence: Array.isArray(savedBending.sequence) ? savedBending.sequence : []
             };
+            state.preview = normalizePreviewSettings(savedState.preview ?? state.preview);
             weightAutoUpdate = false;
             refreshIdCounters();
             applyStateToUI();
@@ -986,6 +996,18 @@
                 el.value = value ?? '';
             }
         });
+    }
+
+    function applyPreviewSettingsToUI() {
+        state.preview = normalizePreviewSettings(state.preview);
+        const dimensionToggle = document.getElementById('bfmaToggleDimensions');
+        if (dimensionToggle) {
+            dimensionToggle.checked = !!state.preview.showDimensions;
+        }
+        const pitchToggle = document.getElementById('bfmaTogglePitch');
+        if (pitchToggle) {
+            pitchToggle.checked = !!state.preview.showPitch;
+        }
     }
 
     function attachHeaderListeners() {
@@ -1126,6 +1148,7 @@
 
     function applyStateToUI() {
         applyHeaderStateToInputs();
+        applyPreviewSettingsToUI();
         const bendingToggle = document.getElementById('bfmaIsBent');
         if (bendingToggle) {
             bendingToggle.checked = !!state.bending.active;
@@ -1137,6 +1160,7 @@
     }
 
     function attachViewListeners() {
+        state.preview = normalizePreviewSettings(state.preview);
         const view2dBtn = document.getElementById('bfmaViewToggle2d');
         const view3dBtn = document.getElementById('bfmaViewToggle3d');
         const zoomBtn = document.getElementById('bfmaZoom3dButton');
@@ -1144,9 +1168,27 @@
         const svgPreview = document.getElementById('bfmaPreviewSvg');
         const preview3d = document.getElementById('bfmaPreview3d');
         const when3dControls = document.querySelector('#bfmaView .bfma-when-3d');
+        const dimensionToggle = document.getElementById('bfmaToggleDimensions');
+        const pitchToggle = document.getElementById('bfmaTogglePitch');
 
         if (!view2dBtn || !view3dBtn || !zoomBtn || !previewContainer || !svgPreview || !preview3d || !when3dControls) {
             return;
+        }
+
+        if (dimensionToggle) {
+            dimensionToggle.checked = !!state.preview.showDimensions;
+            dimensionToggle.addEventListener('change', () => {
+                state.preview.showDimensions = !!dimensionToggle.checked;
+                scheduleUpdate({ immediate: true });
+            });
+        }
+
+        if (pitchToggle) {
+            pitchToggle.checked = !!state.preview.showPitch;
+            pitchToggle.addEventListener('change', () => {
+                state.preview.showPitch = !!pitchToggle.checked;
+                scheduleUpdate({ immediate: true });
+            });
         }
 
         view2dBtn.addEventListener('click', () => {
