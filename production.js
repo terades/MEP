@@ -64,6 +64,61 @@ let resources = [];
 let editingResourceId = null;
 let resourceFeedbackTimer = null;
 
+const resourceSubscribers = new Set();
+
+function getResourceSnapshot() {
+    return resources.map(resource => ({
+        ...resource,
+        supportedTypes: Array.isArray(resource.supportedTypes) ? [...resource.supportedTypes] : [],
+        availableRollDiameters: Array.isArray(resource.availableRollDiameters)
+            ? [...resource.availableRollDiameters]
+            : []
+    }));
+}
+
+function notifyResourceSubscribers() {
+    const snapshot = getResourceSnapshot();
+    resourceSubscribers.forEach(callback => {
+        try {
+            callback(snapshot);
+        } catch (error) {
+            console.error('Resource subscriber callback failed', error);
+        }
+    });
+    try {
+        window.dispatchEvent(new CustomEvent('bvbs:resources-changed', { detail: { resources: snapshot } }));
+    } catch (error) {
+        console.error('Could not dispatch resource change event', error);
+    }
+}
+
+function ensureResourceManager() {
+    try {
+        if (!window.resourceManager || typeof window.resourceManager !== 'object') {
+            window.resourceManager = {};
+        }
+        window.resourceManager.getResources = () => getResourceSnapshot();
+        window.resourceManager.subscribe = callback => {
+            if (typeof callback !== 'function') {
+                return () => {};
+            }
+            resourceSubscribers.add(callback);
+            try {
+                callback(getResourceSnapshot());
+            } catch (error) {
+                console.error('Resource subscriber callback failed', error);
+            }
+            return () => {
+                resourceSubscribers.delete(callback);
+            };
+        };
+    } catch (error) {
+        console.error('Could not expose resource manager', error);
+    }
+}
+
+ensureResourceManager();
+
 function loadAppSettings() {
     try {
         const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -1394,6 +1449,48 @@ function normalizeResourceNumericValue(value) {
     return parseResourceNumber(value);
 }
 
+function parseResourceRollDiameterList(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map(parseResourceNumber)
+            .filter(number => Number.isFinite(number) && number > 0);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(/[,;\s]+/)
+            .map(parseResourceNumber)
+            .filter(number => Number.isFinite(number) && number > 0);
+    }
+    return [];
+}
+
+function normalizeRollDiameterValues(value) {
+    const parsed = parseResourceRollDiameterList(value);
+    const unique = [];
+    parsed.forEach(number => {
+        if (!unique.some(existing => Math.abs(existing - number) < 1e-6)) {
+            unique.push(number);
+        }
+    });
+    return unique.sort((a, b) => a - b);
+}
+
+function formatRollDiameterInput(values) {
+    if (!Array.isArray(values) || values.length === 0) {
+        return '';
+    }
+    return values
+        .map(value => {
+            if (!Number.isFinite(value)) {
+                return '';
+            }
+            const decimals = Number.isInteger(value) ? 0 : 1;
+            return formatNumberLocalized(value, decimals);
+        })
+        .filter(Boolean)
+        .join(', ');
+}
+
 function loadResources() {
     try {
         const stored = localStorage.getItem(RESOURCE_STORAGE_KEY);
@@ -1427,6 +1524,7 @@ function loadResources() {
                 minLegLength: normalizeResourceNumericValue(normalizedItem.minLegLength),
                 maxLegLength: normalizeResourceNumericValue(normalizedItem.maxLegLength),
                 supportedTypes,
+                availableRollDiameters: normalizeRollDiameterValues(normalizedItem.availableRollDiameters),
                 createdAt
             };
         });
@@ -1439,6 +1537,7 @@ function loadResources() {
 function persistResources() {
     try {
         localStorage.setItem(RESOURCE_STORAGE_KEY, JSON.stringify(resources));
+        notifyResourceSubscribers();
     } catch (error) {
         console.error('Could not store resources', error);
     }
@@ -1480,6 +1579,10 @@ function resetResourceForm() {
     const maxLegLengthInput = document.getElementById('resourceMaxLegLength');
     if (maxLegLengthInput) {
         maxLegLengthInput.setCustomValidity('');
+    }
+    const rollDiametersInput = document.getElementById('resourceRollDiameters');
+    if (rollDiametersInput) {
+        rollDiametersInput.value = '';
     }
 }
 
@@ -1642,6 +1745,33 @@ function renderResourceList() {
         supportedWrap.appendChild(badges);
         item.appendChild(supportedWrap);
 
+        const rollWrap = document.createElement('div');
+        rollWrap.className = 'resource-item-supported';
+
+        const rollLabel = document.createElement('span');
+        rollLabel.className = 'resource-section-label';
+        rollLabel.textContent = getTranslation('Verfügbare Biegerollen', 'Verfügbare Biegerollen');
+        rollWrap.appendChild(rollLabel);
+
+        const rollBadges = document.createElement('div');
+        rollBadges.className = 'resource-badges';
+        if (Array.isArray(resource.availableRollDiameters) && resource.availableRollDiameters.length > 0) {
+            resource.availableRollDiameters.forEach(value => {
+                const badge = document.createElement('span');
+                badge.className = 'resource-badge';
+                const decimals = Number.isInteger(value) ? 0 : 1;
+                badge.textContent = `${formatNumberLocalized(value, decimals)} mm`;
+                rollBadges.appendChild(badge);
+            });
+        } else {
+            const badge = document.createElement('span');
+            badge.className = 'resource-badge resource-badge--muted';
+            badge.textContent = getTranslation('Keine Angabe', 'Keine Angabe');
+            rollBadges.appendChild(badge);
+        }
+        rollWrap.appendChild(rollBadges);
+        item.appendChild(rollWrap);
+
         if (resource.createdAt) {
             const created = new Date(resource.createdAt);
             if (!Number.isNaN(created.getTime())) {
@@ -1672,6 +1802,8 @@ function populateResourceForm(resourceId) {
     const maxDiameterInput = form.querySelector('#resourceMaxDiameter');
     const minLegInput = form.querySelector('#resourceMinLegLength');
     const maxLegInput = form.querySelector('#resourceMaxLegLength');
+    const rollDiametersInput = form.querySelector('#resourceRollDiameters');
+    const rollDiametersInput = form.querySelector('#resourceRollDiameters');
     if (nameInput) nameInput.value = resource.name || '';
     if (descriptionInput) descriptionInput.value = resource.description || '';
     if (minDiameterInput) minDiameterInput.value = resource.minDiameter ?? '';
@@ -1683,6 +1815,9 @@ function populateResourceForm(resourceId) {
     if (maxLegInput) {
         maxLegInput.value = resource.maxLegLength ?? '';
         maxLegInput.setCustomValidity('');
+    }
+    if (rollDiametersInput) {
+        rollDiametersInput.value = formatRollDiameterInput(resource.availableRollDiameters);
     }
     const typeInputs = form.querySelectorAll('input[name="resourceTypes"]');
     typeInputs.forEach(input => {
@@ -1784,6 +1919,7 @@ function handleResourceFormSubmit(event) {
 
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const supportedTypes = Array.from(form.querySelectorAll('input[name="resourceTypes"]:checked')).map(input => input.value);
+    const availableRollDiameters = normalizeRollDiameterValues(rollDiametersInput ? rollDiametersInput.value : []);
 
     if (editingResourceId) {
         const index = resources.findIndex(item => item.id === editingResourceId);
@@ -1796,7 +1932,8 @@ function handleResourceFormSubmit(event) {
                 maxDiameter,
                 minLegLength,
                 maxLegLength,
-                supportedTypes
+                supportedTypes,
+                availableRollDiameters
             };
             persistResources();
             renderResourceList();
@@ -1812,6 +1949,7 @@ function handleResourceFormSubmit(event) {
             minLegLength,
             maxLegLength,
             supportedTypes,
+            availableRollDiameters,
             createdAt: new Date().toISOString()
         };
         resources.push(newResource);
@@ -1829,6 +1967,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadResources();
     renderResourceList();
     resetResourceForm();
+    notifyResourceSubscribers();
     loadProductionList();
     const updateSidebarState = () => {
         const isOpen = document.body.classList.contains('sidebar-open');

@@ -23,6 +23,14 @@
     let segmentIdCounter = 0;
     let rollDiameterAuto = true;
 
+    const RESOURCE_STORAGE_KEY = 'bvbsResources';
+    const RESOURCE_TYPE_2D = '2d';
+    const ROLL_MATCH_TOLERANCE_MM = 0.5;
+
+    let availableResources = [];
+    let resourceSubscriptionCleanup = null;
+    let resourcesEventListenerRegistered = false;
+
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const dimensionPreferences = {
         showLengths: true,
@@ -65,6 +73,154 @@
             element.setAttribute(key, String(value));
         });
         return element;
+    }
+
+    function toFiniteNumber(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : null;
+    }
+
+    function normalizeResourceTypes(values) {
+        if (!Array.isArray(values)) {
+            return [];
+        }
+        const seen = new Set();
+        return values
+            .map(value => String(value || '').trim())
+            .filter(value => {
+                if (!value) return false;
+                if (seen.has(value)) return false;
+                seen.add(value);
+                return true;
+            });
+    }
+
+    function parseRollDiametersValue(value) {
+        if (Array.isArray(value)) {
+            return value
+                .map(entry => {
+                    if (typeof entry === 'string') {
+                        return Number.parseFloat(entry.replace(',', '.'));
+                    }
+                    return Number(entry);
+                })
+                .filter(num => Number.isFinite(num) && num > 0);
+        }
+        if (typeof value === 'string') {
+            return value
+                .split(/[,;\s]+/)
+                .map(part => Number.parseFloat(part.replace(',', '.')))
+                .filter(num => Number.isFinite(num) && num > 0);
+        }
+        return [];
+    }
+
+    function normalizeRollDiameters(value) {
+        const parsed = parseRollDiametersValue(value);
+        const unique = [];
+        parsed.forEach(num => {
+            if (!unique.some(existing => Math.abs(existing - num) <= 1e-6)) {
+                unique.push(num);
+            }
+        });
+        return unique.sort((a, b) => a - b);
+    }
+
+    function normalizeResourceEntry(resource) {
+        const data = (typeof resource === 'object' && resource !== null) ? resource : {};
+        return {
+            id: typeof data.id === 'string' ? data.id : '',
+            name: typeof data.name === 'string' ? data.name : '',
+            description: typeof data.description === 'string' ? data.description : '',
+            minDiameter: toFiniteNumber(data.minDiameter),
+            maxDiameter: toFiniteNumber(data.maxDiameter),
+            supportedTypes: normalizeResourceTypes(data.supportedTypes),
+            availableRollDiameters: normalizeRollDiameters(data.availableRollDiameters)
+        };
+    }
+
+    function getResourcesFromLocalStorage() {
+        try {
+            if (typeof localStorage === 'undefined') {
+                return [];
+            }
+            const raw = localStorage.getItem(RESOURCE_STORAGE_KEY);
+            if (!raw) {
+                return [];
+            }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            return parsed.map(normalizeResourceEntry);
+        } catch (error) {
+            console.warn('Could not read stored resources', error);
+            return [];
+        }
+    }
+
+    function setAvailableResources(resources) {
+        if (!Array.isArray(resources)) {
+            availableResources = [];
+        } else {
+            availableResources = resources.map(normalizeResourceEntry);
+        }
+        if (initialized) {
+            updateMachineCompatibility();
+        }
+    }
+
+    function setupResourceIntegration() {
+        if (!resourcesEventListenerRegistered) {
+            resourcesEventListenerRegistered = true;
+            window.addEventListener('bvbs:resources-changed', event => {
+                if (Array.isArray(event?.detail?.resources)) {
+                    setAvailableResources(event.detail.resources);
+                }
+            });
+        }
+        if (typeof resourceSubscriptionCleanup === 'function') {
+            resourceSubscriptionCleanup();
+            resourceSubscriptionCleanup = null;
+        }
+        if (window.resourceManager && typeof window.resourceManager.subscribe === 'function') {
+            resourceSubscriptionCleanup = window.resourceManager.subscribe(setAvailableResources);
+        } else {
+            setAvailableResources(getResourcesFromLocalStorage());
+        }
+    }
+
+    function evaluateResourceCompatibility(resource, requirements) {
+        if (!resource || typeof resource !== 'object') {
+            return null;
+        }
+        const supportedTypes = Array.isArray(resource.supportedTypes) ? resource.supportedTypes : [];
+        if (supportedTypes.length > 0) {
+            const supports2d = supportedTypes.some(type => String(type).toLowerCase() === RESOURCE_TYPE_2D);
+            if (!supports2d) {
+                return null;
+            }
+        }
+        const minDiameter = toFiniteNumber(resource.minDiameter);
+        const maxDiameter = toFiniteNumber(resource.maxDiameter);
+        const diameter = requirements.diameter;
+        if (Number.isFinite(minDiameter) && diameter + 1e-6 < minDiameter) {
+            return null;
+        }
+        if (Number.isFinite(maxDiameter) && diameter - 1e-6 > maxDiameter) {
+            return null;
+        }
+        let matchedRolls = [];
+        if (requirements.requiresRoll) {
+            const rolls = Array.isArray(resource.availableRollDiameters) ? resource.availableRollDiameters : [];
+            if (rolls.length > 0) {
+                matchedRolls = rolls.filter(value => Math.abs(value - requirements.rollDiameter) <= ROLL_MATCH_TOLERANCE_MM);
+                if (!matchedRolls.length) {
+                    return null;
+                }
+            }
+        }
+        return { resource, matchedRolls };
     }
 
     function getRollRadius() {
@@ -184,6 +340,129 @@
                 input.value = formatted;
             }
         });
+    }
+
+    function rollValueKey(value) {
+        return Number(value || 0).toFixed(3);
+    }
+
+    function formatMachineDiameterText(resource) {
+        const min = toFiniteNumber(resource.minDiameter);
+        const max = toFiniteNumber(resource.maxDiameter);
+        const formatValue = value => formatDisplayNumber(value, Number.isInteger(value) ? 0 : 1);
+        if (Number.isFinite(min) && Number.isFinite(max)) {
+            if (Math.abs(min - max) <= 1e-6) {
+                return `Ø ${formatValue(min)} mm`;
+            }
+            return `Ø ${formatValue(min)} – ${formatValue(max)} mm`;
+        }
+        if (Number.isFinite(min)) {
+            return `Ø ≥ ${formatValue(min)} mm`;
+        }
+        if (Number.isFinite(max)) {
+            return `Ø ≤ ${formatValue(max)} mm`;
+        }
+        return '';
+    }
+
+    function renderRollChips(container, resource, matchedRolls = []) {
+        if (!container) return;
+        container.innerHTML = '';
+        const values = Array.isArray(resource.availableRollDiameters) ? resource.availableRollDiameters : [];
+        const matchKeys = new Set(matchedRolls.map(rollValueKey));
+        if (!values.length) {
+            const chip = document.createElement('span');
+            chip.className = 'bf2d-machine-chip';
+            chip.textContent = translateText('Keine Angabe');
+            container.appendChild(chip);
+            return;
+        }
+        values.forEach(value => {
+            const chip = document.createElement('span');
+            chip.className = 'bf2d-machine-chip';
+            const decimals = Number.isInteger(value) ? 0 : 1;
+            chip.textContent = `${formatDisplayNumber(value, decimals)} mm`;
+            if (matchKeys.has(rollValueKey(value))) {
+                chip.classList.add('bf2d-machine-chip--match');
+            }
+            container.appendChild(chip);
+        });
+    }
+
+    function updateMachineCompatibility(summary = null) {
+        if (!initialized) return;
+        const statusEl = document.getElementById('bf2dMachineCompatibilityStatus');
+        const listEl = document.getElementById('bf2dMachineCompatibilityList');
+        if (!statusEl || !listEl) {
+            return;
+        }
+
+        const resources = Array.isArray(availableResources) ? availableResources : [];
+        listEl.innerHTML = '';
+
+        if (!resources.length) {
+            statusEl.textContent = translateText('Keine Ressourcen vorhanden');
+            return;
+        }
+
+        const effectiveSummary = summary || computeSummary();
+        const diameter = Number(state.meta.diameter);
+        const rollDiameter = Number(state.meta.rollDiameter);
+        const requiresRoll = !!effectiveSummary?.requiresRollDiameter;
+
+        if (!Number.isFinite(diameter) || diameter <= 0) {
+            statusEl.textContent = translateText('Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.');
+            return;
+        }
+
+        if (requiresRoll && (!Number.isFinite(rollDiameter) || rollDiameter <= 0)) {
+            statusEl.textContent = translateText('Biegerollendurchmesser muss größer als 0 sein.');
+            return;
+        }
+
+        const compatible = resources
+            .map(resource => evaluateResourceCompatibility(resource, { diameter, rollDiameter, requiresRoll }))
+            .filter(Boolean);
+
+        if (!compatible.length) {
+            statusEl.textContent = translateText('Keine geeignete Maschine gefunden.');
+            return;
+        }
+
+        statusEl.textContent = translateText('Passende Maschinen: {count}', { count: compatible.length });
+
+        compatible
+            .sort((a, b) => a.resource.name.localeCompare(b.resource.name, undefined, { sensitivity: 'base' }))
+            .forEach(entry => {
+                const { resource, matchedRolls } = entry;
+                const item = document.createElement('li');
+                item.className = 'bf2d-machine-list-item';
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'bf2d-machine-name';
+                nameEl.textContent = resource.name || translateText('Ressourcename');
+                item.appendChild(nameEl);
+
+                const metaEl = document.createElement('div');
+                metaEl.className = 'bf2d-machine-meta';
+                const diameterText = formatMachineDiameterText(resource);
+                if (diameterText) {
+                    const diameterSpan = document.createElement('span');
+                    diameterSpan.textContent = diameterText;
+                    metaEl.appendChild(diameterSpan);
+                }
+                const rollLabel = document.createElement('span');
+                rollLabel.textContent = `${translateText('Roll-Ø')}:`;
+                metaEl.appendChild(rollLabel);
+                item.appendChild(metaEl);
+
+                const chipContainer = document.createElement('div');
+                chipContainer.className = 'bf2d-machine-chips';
+                renderRollChips(chipContainer, resource, matchedRolls);
+                item.appendChild(chipContainer);
+
+                listEl.appendChild(item);
+            });
     }
 
     function setRollDiameterValue(value, { updateInput = true, fromUser = false } = {}) {
@@ -1031,7 +1310,10 @@
             totalWeight,
             quantity,
             geometry,
-            errors
+            errors,
+            requiresRollDiameter,
+            diameter,
+            rollDiameter
         };
     }
 
@@ -1616,6 +1898,7 @@
         renderSvgPreview(summary);
         update3dPreview(summary);
         updateDataset(summary);
+        updateMachineCompatibility(summary);
     }
 
     function sanitizeText(value) {
@@ -2520,6 +2803,7 @@
         populateSavedFormsSelect();
         renderImportTable();
         renderSegmentTable();
+        setupResourceIntegration();
         setPreviewViewMode(state.viewMode || '2d');
         updateOutputs();
     }

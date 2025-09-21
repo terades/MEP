@@ -388,6 +388,9 @@
   "Ressourcenverwaltung Beschreibung": "Pflegen Sie Maschinen und Anlagen mit ihren Fertigungsmöglichkeiten.",
   "Ressourcename": "Ressourcename",
   "Ressourcenname eingeben": "Ressourcenname eingeben",
+  "Verfügbare Biegerollen (mm)": "Verfügbare Biegerollen (mm)",
+  "Verfügbare Biegerollen": "Verfügbare Biegerollen",
+  "z. B. 48, 56": "z. B. 48, 56",
   "Beschreibung": "Beschreibung",
   "Optionale Beschreibung": "Optionale Beschreibung",
   "Min. Stabdurchmesser (mm)": "Min. Stabdurchmesser (mm)",
@@ -411,5 +414,9 @@
   "Ressource aktualisiert.": "Ressource aktualisiert.",
   "Ressource gelöscht.": "Ressource gelöscht.",
   "Maximalwert muss größer oder gleich dem Minimalwert sein.": "Der Maximalwert muss größer oder gleich dem Minimalwert sein.",
-  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?"
+  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?",
+  "Maschinen-Eignung": "Maschinen-Eignung",
+  "Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.": "Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.",
+  "Keine geeignete Maschine gefunden.": "Keine geeignete Maschine gefunden.",
+  "Passende Maschinen: {count}": "Passende Maschinen: {count}"
 }
