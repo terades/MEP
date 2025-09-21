@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
 const DEFAULT_APP_SETTINGS = {
@@ -58,6 +58,11 @@ const SAVED_SHAPES_FILTER_DEFAULTS = {
 let savedShapesFilterState = { ...SAVED_SHAPES_FILTER_DEFAULTS };
 let savedShapesAllItems = [];
 let savedShapesControlsInitialized = false;
+
+const RESOURCE_STORAGE_KEY = 'bvbsResources';
+let resources = [];
+let editingResourceId = null;
+let resourceFeedbackTimer = null;
 
 function loadAppSettings() {
     try {
@@ -1150,6 +1155,9 @@ function showView(view) {
     if (view === 'savedShapesView') {
         renderSavedShapesOverview();
     }
+    if (view === 'resourcesView') {
+        renderResourceList();
+    }
     if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
         window.bf2dConfigurator.onShow();
     }
@@ -1167,6 +1175,10 @@ function showGeneratorView() {
 
 function showProductionView() {
     showView('productionView');
+}
+
+function showResourcesView() {
+    showView('resourcesView');
 }
 
 function showBf2dView() {
@@ -1352,9 +1364,471 @@ function renderProductionList() {
     updateSelectAllCheckboxState();
 }
 
+function generateResourceId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `resource-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function parseResourceNumber(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    const stringValue = String(value).trim();
+    if (stringValue.length === 0) {
+        return null;
+    }
+    const normalized = stringValue.replace(',', '.');
+    const number = Number.parseFloat(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
+function normalizeResourceNumericValue(value) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    return parseResourceNumber(value);
+}
+
+function loadResources() {
+    try {
+        const stored = localStorage.getItem(RESOURCE_STORAGE_KEY);
+        if (!stored) {
+            resources = [];
+            return;
+        }
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+            resources = [];
+            return;
+        }
+        resources = parsed.map(item => {
+            const normalizedItem = (item && typeof item === 'object') ? item : {};
+            const supportedTypes = Array.isArray(normalizedItem.supportedTypes)
+                ? normalizedItem.supportedTypes.filter(type => typeof type === 'string')
+                : [];
+            let createdAt = new Date().toISOString();
+            if (typeof normalizedItem.createdAt === 'string' && normalizedItem.createdAt) {
+                createdAt = normalizedItem.createdAt;
+            } else if (typeof normalizedItem.createdAt === 'number' && Number.isFinite(normalizedItem.createdAt)) {
+                const createdDate = new Date(normalizedItem.createdAt);
+                createdAt = Number.isNaN(createdDate.getTime()) ? createdAt : createdDate.toISOString();
+            }
+            return {
+                id: typeof normalizedItem.id === 'string' && normalizedItem.id ? normalizedItem.id : generateResourceId(),
+                name: typeof normalizedItem.name === 'string' ? normalizedItem.name : '',
+                description: typeof normalizedItem.description === 'string' ? normalizedItem.description : '',
+                minDiameter: normalizeResourceNumericValue(normalizedItem.minDiameter),
+                maxDiameter: normalizeResourceNumericValue(normalizedItem.maxDiameter),
+                minLegLength: normalizeResourceNumericValue(normalizedItem.minLegLength),
+                maxLegLength: normalizeResourceNumericValue(normalizedItem.maxLegLength),
+                supportedTypes,
+                createdAt
+            };
+        });
+    } catch (error) {
+        console.error('Could not load resources', error);
+        resources = [];
+    }
+}
+
+function persistResources() {
+    try {
+        localStorage.setItem(RESOURCE_STORAGE_KEY, JSON.stringify(resources));
+    } catch (error) {
+        console.error('Could not store resources', error);
+    }
+}
+
+function setResourceFormMode(mode) {
+    const title = document.getElementById('resourceFormTitle');
+    const submit = document.getElementById('resourceFormSubmit');
+    const resetButton = document.getElementById('resourceFormReset');
+    const cancelButton = document.getElementById('resourceFormCancel');
+    const titleKey = mode === 'edit' ? 'Ressource bearbeiten' : 'Neue Ressource anlegen';
+    if (title) {
+        title.dataset.i18n = titleKey;
+        title.textContent = getTranslation(titleKey, titleKey);
+    }
+    const submitKey = mode === 'edit' ? 'Änderungen speichern' : 'Ressource speichern';
+    if (submit) {
+        submit.dataset.i18n = submitKey;
+        submit.textContent = getTranslation(submitKey, submitKey);
+    }
+    if (resetButton) {
+        resetButton.hidden = mode === 'edit';
+    }
+    if (cancelButton) {
+        cancelButton.hidden = mode !== 'edit';
+    }
+}
+
+function resetResourceForm() {
+    const form = document.getElementById('resourceForm');
+    if (!form) return;
+    form.reset();
+    editingResourceId = null;
+    setResourceFormMode('create');
+    const maxDiameterInput = document.getElementById('resourceMaxDiameter');
+    if (maxDiameterInput) {
+        maxDiameterInput.setCustomValidity('');
+    }
+    const maxLegLengthInput = document.getElementById('resourceMaxLegLength');
+    if (maxLegLengthInput) {
+        maxLegLengthInput.setCustomValidity('');
+    }
+}
+
+function showResourceFeedback(message, type = 'info') {
+    const feedback = document.getElementById('resourceFormFeedback');
+    if (!feedback) return;
+    clearTimeout(resourceFeedbackTimer);
+    if (!message) {
+        feedback.textContent = '';
+        feedback.className = 'info-text';
+        return;
+    }
+    feedback.textContent = message;
+    feedback.className = `info-text ${type}-message`;
+    resourceFeedbackTimer = setTimeout(() => {
+        feedback.textContent = '';
+        feedback.className = 'info-text';
+    }, 4000);
+}
+
+function formatResourceRange(min, max, unit) {
+    const hasMin = Number.isFinite(min);
+    const hasMax = Number.isFinite(max);
+    if (!hasMin && !hasMax) {
+        return null;
+    }
+    const decimalsMin = hasMin && !Number.isInteger(min) ? 1 : 0;
+    const decimalsMax = hasMax && !Number.isInteger(max) ? 1 : 0;
+    const decimals = Math.max(decimalsMin, decimalsMax);
+    const unitSuffix = unit ? ` ${unit}` : '';
+    if (hasMin && hasMax) {
+        return `${formatNumberLocalized(min, decimals)} – ${formatNumberLocalized(max, decimals)}${unitSuffix}`;
+    }
+    if (hasMin) {
+        return `≥ ${formatNumberLocalized(min, decimals)}${unitSuffix}`;
+    }
+    return `≤ ${formatNumberLocalized(max, decimals)}${unitSuffix}`;
+}
+
+function formatDiameterRange(min, max) {
+    const range = formatResourceRange(min, max, 'mm');
+    if (!range) {
+        return getTranslation('Keine Angabe', 'Keine Angabe');
+    }
+    return `Ø ${range}`;
+}
+
+function createResourceMetric(label, value) {
+    const metric = document.createElement('div');
+    metric.className = 'resource-metric';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'resource-metric-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('span');
+    valueEl.className = 'resource-metric-value';
+    valueEl.textContent = value || getTranslation('Keine Angabe', 'Keine Angabe');
+    metric.appendChild(labelEl);
+    metric.appendChild(valueEl);
+    return metric;
+}
+
+function renderResourceList() {
+    const list = document.getElementById('resourceList');
+    const emptyState = document.getElementById('resourceEmptyState');
+    if (!list || !emptyState) return;
+
+    list.innerHTML = '';
+    if (!Array.isArray(resources) || resources.length === 0) {
+        emptyState.hidden = false;
+        return;
+    }
+
+    emptyState.hidden = true;
+    const typeLabels = {
+        '2d': getTranslation('Biegeformen 2D', 'Biegeformen 2D'),
+        '3d': getTranslation('Biegeformen 3D', 'Biegeformen 3D'),
+        'mesh': getTranslation('Matten', 'Matten')
+    };
+
+    const sorted = [...resources].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    sorted.forEach(resource => {
+        const item = document.createElement('article');
+        item.className = 'resource-item';
+        item.setAttribute('role', 'listitem');
+
+        const header = document.createElement('div');
+        header.className = 'resource-item-header';
+
+        const title = document.createElement('h3');
+        title.className = 'resource-item-title';
+        title.textContent = resource.name || getTranslation('Ressourcename', 'Ressourcename');
+        header.appendChild(title);
+
+        const actions = document.createElement('div');
+        actions.className = 'resource-item-actions';
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'resource-action';
+        editButton.dataset.action = 'edit';
+        editButton.dataset.id = resource.id;
+        editButton.textContent = getTranslation('Bearbeiten', 'Bearbeiten');
+        actions.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'resource-action resource-action--danger';
+        deleteButton.dataset.action = 'delete';
+        deleteButton.dataset.id = resource.id;
+        deleteButton.textContent = getTranslation('Löschen', 'Löschen');
+        actions.appendChild(deleteButton);
+
+        header.appendChild(actions);
+        item.appendChild(header);
+
+        if (resource.description) {
+            const description = document.createElement('p');
+            description.className = 'resource-item-description';
+            description.textContent = resource.description;
+            item.appendChild(description);
+        }
+
+        const metrics = document.createElement('div');
+        metrics.className = 'resource-item-metrics';
+        metrics.appendChild(createResourceMetric(
+            getTranslation('Stabdurchmesser', 'Stabdurchmesser'),
+            formatDiameterRange(resource.minDiameter, resource.maxDiameter)
+        ));
+        metrics.appendChild(createResourceMetric(
+            getTranslation('Schenkellänge', 'Schenkellänge'),
+            formatResourceRange(resource.minLegLength, resource.maxLegLength, 'mm') || getTranslation('Keine Angabe', 'Keine Angabe')
+        ));
+        item.appendChild(metrics);
+
+        const supportedWrap = document.createElement('div');
+        supportedWrap.className = 'resource-item-supported';
+
+        const supportedLabel = document.createElement('span');
+        supportedLabel.className = 'resource-section-label';
+        supportedLabel.textContent = getTranslation('Unterstützte Biegeformen', 'Unterstützte Biegeformen');
+        supportedWrap.appendChild(supportedLabel);
+
+        const badges = document.createElement('div');
+        badges.className = 'resource-badges';
+
+        if (resource.supportedTypes && resource.supportedTypes.length > 0) {
+            resource.supportedTypes.forEach(type => {
+                const badge = document.createElement('span');
+                badge.className = 'resource-badge';
+                badge.textContent = typeLabels[type] || type;
+                badges.appendChild(badge);
+            });
+        } else {
+            const badge = document.createElement('span');
+            badge.className = 'resource-badge resource-badge--muted';
+            badge.textContent = getTranslation('Keine Auswahl', 'Keine Auswahl');
+            badges.appendChild(badge);
+        }
+
+        supportedWrap.appendChild(badges);
+        item.appendChild(supportedWrap);
+
+        if (resource.createdAt) {
+            const created = new Date(resource.createdAt);
+            if (!Number.isNaN(created.getTime())) {
+                const footer = document.createElement('div');
+                footer.className = 'resource-item-footer';
+                footer.textContent = `${getTranslation('Angelegt am', 'Angelegt am')} ${created.toLocaleString()}`;
+                item.appendChild(footer);
+            }
+        }
+
+        list.appendChild(item);
+    });
+}
+
+function populateResourceForm(resourceId) {
+    const resource = resources.find(item => item.id === resourceId);
+    if (!resource) {
+        return;
+    }
+    const form = document.getElementById('resourceForm');
+    if (!form) {
+        return;
+    }
+    editingResourceId = resourceId;
+    const nameInput = form.querySelector('#resourceName');
+    const descriptionInput = form.querySelector('#resourceDescription');
+    const minDiameterInput = form.querySelector('#resourceMinDiameter');
+    const maxDiameterInput = form.querySelector('#resourceMaxDiameter');
+    const minLegInput = form.querySelector('#resourceMinLegLength');
+    const maxLegInput = form.querySelector('#resourceMaxLegLength');
+    if (nameInput) nameInput.value = resource.name || '';
+    if (descriptionInput) descriptionInput.value = resource.description || '';
+    if (minDiameterInput) minDiameterInput.value = resource.minDiameter ?? '';
+    if (maxDiameterInput) {
+        maxDiameterInput.value = resource.maxDiameter ?? '';
+        maxDiameterInput.setCustomValidity('');
+    }
+    if (minLegInput) minLegInput.value = resource.minLegLength ?? '';
+    if (maxLegInput) {
+        maxLegInput.value = resource.maxLegLength ?? '';
+        maxLegInput.setCustomValidity('');
+    }
+    const typeInputs = form.querySelectorAll('input[name="resourceTypes"]');
+    typeInputs.forEach(input => {
+        input.checked = Array.isArray(resource.supportedTypes) ? resource.supportedTypes.includes(input.value) : false;
+    });
+    setResourceFormMode('edit');
+    showResourceFeedback('');
+    if (nameInput) {
+        nameInput.focus();
+    }
+}
+
+function deleteResource(resourceId) {
+    const resource = resources.find(item => item.id === resourceId);
+    if (!resource) {
+        return;
+    }
+    const confirmation = getTranslation(
+        'Soll die Ressource "{resourceName}" wirklich gelöscht werden?',
+        'Soll die Ressource "{resourceName}" wirklich gelöscht werden?',
+        { resourceName: resource.name || '' }
+    );
+    if (!window.confirm(confirmation)) {
+        return;
+    }
+    resources = resources.filter(item => item.id !== resourceId);
+    persistResources();
+    renderResourceList();
+    if (editingResourceId === resourceId) {
+        resetResourceForm();
+    }
+    showResourceFeedback(getTranslation('Ressource gelöscht.', 'Ressource gelöscht.'), 'success');
+}
+
+function handleResourceListClick(event) {
+    const actionButton = event.target.closest('button[data-action]');
+    if (!actionButton) {
+        return;
+    }
+    const resourceId = actionButton.dataset.id;
+    if (!resourceId) {
+        return;
+    }
+    if (actionButton.dataset.action === 'edit') {
+        populateResourceForm(resourceId);
+    } else if (actionButton.dataset.action === 'delete') {
+        deleteResource(resourceId);
+    }
+}
+
+function handleResourceFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    if (!form) {
+        return;
+    }
+    const nameInput = form.querySelector('#resourceName');
+    if (!nameInput) {
+        return;
+    }
+    const name = nameInput.value.trim();
+    if (!name) {
+        nameInput.focus();
+        nameInput.reportValidity();
+        return;
+    }
+    const descriptionInput = form.querySelector('#resourceDescription');
+    const minDiameterInput = form.querySelector('#resourceMinDiameter');
+    const maxDiameterInput = form.querySelector('#resourceMaxDiameter');
+    const minLegInput = form.querySelector('#resourceMinLegLength');
+    const maxLegInput = form.querySelector('#resourceMaxLegLength');
+
+    const minDiameter = parseResourceNumber(minDiameterInput ? minDiameterInput.value : null);
+    const maxDiameter = parseResourceNumber(maxDiameterInput ? maxDiameterInput.value : null);
+    const minLegLength = parseResourceNumber(minLegInput ? minLegInput.value : null);
+    const maxLegLength = parseResourceNumber(maxLegInput ? maxLegInput.value : null);
+
+    const rangeMessage = getTranslation('Maximalwert muss größer oder gleich dem Minimalwert sein.', 'Der Maximalwert muss größer oder gleich dem Minimalwert sein.');
+    if (maxDiameterInput) {
+        maxDiameterInput.setCustomValidity('');
+    }
+    if (maxLegInput) {
+        maxLegInput.setCustomValidity('');
+    }
+    if (minDiameter !== null && maxDiameter !== null && maxDiameter < minDiameter) {
+        if (maxDiameterInput) {
+            maxDiameterInput.setCustomValidity(rangeMessage);
+            maxDiameterInput.reportValidity();
+        }
+        return;
+    }
+    if (minLegLength !== null && maxLegLength !== null && maxLegLength < minLegLength) {
+        if (maxLegInput) {
+            maxLegInput.setCustomValidity(rangeMessage);
+            maxLegInput.reportValidity();
+        }
+        return;
+    }
+
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const supportedTypes = Array.from(form.querySelectorAll('input[name="resourceTypes"]:checked')).map(input => input.value);
+
+    if (editingResourceId) {
+        const index = resources.findIndex(item => item.id === editingResourceId);
+        if (index !== -1) {
+            resources[index] = {
+                ...resources[index],
+                name,
+                description,
+                minDiameter,
+                maxDiameter,
+                minLegLength,
+                maxLegLength,
+                supportedTypes
+            };
+            persistResources();
+            renderResourceList();
+            showResourceFeedback(getTranslation('Ressource aktualisiert.', 'Ressource aktualisiert.'), 'success');
+        }
+    } else {
+        const newResource = {
+            id: generateResourceId(),
+            name,
+            description,
+            minDiameter,
+            maxDiameter,
+            minLegLength,
+            maxLegLength,
+            supportedTypes,
+            createdAt: new Date().toISOString()
+        };
+        resources.push(newResource);
+        persistResources();
+        renderResourceList();
+        showResourceFeedback(getTranslation('Ressource gespeichert.', 'Ressource gespeichert.'), 'success');
+    }
+
+    resetResourceForm();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     loadAppSettings();
     applyAppSettings();
+    loadResources();
+    renderResourceList();
+    resetResourceForm();
     loadProductionList();
     const updateSidebarState = () => {
         const isOpen = document.body.classList.contains('sidebar-open');
@@ -1441,10 +1915,24 @@ document.addEventListener('DOMContentLoaded', () => {
         showProductionView();
         closeSidebarOnSmallScreens();
     });
+    document.getElementById('showResourcesBtn')?.addEventListener('click', () => {
+        showResourcesView();
+        closeSidebarOnSmallScreens();
+    });
     document.getElementById('showSettingsBtn')?.addEventListener('click', () => {
         showSettingsView();
         closeSidebarOnSmallScreens();
     });
+    document.getElementById('resourceForm')?.addEventListener('submit', handleResourceFormSubmit);
+    document.getElementById('resourceFormReset')?.addEventListener('click', () => {
+        resetResourceForm();
+        showResourceFeedback('');
+    });
+    document.getElementById('resourceFormCancel')?.addEventListener('click', () => {
+        resetResourceForm();
+        showResourceFeedback('');
+    });
+    document.getElementById('resourceList')?.addEventListener('click', handleResourceListClick);
     document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
         openGeneratorAndClick('releaseButton');
         closeSidebarOnSmallScreens();

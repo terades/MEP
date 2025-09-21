@@ -94,6 +94,15 @@
                     </button>
                 </div>
                 <div class="sidebar-section">
+                    <p class="sidebar-section-title" data-i18n="Stammdaten">Stammdaten</p>
+                    <button id="showResourcesBtn" class="sidebar-link" data-view-target="resourcesView" data-i18n-title="Ressourcen" title="Ressourcen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3c-4.97 0-9 1.79-9 4v10c0 2.21 4.03 4 9 4s9-1.79 9-4V7c0-2.21-4.03-4-9-4zm0 2c3.86 0 7 1.12 7 2s-3.14 2-7 2-7-1.12-7-2 3.14-2 7-2zm0 14c-3.86 0-7-1.12-7-2v-1.5c1.57 1.1 4.27 1.5 7 1.5s5.43-.4 7-1.5V17c0 .88-3.14 2-7 2zm0-4c-3.86 0-7-1.12-7-2v-1.5c1.57 1.1 4.27 1.5 7 1.5s5.43-.4 7-1.5V13c0 .88-3.14 2-7 2z" />
+                        </svg>
+                        <span class="sidebar-text" data-i18n="Ressourcen">Ressourcen</span>
+                    </button>
+                </div>
+                <div class="sidebar-section">
                     <p class="sidebar-section-title" data-i18n="Schnellaktionen">Schnellaktionen</p>
                     <button id="quickReleaseButton" class="sidebar-link sidebar-link--action" data-i18n-title="Freigeben" title="Freigeben">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1258,6 +1267,79 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+                <div id="resourcesView" class="app-container" style="display:none;">
+                    <div class="resources-layout">
+                        <section class="card resources-form-card" aria-labelledby="resourceFormTitle">
+                            <div class="card-header">
+                                <h2 class="card-title" id="resourceFormTitle" data-i18n="Neue Ressource anlegen">Neue Ressource anlegen</h2>
+                                <p class="card-subtitle" data-i18n="Ressourcenverwaltung Beschreibung">Pflegen Sie Maschinen und Anlagen mit ihren Fertigungsmöglichkeiten.</p>
+                            </div>
+                            <form id="resourceForm" class="resources-form" novalidate>
+                                <div class="form-group">
+                                    <label for="resourceName" data-i18n="Ressourcename">Ressourcename</label>
+                                    <input type="text" id="resourceName" name="resourceName" required data-i18n-placeholder="Ressourcenname eingeben" placeholder="Ressourcenname eingeben" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="resourceDescription" data-i18n="Beschreibung">Beschreibung</label>
+                                    <textarea id="resourceDescription" name="resourceDescription" rows="3" data-i18n-placeholder="Optionale Beschreibung" placeholder="Optionale Beschreibung"></textarea>
+                                </div>
+                                <div class="form-columns">
+                                    <div class="form-group">
+                                        <label for="resourceMinDiameter" data-i18n="Min. Stabdurchmesser (mm)">Min. Stabdurchmesser (mm)</label>
+                                        <input type="number" id="resourceMinDiameter" name="resourceMinDiameter" min="0" step="0.1" inputmode="decimal">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="resourceMaxDiameter" data-i18n="Max. Stabdurchmesser (mm)">Max. Stabdurchmesser (mm)</label>
+                                        <input type="number" id="resourceMaxDiameter" name="resourceMaxDiameter" min="0" step="0.1" inputmode="decimal">
+                                    </div>
+                                </div>
+                                <div class="form-columns">
+                                    <div class="form-group">
+                                        <label for="resourceMinLegLength" data-i18n="Min. Schenkellänge (mm)">Min. Schenkellänge (mm)</label>
+                                        <input type="number" id="resourceMinLegLength" name="resourceMinLegLength" min="0" step="1" inputmode="decimal">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="resourceMaxLegLength" data-i18n="Max. Schenkellänge (mm)">Max. Schenkellänge (mm)</label>
+                                        <input type="number" id="resourceMaxLegLength" name="resourceMaxLegLength" min="0" step="1" inputmode="decimal">
+                                    </div>
+                                </div>
+                                <fieldset class="form-group resources-types-fieldset">
+                                    <legend data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</legend>
+                                    <div class="resource-checkbox-group">
+                                        <label class="resource-checkbox">
+                                            <input type="checkbox" name="resourceTypes" value="2d">
+                                            <span data-i18n="Biegeformen 2D">Biegeformen 2D</span>
+                                        </label>
+                                        <label class="resource-checkbox">
+                                            <input type="checkbox" name="resourceTypes" value="3d">
+                                            <span data-i18n="Biegeformen 3D">Biegeformen 3D</span>
+                                        </label>
+                                        <label class="resource-checkbox">
+                                            <input type="checkbox" name="resourceTypes" value="mesh">
+                                            <span data-i18n="Matten">Matten</span>
+                                        </label>
+                                    </div>
+                                </fieldset>
+                                <p id="resourceFormFeedback" class="info-text" aria-live="polite"></p>
+                                <div class="button-group resources-form-buttons">
+                                    <button type="submit" id="resourceFormSubmit" class="btn-primary" data-i18n="Ressource speichern">Ressource speichern</button>
+                                    <button type="button" id="resourceFormReset" class="btn-secondary" data-i18n="Formular zurücksetzen">Formular zurücksetzen</button>
+                                    <button type="button" id="resourceFormCancel" class="btn-secondary" data-i18n="Bearbeitung abbrechen" hidden>Bearbeitung abbrechen</button>
+                                </div>
+                            </form>
+                        </section>
+                        <section class="card resources-list-card" aria-labelledby="resourcesListTitle">
+                            <div class="card-header">
+                                <h2 class="card-title" id="resourcesListTitle" data-i18n="Ressourcen">Ressourcen</h2>
+                                <p class="card-subtitle" data-i18n="Ressourcen Liste Beschreibung">Übersicht aller angelegten Ressourcen und deren Einsatzgrenzen.</p>
+                            </div>
+                            <div class="resources-list-body">
+                                <div id="resourceList" class="resource-list" role="list"></div>
+                                <p id="resourceEmptyState" class="info-text" data-i18n="Keine Ressourcen vorhanden" hidden>Keine Ressourcen vorhanden.</p>
+                            </div>
+                        </section>
                     </div>
                 </div>
                 <div id="settingsView" class="app-container" style="display:none;">
