@@ -2199,25 +2199,77 @@ function generateZoneSummary(zones) {
 			
 			
 			// Set the currently highlighted zone
-			function setHighlightedZone(displayIndex, isHighlighted) {
-			    const allRows = document.querySelectorAll('.focused-zone-form');
-			    allRows.forEach(row => row.classList.remove('focused-zone-form'));
-			    highlightedZoneDisplayIndex = isHighlighted ? displayIndex : null;
-			    if (isHighlighted && displayIndex !== null) {
-			        const tableRow = document.querySelector(`#zonesTable tbody tr:nth-child(${displayIndex})`);
-			        if (tableRow) {
-			            tableRow.classList.add('focused-zone-form');
-			        }
-			        const summaryCells = document.querySelectorAll('#zoneSummaryTable tbody tr');
-			        summaryCells.forEach(row => {
-			            const cells = row.querySelectorAll('td');
-			            if (cells[displayIndex]) {
-			                cells[displayIndex].classList.add('focused-zone-form');
-			            }
-			        });
-			    }
-			    triggerPreviewUpdateDebounced();
-			}
+                        function setHighlightedZone(displayIndex, isHighlighted) {
+                            const activeElement = document.activeElement;
+                            let activeIndex = null;
+                            if (activeElement) {
+                                const activeRow = activeElement.closest('#zonesTable tbody tr');
+                                if (activeRow && activeRow.parentElement) {
+                                    const rows = Array.from(activeRow.parentElement.children);
+                                    const index = rows.indexOf(activeRow);
+                                    if (index >= 0) {
+                                        activeIndex = index + 1;
+                                    }
+                                }
+                            }
+
+                            if (!isHighlighted && activeIndex !== null) {
+                                if (displayIndex === null || displayIndex === undefined || activeIndex !== Number(displayIndex)) {
+                                    displayIndex = activeIndex;
+                                    isHighlighted = true;
+                                } else if (highlightedZoneDisplayIndex !== null && activeIndex === highlightedZoneDisplayIndex) {
+                                    return;
+                                }
+                            }
+
+                            const allRows = document.querySelectorAll('.focused-zone-form');
+                            allRows.forEach(row => row.classList.remove('focused-zone-form'));
+
+                            const numericDisplayIndex = Number(displayIndex);
+                            highlightedZoneDisplayIndex = isHighlighted && Number.isFinite(numericDisplayIndex) ? numericDisplayIndex : null;
+                            if (isHighlighted && highlightedZoneDisplayIndex !== null) {
+                                const tableRow = document.querySelector(`#zonesTable tbody tr:nth-child(${highlightedZoneDisplayIndex})`);
+                                if (tableRow) {
+                                    tableRow.classList.add('focused-zone-form');
+                                }
+                                const summaryCells = document.querySelectorAll('#zoneSummaryTable tbody tr');
+                                summaryCells.forEach(row => {
+                                    const cells = row.querySelectorAll('td');
+                                    if (cells[highlightedZoneDisplayIndex]) {
+                                        cells[highlightedZoneDisplayIndex].classList.add('focused-zone-form');
+                                    }
+                                });
+                            }
+                            triggerPreviewUpdateDebounced();
+                        }
+
+                        function focusZoneFromPreview(displayIndex) {
+                            const numericIndex = Number(displayIndex);
+                            if (!Number.isFinite(numericIndex) || numericIndex < 1) {
+                                return;
+                            }
+
+                            const tableRow = document.querySelector(`#zonesTable tbody tr:nth-child(${numericIndex})`);
+                            if (!tableRow) {
+                                return;
+                            }
+
+                            setHighlightedZone(numericIndex, true);
+
+                            if (typeof tableRow.scrollIntoView === 'function') {
+                                tableRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+
+                            const focusable = tableRow.querySelector('input, select, textarea');
+                            if (focusable) {
+                                focusable.focus({ preventScroll: true });
+                                if (typeof focusable.select === 'function') {
+                                    focusable.select();
+                                }
+                            }
+                        }
+
+                        window.focusZoneFromPreview = focusZoneFromPreview;
 			
 			// Render all zone input fields and buttons AND the summary table
                         function renderAllZones() {
@@ -2508,7 +2560,8 @@ function triggerPreviewUpdateDebounced() {
                         const basketData = {
                             totalLength: parseFloat(document.getElementById('gesamtlange').value) || 0,
                             mainBarDiameter: parseFloat(document.getElementById('langdrahtDurchmesser').value) || 0,
-                            zones: JSON.parse(JSON.stringify(zonesData))
+                            zones: JSON.parse(JSON.stringify(zonesData)),
+                            highlightedZoneDisplayIndex
                         };
                         window.viewer3d.update(basketData);
                     }
@@ -2725,7 +2778,7 @@ function triggerPreviewUpdateDebounced() {
                                     let stirrupStrokeWidth = Math.max(1, Math.min(3.5, dia / 3));
                                     let highlightedStrokeWidth = isHighlighted ? stirrupStrokeWidth + 1 : stirrupStrokeWidth;
 
-                                    svgContent += `<g class="stirrup-zone zone-group-${displayIndex} ${isHighlighted ? 'highlighted-svg-zone' : ''}" onmouseover="setHighlightedZone(${displayIndex},true)" onmouseout="setHighlightedZone(${displayIndex},false)">`;
+                                    svgContent += `<g class="stirrup-zone zone-group-${displayIndex} ${isHighlighted ? 'highlighted-svg-zone' : ''}" onmouseover="setHighlightedZone(${displayIndex},true)" onmouseout="setHighlightedZone(${displayIndex},false)" onclick="focusZoneFromPreview(${displayIndex})">`;
 
                                     if (numStirrups > 0) {
                                         const zoneStartScaled = PADDING_VISUAL + zoneStart * scale;

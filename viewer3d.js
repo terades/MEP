@@ -4,6 +4,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 let scene, camera, renderer, controls;
 let currentBasketGroup = null;
 let shouldAutoFit = true;
+let clickableZoneGroups = [];
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let isPointerDown = false;
+let pointerMoved = false;
+const pointerDownPosition = { x: 0, y: 0 };
 
 function init() {
     const container = document.getElementById('viewer3dContainer');
@@ -25,6 +31,15 @@ function init() {
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
+
+    if (renderer.domElement) {
+        renderer.domElement.style.cursor = 'grab';
+        renderer.domElement.addEventListener('pointerdown', onPointerDown);
+        renderer.domElement.addEventListener('pointermove', onPointerMove);
+        renderer.domElement.addEventListener('pointerup', onPointerUp);
+        renderer.domElement.addEventListener('pointerleave', onPointerLeave);
+        renderer.domElement.addEventListener('pointercancel', onPointerLeave);
+    }
 
     // Controls
     controls = new OrbitControls(camera, renderer.domElement);
@@ -94,6 +109,7 @@ function update(basketData) {
     });
     toRemove.forEach(child => scene.remove(child));
     currentBasketGroup = null;
+    clickableZoneGroups = [];
 
     if (!basketData || !basketData.totalLength) {
         return;
@@ -133,9 +149,15 @@ function update(basketData) {
 
     // Create stirrups
     let currentZ = -scaledLength / 2;
-    basketData.zones.forEach(zone => {
+    basketData.zones.forEach((zone, index) => {
         const stirrupRadius = (zone.dia / 2) * scale;
         const stirrupPitch = zone.pitch * scale;
+        const displayIndex = index + 1;
+
+        const zoneGroup = new THREE.Group();
+        zoneGroup.name = `zoneGroup-${displayIndex}`;
+        zoneGroup.userData = zoneGroup.userData || {};
+        zoneGroup.userData.zoneDisplayIndex = displayIndex;
 
         for (let i = 0; i < zone.num; i++) {
             currentZ += stirrupPitch;
@@ -143,7 +165,19 @@ function update(basketData) {
 
             const stirrup = createStirrup(scaledWidth, scaledHeight, stirrupRadius, stirrupMaterial);
             stirrup.position.z = currentZ;
-            basketGroup.add(stirrup);
+            stirrup.userData = stirrup.userData || {};
+            stirrup.userData.zoneDisplayIndex = displayIndex;
+            stirrup.traverse(child => {
+                if (!child) return;
+                child.userData = child.userData || {};
+                child.userData.zoneDisplayIndex = displayIndex;
+            });
+            zoneGroup.add(stirrup);
+        }
+
+        if (zoneGroup.children.length > 0) {
+            basketGroup.add(zoneGroup);
+            clickableZoneGroups.push(zoneGroup);
         }
     });
 
@@ -153,6 +187,8 @@ function update(basketData) {
     if (shouldAutoFit) {
         fitCameraToObject(basketGroup);
     }
+
+    updateHoverState();
 }
 
 function createStirrup(width, height, radius, material) {
@@ -173,6 +209,120 @@ function createStirrup(width, height, radius, material) {
 
     stirrupGroup.add(top, bottom, left, right);
     return stirrupGroup;
+}
+
+
+function updatePointerFromEvent(event) {
+    if (!renderer || !renderer.domElement || !event) return false;
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    return true;
+}
+
+function onPointerDown(event) {
+    if (!event || event.isPrimary === false) return;
+    isPointerDown = true;
+    pointerMoved = false;
+    pointerDownPosition.x = event.clientX;
+    pointerDownPosition.y = event.clientY;
+    if (renderer && renderer.domElement) {
+        renderer.domElement.style.cursor = 'grabbing';
+    }
+}
+
+function onPointerMove(event) {
+    if (!event || event.isPrimary === false) return;
+    if (isPointerDown) {
+        const dx = event.clientX - pointerDownPosition.x;
+        const dy = event.clientY - pointerDownPosition.y;
+        if (!pointerMoved && Math.hypot(dx, dy) > 4) {
+            pointerMoved = true;
+        }
+    }
+    updateHoverState(event);
+}
+
+function onPointerUp(event) {
+    if (!event || event.isPrimary === false) return;
+    const wasPointerDown = isPointerDown;
+    isPointerDown = false;
+    if (!renderer || !renderer.domElement) {
+        pointerMoved = false;
+        return;
+    }
+
+    const canvas = renderer.domElement;
+    const isPrimaryAction = event.pointerType !== 'mouse' || event.button === 0 || event.button === -1;
+    if (wasPointerDown && !pointerMoved && isPrimaryAction) {
+        handleZonePick(event);
+    }
+
+    pointerMoved = false;
+    updateHoverState(event);
+}
+
+function onPointerLeave() {
+    isPointerDown = false;
+    pointerMoved = false;
+    if (renderer && renderer.domElement) {
+        renderer.domElement.style.cursor = 'grab';
+    }
+}
+
+function handleZonePick(event) {
+    if (!camera || !renderer || !clickableZoneGroups.length) return;
+    if (!updatePointerFromEvent(event)) return;
+
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(clickableZoneGroups, true);
+    if (!intersects.length) return;
+
+    const zoneIndex = findZoneDisplayIndex(intersects[0].object);
+    if (Number.isFinite(zoneIndex) && zoneIndex > 0 && typeof window.focusZoneFromPreview === 'function') {
+        window.focusZoneFromPreview(zoneIndex);
+    }
+}
+
+function updateHoverState(event) {
+    if (!renderer || !renderer.domElement) return;
+    const canvas = renderer.domElement;
+
+    if (isPointerDown) {
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
+
+    if (!camera || !clickableZoneGroups.length) {
+        canvas.style.cursor = 'grab';
+        return;
+    }
+
+    if (!event) {
+        canvas.style.cursor = 'grab';
+        return;
+    }
+
+    if (!updatePointerFromEvent(event)) {
+        canvas.style.cursor = 'grab';
+        return;
+    }
+
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(clickableZoneGroups, true);
+    canvas.style.cursor = intersects.length > 0 ? 'pointer' : 'grab';
+}
+
+function findZoneDisplayIndex(object3D) {
+    let current = object3D;
+    while (current) {
+        if (current.userData && Number.isFinite(current.userData.zoneDisplayIndex)) {
+            return current.userData.zoneDisplayIndex;
+        }
+        current = current.parent;
+    }
+    return null;
 }
 
 
