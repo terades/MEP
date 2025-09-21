@@ -4113,6 +4113,128 @@ body[data-theme="dark"] .saved-shape-type {
     }
 }
 
+.masterdata-card {
+    grid-column: 1 / -1;
+}
+
+.masterdata-grid {
+    display: grid;
+    gap: 24px;
+}
+
+@media (min-width: 992px) {
+    .masterdata-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.masterdata-group {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    background: var(--light-bg-color);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+body[data-theme="dark"] .masterdata-group {
+    background: rgba(30, 41, 59, 0.65);
+}
+
+.masterdata-group-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.masterdata-group-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.masterdata-group-description {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted-color);
+}
+
+.masterdata-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.masterdata-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.masterdata-input-row input {
+    flex: 1;
+}
+
+.masterdata-feedback {
+    margin: 0;
+    min-height: 1.25em;
+}
+
+.masterdata-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.masterdata-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--card-bg-color);
+}
+
+body[data-theme="dark"] .masterdata-item {
+    background: rgba(15, 23, 42, 0.7);
+}
+
+.masterdata-value {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.masterdata-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.masterdata-remove {
+    border: none;
+    background: transparent;
+    color: var(--danger-color);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+}
+
+.masterdata-remove:hover,
+.masterdata-remove:focus-visible {
+    text-decoration: underline;
+}
+
+.masterdata-empty {
+    margin: 0;
+}
+
 .resources-types-fieldset {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);

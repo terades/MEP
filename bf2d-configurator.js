@@ -549,11 +549,31 @@
             if (!el) return;
             const value = state.meta[def.key];
             if (def.key === 'diameter' || def.key === 'rollDiameter') {
-                el.value = formatNumberForInput(value);
+                const formatted = formatNumberForInput(value);
+                if (def.key === 'rollDiameter' && formatted && window.masterDataManager?.addValue) {
+                    window.masterDataManager.addValue('rollDiameters', Number(formatted));
+                }
+                el.value = formatted;
+                if (el.tagName === 'SELECT' && formatted && el.value !== formatted) {
+                    el.dataset.masterdataPendingValue = formatted;
+                    if (typeof window.masterDataManager?.refreshSelects === 'function') {
+                        window.masterDataManager.refreshSelects();
+                    }
+                }
             } else if (def.key === 'quantity') {
                 el.value = Number.isFinite(value) ? String(Math.round(value)) : '1';
             } else {
-                el.value = value !== undefined && value !== null ? String(value) : '';
+                const textValue = value !== undefined && value !== null ? String(value) : '';
+                if (def.key === 'steelGrade' && textValue && window.masterDataManager?.addValue) {
+                    window.masterDataManager.addValue('steelGrades', textValue);
+                }
+                el.value = textValue;
+                if (el.tagName === 'SELECT' && textValue && el.value !== textValue) {
+                    el.dataset.masterdataPendingValue = textValue;
+                    if (typeof window.masterDataManager?.refreshSelects === 'function') {
+                        window.masterDataManager.refreshSelects();
+                    }
+                }
             }
         });
     }
@@ -562,7 +582,7 @@
         metaFieldDefinitions().forEach(def => {
             const el = document.getElementById(def.id);
             if (!el) return;
-            el.addEventListener('input', event => {
+            const handleUpdate = event => {
                 if (def.key === 'rollDiameter') {
                     setRollDiameterValue(event.target.value, { updateInput: false, fromUser: true });
                 } else {
@@ -572,7 +592,11 @@
                     }
                 }
                 updateOutputs();
-            });
+            };
+            el.addEventListener('input', handleUpdate);
+            if (el.tagName === 'SELECT') {
+                el.addEventListener('change', handleUpdate);
+            }
             el.addEventListener('blur', event => {
                 if (def.key === 'rollDiameter') {
                     setRollDiameterValue(event.target.value, { updateInput: true, fromUser: true });

@@ -199,7 +199,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="stahlgute" data-i18n="Stahlsorte (g):">Stahlsorte (g):</label>
-                                <input type="text" id="stahlgute" value="B500B" maxlength="20" oninput="triggerPreviewUpdateDebounced()">
+                                <select id="stahlgute" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B" oninput="triggerPreviewUpdateDebounced()"></select>
                             </div>
                         </div>
                         <h3 class="section-title collapsible-header" data-i18n="PtGABBIE-Daten">PtGABBIE-Daten</h3>
@@ -587,7 +587,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="bf2dRollDiameter" data-i18n="Biegerollendurchmesser (mm)">Biegerollendurchmesser (mm)</label>
-                                    <input type="number" id="bf2dRollDiameter" value="48" min="0" step="0.1">
+                                    <select id="bf2dRollDiameter" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="48"></select>
                                 </div>
                                 <div class="form-group">
                                     <label for="bf2dQuantity" data-i18n="Stückzahl">Stückzahl</label>
@@ -595,7 +595,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="bf2dSteelGrade" data-i18n="Stahlsorte">Stahlsorte</label>
-                                    <input type="text" id="bf2dSteelGrade" value="B500B">
+                                    <select id="bf2dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
                                 </div>
                                 <div class="form-group">
                                     <label for="bf2dRemark" data-i18n="Bemerkung">Bemerkung</label>
@@ -819,11 +819,11 @@
                 </div>
                 <div class="form-group">
                     <label for="bf3dSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
-                    <input type="text" id="bf3dSteelGrade" value="B500B">
+                    <select id="bf3dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
                 </div>
                 <div class="form-group">
                     <label for="bf3dBendingRoller" data-i18n="Biegerolle (s)">Biegerolle (s)</label>
-                    <input type="number" id="bf3dBendingRoller" value="40" min="0">
+                    <select id="bf3dBendingRoller" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="40"></select>
                 </div>
             </div>
              <div class="card-header">
@@ -960,11 +960,11 @@
                 </div>
                 <div class="form-group">
                     <label for="bfmaSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
-                    <input type="text" id="bfmaSteelGrade" value="B500A">
+                    <select id="bfmaSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500A"></select>
                 </div>
                 <div class="form-group">
                     <label for="bfmaMeshType" data-i18n="Mattentyp (m)">Mattentyp (m)</label>
-                    <input type="text" id="bfmaMeshType" value="Q257">
+                    <select id="bfmaMeshType" data-masterdata-source="meshTypes" data-masterdata-placeholder-key="Mattentyp auswählen…" data-masterdata-default="Q257"></select>
                 </div>
                 <div class="form-group">
                     <label for="bfmaBendingRoll" data-i18n="Biegerolle (s) mm">Biegerolle (s) mm</label>
@@ -1351,6 +1351,59 @@
                             <div class="resources-list-body">
                                 <div id="resourceList" class="resource-list" role="list"></div>
                                 <p id="resourceEmptyState" class="info-text" data-i18n="Keine Ressourcen vorhanden" hidden>Keine Ressourcen vorhanden.</p>
+                            </div>
+                        </section>
+                        <section class="card masterdata-card" aria-labelledby="masterDataTitle">
+                            <div class="card-header">
+                                <h2 class="card-title" id="masterDataTitle" data-i18n="Stammdaten verwalten">Stammdaten verwalten</h2>
+                                <p class="card-subtitle" data-i18n="Stammdaten Beschreibung">Verwalten Sie zentrale Werte für Materialien und Parameter.</p>
+                            </div>
+                            <div class="masterdata-grid">
+                                <div class="masterdata-group" data-masterdata-type="steelGrades">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" data-i18n="Stahlsorten">Stahlsorten</h3>
+                                        <p class="masterdata-group-description" data-i18n="Stahlsorten Beschreibung">Vordefinierte Stahlgüten für alle Konfiguratoren.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="steelGrades" novalidate>
+                                        <div class="masterdata-input-row">
+                                            <input type="text" id="masterDataSteelInput" data-masterdata-input data-i18n-placeholder="Neue Stahlsorte hinzufügen" placeholder="Neue Stahlsorte hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataSteelFeedback" aria-live="polite"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataSteelList" data-masterdata-list="steelGrades" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataSteelEmpty" data-i18n="Keine Stahlsorten vorhanden" hidden>Keine Stahlsorten vorhanden.</p>
+                                </div>
+                                <div class="masterdata-group" data-masterdata-type="rollDiameters">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" data-i18n="Biegerollendurchmesser">Biegerollendurchmesser</h3>
+                                        <p class="masterdata-group-description" data-i18n="Biegerollendurchmesser Beschreibung">Legt verfügbare Rollendurchmesser in Millimetern fest.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="rollDiameters" novalidate>
+                                        <div class="masterdata-input-row">
+                                            <input type="number" id="masterDataRollInput" data-masterdata-input step="0.1" min="0" data-i18n-placeholder="Neuen Durchmesser hinzufügen" placeholder="Neuen Durchmesser hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataRollFeedback" aria-live="polite"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataRollList" data-masterdata-list="rollDiameters" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataRollEmpty" data-i18n="Keine Rollendurchmesser vorhanden" hidden>Keine Rollendurchmesser vorhanden.</p>
+                                </div>
+                                <div class="masterdata-group" data-masterdata-type="meshTypes">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" data-i18n="Mattentypen">Mattentypen</h3>
+                                        <p class="masterdata-group-description" data-i18n="Mattentypen Beschreibung">Standardisierte Mattentypen für den Mattenkonfigurator.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="meshTypes" novalidate>
+                                        <div class="masterdata-input-row">
+                                            <input type="text" id="masterDataMeshInput" data-masterdata-input data-i18n-placeholder="Neuen Mattentyp hinzufügen" placeholder="Neuen Mattentyp hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataMeshFeedback" aria-live="polite"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataMeshList" data-masterdata-list="meshTypes" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataMeshEmpty" data-i18n="Keine Mattentypen vorhanden" hidden>Keine Mattentypen vorhanden.</p>
+                                </div>
                             </div>
                         </section>
                     </div>
