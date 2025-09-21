@@ -22,6 +22,7 @@
     let initialized = false;
     let segmentIdCounter = 0;
     let rollDiameterAuto = true;
+    let standardShapes = [];
 
     const RESOURCE_STORAGE_KEY = 'bvbsResources';
     const RESOURCE_TYPE_2D = '2d';
@@ -1317,6 +1318,12 @@
             geometry = buildGeometry(segments);
             width = geometry.width;
             height = geometry.height;
+            if (geometry && geometry.pathSegments) {
+                geometry.intersections = findSelfIntersections(geometry.pathSegments);
+                if (geometry.intersections.length > 0) {
+                    errors.push('Warnung: Die Form überschneidet sich selbst.');
+                }
+            }
         }
 
         const weightPerMeter = Number.isFinite(diameter) ? (diameter * diameter) / 162 : 0;
@@ -1339,6 +1346,48 @@
             diameter,
             rollDiameter
         };
+    }
+
+    function findSelfIntersections(pathSegments) {
+        const intersections = [];
+        const lines = pathSegments.filter(p => p.type === 'line');
+
+        for (let i = 0; i < lines.length; i++) {
+            for (let j = i + 2; j < lines.length; j++) {
+                // Don't check adjacent segments
+                if (i === 0 && j === lines.length - 1) continue;
+
+                const p1 = lines[i].start;
+                const q1 = lines[i].end;
+                const p2 = lines[j].start;
+                const q2 = lines[j].end;
+
+                const a1 = q1.y - p1.y;
+                const b1 = p1.x - q1.x;
+                const c1 = a1 * p1.x + b1 * p1.y;
+
+                const a2 = q2.y - p2.y;
+                const b2 = p2.x - q2.x;
+                const c2 = a2 * p2.x + b2 * p2.y;
+
+                const determinant = a1 * b2 - a2 * b1;
+
+                if (Math.abs(determinant) > 1e-9) { // Check if lines are not parallel
+                    const x = (b2 * c1 - b1 * c2) / determinant;
+                    const y = (a1 * c2 - a2 * c1) / determinant;
+
+                    const onSegment1 = Math.min(p1.x, q1.x) - 1e-9 <= x && x <= Math.max(p1.x, q1.x) + 1e-9 &&
+                                     Math.min(p1.y, q1.y) - 1e-9 <= y && y <= Math.max(p1.y, q1.y) + 1e-9;
+                    const onSegment2 = Math.min(p2.x, q2.x) - 1e-9 <= x && x <= Math.max(p2.x, q2.x) + 1e-9 &&
+                                     Math.min(p2.y, q2.y) - 1e-9 <= y && y <= Math.max(p2.y, q2.y) + 1e-9;
+
+                    if (onSegment1 && onSegment2) {
+                        intersections.push({ x, y });
+                    }
+                }
+            }
+        }
+        return intersections;
     }
 
     function buildGeometry(segments) {
@@ -1856,6 +1905,21 @@
         const scale = computeSvgScale(svg, viewBox);
         renderDimensions(svg, geometry, scale);
 
+        if (geometry.intersections && geometry.intersections.length > 0) {
+            const intersectionGroup = createSvgElement('g', { class: 'bf2d-intersections' });
+            geometry.intersections.forEach(point => {
+                const screenPoint = { x: point.x, y: -point.y };
+                const circle = createSvgElement('circle', {
+                    cx: screenPoint.x.toFixed(2),
+                    cy: screenPoint.y.toFixed(2),
+                    r: 5 * scale.unitPerPx,
+                    class: 'bf2d-intersection-marker'
+                });
+                intersectionGroup.appendChild(circle);
+            });
+            svg.appendChild(intersectionGroup);
+        }
+
         if (screenPoints.length) {
             const start = screenPoints[0];
             const startMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1912,6 +1976,153 @@
         }
     }
 
+    function findOptimizations(summary, allMachines) {
+        const suggestions = [];
+        if (!summary || !summary.requiresRollDiameter) {
+            return suggestions;
+        }
+
+        const currentRollDiameter = summary.rollDiameter;
+        const allAvailableRolls = new Set();
+        allMachines.forEach(resource => {
+            if (Array.isArray(resource.availableRollDiameters)) {
+                resource.availableRollDiameters.forEach(roll => allAvailableRolls.add(roll));
+            }
+        });
+
+        if (allAvailableRolls.size > 0 && !allAvailableRolls.has(currentRollDiameter)) {
+            let closestRoll = -1;
+            let minDiff = Infinity;
+            allAvailableRolls.forEach(roll => {
+                const diff = Math.abs(roll - currentRollDiameter);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestRoll = roll;
+                }
+            });
+
+            if (closestRoll > 0) {
+                suggestions.push({
+                    type: 'roll_diameter',
+                    message: `Vorschlag: Biegerollendurchmesser auf ${closestRoll} mm ändern, um die Maschinenkompatibilität zu verbessern.`,
+                    action: () => {
+                        setRollDiameterValue(closestRoll, { updateInput: true, fromUser: false });
+                        updateOutputs();
+                    }
+                });
+            }
+        }
+
+        return suggestions;
+    }
+
+    function renderOptimizations(suggestions) {
+        const card = document.getElementById('bf2dOptimizerCard');
+        const list = document.getElementById('bf2dOptimizerList');
+        if (!card || !list) return;
+
+        list.innerHTML = '';
+        if (suggestions.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = 'block';
+        suggestions.forEach(suggestion => {
+            const item = document.createElement('div');
+            item.className = 'bf2d-optimizer-item';
+
+            const message = document.createElement('div');
+            message.className = 'bf2d-optimizer-message';
+            message.textContent = suggestion.message;
+            item.appendChild(message);
+
+            if (typeof suggestion.action === 'function') {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn-secondary';
+                button.textContent = 'Anwenden';
+                button.addEventListener('click', suggestion.action);
+                item.appendChild(button);
+            }
+
+            list.appendChild(item);
+        });
+    }
+
+    async function loadStandardShapes() {
+        try {
+            const response = await fetch('standard-shapes.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                standardShapes = data;
+            }
+        } catch (error) {
+            console.error('Could not load standard shapes library:', error);
+            standardShapes = [];
+        }
+    }
+
+    function openStandardShapeLibrary() {
+        const modal = document.getElementById('standardShapeLibraryModal');
+        if (!modal) return;
+        renderStandardShapeLibrary();
+        modal.classList.add('visible');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeStandardShapeLibrary() {
+        const modal = document.getElementById('standardShapeLibraryModal');
+        if (!modal) return;
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function renderStandardShapeLibrary() {
+        const listEl = document.getElementById('standardShapeLibraryList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        if (standardShapes.length === 0) {
+            listEl.innerHTML = `<p>Standardformen-Bibliothek konnte nicht geladen werden.</p>`;
+            return;
+        }
+
+        standardShapes.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'saved-shape-card';
+            card.innerHTML = `
+                <div class="saved-shape-card-header">
+                    <h4 class="saved-shape-name">${item.name}</h4>
+                </div>
+                <div class="saved-shape-card-body">
+                    <div class="bf2d-preview-stage" style="min-height: 150px;"></div>
+                    <p>${item.description}</p>
+                    <button type="button" class="btn-primary">Auswählen</button>
+                </div>
+            `;
+            const previewContainer = card.querySelector('.bf2d-preview-stage');
+            const shapeData = { ...item.shape, segments: item.shape.segments.map(s => createSegment(s.length, s.bendAngle, s.bendDirection, s.radius)) };
+            const tempSummary = { geometry: buildGeometry(shapeData.segments), errors: [] };
+
+            const svg = document.createElementNS(SVG_NS, 'svg');
+            svg.setAttribute('style', 'width: 100%; height: 150px;');
+            previewContainer.appendChild(svg);
+            renderSvgPreview({ ...tempSummary, errors: [] }, svg);
+
+
+            card.querySelector('button').addEventListener('click', () => {
+                applySavedShapeData(item.shape);
+                closeStandardShapeLibrary();
+            });
+
+            listEl.appendChild(card);
+        });
+    }
+
     function updateOutputs() {
         if (!initialized) return;
         applyRollDiameterToSegments();
@@ -1923,6 +2134,8 @@
         update3dPreview(summary);
         updateDataset(summary);
         updateMachineCompatibility(summary);
+        const optimizations = findOptimizations(summary, availableResources);
+        renderOptimizations(optimizations);
     }
 
     function sanitizeText(value) {
@@ -2808,6 +3021,7 @@
         if (initialized) return;
         const view = document.getElementById('bf2dView');
         if (!view) return;
+        loadStandardShapes();
         initialized = true;
         segmentIdCounter = 0;
         initDefaultSegments();
@@ -2824,6 +3038,11 @@
         attachMetaListeners();
         attachActionListeners();
         attachStorageListeners();
+
+        document.getElementById('bf2dOpenLibraryButton')?.addEventListener('click', openStandardShapeLibrary);
+        document.getElementById('closeStandardShapeLibraryModalBtn')?.addEventListener('click', closeStandardShapeLibrary);
+        document.getElementById('cancelStandardShapeLibraryBtn')?.addEventListener('click', closeStandardShapeLibrary);
+
         populateSavedFormsSelect();
         renderImportTable();
         renderSegmentTable();

@@ -1,0 +1,55 @@
+[
+  {
+    "name": "U-Bügel (offen)",
+    "description": "Ein einfacher, offener U-förmiger Bügel.",
+    "shape": {
+      "meta": {
+        "diameter": 10,
+        "rollDiameter": 40,
+        "quantity": 10,
+        "steelGrade": "B500B"
+      },
+      "segments": [
+        { "length": 200, "bendAngle": 90, "bendDirection": "L", "radius": 20 },
+        { "length": 400, "bendAngle": 90, "bendDirection": "L", "radius": 20 },
+        { "length": 200, "bendAngle": 0, "bendDirection": "L", "radius": 0 }
+      ]
+    }
+  },
+  {
+    "name": "Rechteck-Bügel (geschlossen)",
+    "description": "Ein geschlossener, rechteckiger Bügel für Stützen oder Balken.",
+    "shape": {
+       "meta": {
+        "diameter": 8,
+        "rollDiameter": 32,
+        "quantity": 25,
+        "steelGrade": "B500B"
+      },
+      "segments": [
+        { "length": 300, "bendAngle": 90, "bendDirection": "L", "radius": 16 },
+        { "length": 500, "bendAngle": 90, "bendDirection": "L", "radius": 16 },
+        { "length": 300, "bendAngle": 90, "bendDirection": "L", "radius": 16 },
+        { "length": 460, "bendAngle": 135, "bendDirection": "L", "radius": 16 },
+        { "length": 80, "bendAngle": 0, "bendDirection": "L", "radius": 0 }
+      ]
+    }
+  },
+  {
+    "name": "Z-Haken",
+    "description": "Ein Z-förmiger Haken für Verbindungen.",
+    "shape": {
+       "meta": {
+        "diameter": 12,
+        "rollDiameter": 48,
+        "quantity": 15,
+        "steelGrade": "B500B"
+      },
+      "segments": [
+        { "length": 150, "bendAngle": 90, "bendDirection": "L", "radius": 24 },
+        { "length": 300, "bendAngle": 90, "bendDirection": "R", "radius": 24 },
+        { "length": 150, "bendAngle": 0, "bendDirection": "R", "radius": 0 }
+      ]
+    }
+  }
+]
