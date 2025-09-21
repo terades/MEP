@@ -1080,9 +1080,19 @@
                             <button type="button" id="bfmaViewToggle2d" class="bf2d-view-toggle-btn is-active" aria-pressed="true" data-i18n="2D">2D</button>
                             <button type="button" id="bfmaViewToggle3d" class="bf2d-view-toggle-btn" aria-pressed="false" data-i18n="3D">3D</button>
                         </div>
-                        <div class="bf2d-preview-actions bfma-when-3d" style="display: none;">
-                             <button type="button" id="bfmaZoom3dButton" class="btn-secondary" data-i18n="Zoom to Fit">Zoom to Fit</button>
-                        </div>
+                    <div class="bf2d-preview-actions bfma-when-3d" style="display: none;">
+                         <button type="button" id="bfmaZoom3dButton" class="btn-secondary" data-i18n="Zoom to Fit">Zoom to Fit</button>
+                         <div class="bfma-dimension-toggle-group">
+                            <label class="bfma-dimension-toggle">
+                                <input type="checkbox" id="bfmaToggleDimensions" checked>
+                                <span data-i18n="Maße anzeigen">Maße anzeigen</span>
+                            </label>
+                            <label class="bfma-dimension-toggle">
+                                <input type="checkbox" id="bfmaTogglePitch">
+                                <span data-i18n="Pitch-Abstände">Pitch-Abstände</span>
+                            </label>
+                         </div>
+                    </div>
                     </div>
                 </div>
                 <div class="bfma-preview-container" data-view-mode="2d">

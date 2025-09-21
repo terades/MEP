@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // --- Helper Functions ---
 function parseNumber(value) {
@@ -9,6 +10,60 @@ function parseNumber(value) {
     const normalized = String(value ?? '').trim().replace(/,/g, '.');
     const parsed = parseFloat(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMeasurement(value) {
+    if (!Number.isFinite(value)) return '0';
+    const rounded = Math.round(value * 10) / 10;
+    if (Math.abs(rounded - Math.round(rounded)) < 1e-4) {
+        return String(Math.round(rounded));
+    }
+    return rounded.toFixed(1);
+}
+
+function computeSpanInfo(positions) {
+    if (!positions || positions.length === 0) {
+        return null;
+    }
+    const sorted = positions.slice().sort((a, b) => a - b);
+    const min = sorted[0];
+    const max = sorted[sorted.length - 1];
+    return {
+        min,
+        max,
+        span: max - min,
+        sorted
+    };
+}
+
+function computePitch(sortedPositions) {
+    if (!sortedPositions || sortedPositions.length < 2) {
+        return null;
+    }
+    const deltas = [];
+    for (let i = 1; i < sortedPositions.length; i++) {
+        const delta = sortedPositions[i] - sortedPositions[i - 1];
+        if (delta > 0.001) {
+            deltas.push(delta);
+        }
+    }
+    if (!deltas.length) {
+        return null;
+    }
+    const average = deltas.reduce((sum, value) => sum + value, 0) / deltas.length;
+    const tolerance = Math.max(0.1, average * 0.05);
+    const isConsistent = deltas.every(delta => Math.abs(delta - average) <= tolerance);
+    return isConsistent ? average : null;
+}
+
+function createLabel(text, modifierClass) {
+    const element = document.createElement('div');
+    element.className = 'bfma-dimension-label';
+    if (modifierClass) {
+        element.classList.add(modifierClass);
+    }
+    element.textContent = text;
+    return new CSS2DObject(element);
 }
 
 function getBarPositions(bar, totalDimension, offsetValue) {
@@ -61,9 +116,11 @@ const state = {
     scene: null,
     camera: null,
     renderer: null,
+    labelRenderer: null,
     controls: null,
     grid: null,
     meshGroup: null,
+    labelGroup: null,
     currentBounds: null
 };
 
@@ -74,6 +131,9 @@ function animate() {
         state.controls.update();
     }
     state.renderer.render(state.scene, state.camera);
+    if (state.labelRenderer) {
+        state.labelRenderer.render(state.scene, state.camera);
+    }
 }
 
 function ensureInit() {
@@ -98,6 +158,14 @@ function ensureInit() {
     state.renderer.setSize(container.clientWidth, container.clientHeight);
     container.innerHTML = '';
     container.appendChild(state.renderer.domElement);
+
+    state.labelRenderer = new CSS2DRenderer();
+    state.labelRenderer.setSize(container.clientWidth, container.clientHeight);
+    state.labelRenderer.domElement.style.position = 'absolute';
+    state.labelRenderer.domElement.style.top = '0';
+    state.labelRenderer.domElement.style.left = '0';
+    state.labelRenderer.domElement.style.pointerEvents = 'none';
+    container.appendChild(state.labelRenderer.domElement);
 
     state.controls = new OrbitControls(state.camera, state.renderer.domElement);
     state.controls.enableDamping = true;
@@ -127,13 +195,16 @@ function ensureInit() {
 
 function onResize() {
     if (!state.initialized) return;
-    const { container, camera, renderer } = state;
+    const { container, camera, renderer, labelRenderer } = state;
     if (!container || !camera || !renderer) return;
     const width = container.clientWidth;
     const height = container.clientHeight;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
+    if (labelRenderer) {
+        labelRenderer.setSize(width, height);
+    }
 }
 
 function disposeCurrentMesh() {
@@ -146,6 +217,7 @@ function disposeCurrentMesh() {
         }
     });
     state.meshGroup = null;
+    state.labelGroup = null;
 }
 
 function fitCameraToBounds(box) {
@@ -183,12 +255,18 @@ function update(meshData) {
     if (!ensureInit() || !meshData) return;
     disposeCurrentMesh();
 
-    const { header, yBars, xBars } = meshData;
+    const { header, yBars, xBars, preview: previewSettingsRaw } = meshData;
     if (!header || !yBars || !xBars || (yBars.length === 0 && xBars.length === 0)) {
         state.grid.visible = true; // Show grid even if there's no mesh
         return;
     }
     state.grid.visible = true;
+
+    const previewSettings = previewSettingsRaw || {};
+    const showDimensions = previewSettings.showDimensions !== undefined
+        ? !!previewSettings.showDimensions
+        : true;
+    const showPitch = !!previewSettings.showPitch;
 
     const meshLength = parseNumber(header.l); // Dimension along Y
     const meshWidth = parseNumber(header.b);  // Dimension along X
@@ -199,6 +277,9 @@ function update(meshData) {
 
     const yMaterial = new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6, roughness: 0.4 });
     const xMaterial = new THREE.MeshStandardMaterial({ color: 0xdb2777, metalness: 0.6, roughness: 0.4 });
+
+    const xBarBasePositions = [];
+    const yBarBasePositions = [];
 
     const geometryCache = new Map();
     const scaleVector = new THREE.Vector3(1, 1, 1);
@@ -237,6 +318,7 @@ function update(meshData) {
         const matrices = yInstances.get(instanceKey);
 
         positionsX.forEach(posX => {
+            yBarBasePositions.push(posX);
             const count = Math.max(1, parseNumber(bar.z) || 1);
             for (let i = 0; i < count; i++) {
                 const offset = i * doubleBarSpacing;
@@ -288,6 +370,7 @@ function update(meshData) {
         const matrices = xInstances.get(instanceKey);
 
         positionsY.forEach(posY => {
+            xBarBasePositions.push(posY);
             const count = Math.max(1, parseNumber(bar.z) || 1);
             for (let i = 0; i < count; i++) {
                 const offset = i * doubleBarSpacing;
@@ -326,6 +409,70 @@ function update(meshData) {
             new THREE.Vector3(meshWidth / 2, meshLength / 2, 0),
             new THREE.Vector3(meshWidth, meshLength, Math.max(maxDiameterY, 10))
         );
+    }
+
+    state.labelGroup = null;
+
+    const boundingSize = new THREE.Vector3();
+    boundingBox.getSize(boundingSize);
+
+    if (showDimensions || showPitch) {
+        const labelGroup = new THREE.Group();
+        labelGroup.name = 'bfma-dimension-labels';
+
+        const labelZ = boundingBox.max.z + Math.max(40, boundingSize.z * 0.5);
+        const offsetBase = Math.max(80, Math.max(boundingSize.x, boundingSize.y) * 0.08);
+
+        const widthSpanInfo = computeSpanInfo(xBarBasePositions);
+        const lengthSpanInfo = computeSpanInfo(yBarBasePositions);
+
+        const hasWidthSpan = widthSpanInfo && widthSpanInfo.sorted.length >= 2 && widthSpanInfo.span > 0.001;
+        const hasLengthSpan = lengthSpanInfo && lengthSpanInfo.sorted.length >= 2 && lengthSpanInfo.span > 0.001;
+
+        let hasLabels = false;
+
+        if (showDimensions && hasWidthSpan) {
+            const widthMid = (widthSpanInfo.min + widthSpanInfo.max) / 2;
+            const widthLabel = createLabel(`b=${formatMeasurement(widthSpanInfo.span)} mm`);
+            widthLabel.position.set(boundingBox.max.x + offsetBase, widthMid, labelZ);
+            labelGroup.add(widthLabel);
+            hasLabels = true;
+        }
+
+        if (showDimensions && hasLengthSpan) {
+            const lengthMid = (lengthSpanInfo.min + lengthSpanInfo.max) / 2;
+            const lengthLabel = createLabel(`l=${formatMeasurement(lengthSpanInfo.span)} mm`);
+            lengthLabel.position.set(lengthMid, boundingBox.max.y + offsetBase, labelZ);
+            labelGroup.add(lengthLabel);
+            hasLabels = true;
+        }
+
+        if (showPitch && widthSpanInfo && widthSpanInfo.sorted.length >= 2) {
+            const pitch = computePitch(widthSpanInfo.sorted);
+            if (Number.isFinite(pitch) && pitch > 0.001) {
+                const pitchMid = (widthSpanInfo.sorted[0] + widthSpanInfo.sorted[1]) / 2;
+                const pitchLabel = createLabel(`e=${formatMeasurement(pitch)} mm`, 'bfma-dimension-label--pitch');
+                pitchLabel.position.set(boundingBox.min.x - offsetBase, pitchMid, labelZ);
+                labelGroup.add(pitchLabel);
+                hasLabels = true;
+            }
+        }
+
+        if (showPitch && lengthSpanInfo && lengthSpanInfo.sorted.length >= 2) {
+            const pitch = computePitch(lengthSpanInfo.sorted);
+            if (Number.isFinite(pitch) && pitch > 0.001) {
+                const pitchMid = (lengthSpanInfo.sorted[0] + lengthSpanInfo.sorted[1]) / 2;
+                const pitchLabel = createLabel(`e=${formatMeasurement(pitch)} mm`, 'bfma-dimension-label--pitch');
+                pitchLabel.position.set(pitchMid, boundingBox.min.y - offsetBase, labelZ);
+                labelGroup.add(pitchLabel);
+                hasLabels = true;
+            }
+        }
+
+        if (hasLabels) {
+            group.add(labelGroup);
+            state.labelGroup = labelGroup;
+        }
     }
 
     const center = new THREE.Vector3();

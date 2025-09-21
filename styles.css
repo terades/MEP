@@ -3459,12 +3459,51 @@ select.status-select.done {
     box-shadow: var(--shadow-sm);
 }
 
+.bfma-dimension-toggle-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.75rem 0 0;
+    align-items: center;
+}
+
+.bfma-dimension-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--muted-text-color, #495057);
+}
+
+.bfma-dimension-toggle input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+}
+
 #bfmaPreviewSvg,
 .bfma-preview-svg {
     width: 100%;
     height: 100%;
     min-height: 280px;
     display: block;
+}
+
+.bfma-dimension-label {
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.85);
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+    transform: translate3d(0, 0, 0);
+}
+
+.bfma-dimension-label--pitch {
+    background: rgba(37, 99, 235, 0.85);
 }
 
 .bfma-bending-controls {
