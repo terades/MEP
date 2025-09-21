@@ -2869,6 +2869,81 @@ select.status-select.done {
     margin-top: 1.25rem;
 }
 
+.bf2d-machine-card .card-header {
+    align-items: center;
+}
+
+.bf2d-machine-compatibility {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bf2d-machine-compatibility .info-text {
+    margin: 0;
+}
+
+.bf2d-machine-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bf2d-machine-list-item {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: var(--light-bg-color);
+}
+
+body[data-theme="dark"] .bf2d-machine-list-item {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+.bf2d-machine-name {
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.bf2d-machine-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    color: var(--text-muted-color);
+    font-size: 0.9rem;
+}
+
+.bf2d-machine-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.bf2d-machine-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    line-height: 1;
+    background-color: rgba(148, 163, 184, 0.18);
+    color: var(--text-muted-color);
+    font-weight: 500;
+}
+
+.bf2d-machine-chip--match {
+    background-color: rgba(var(--primary-color-rgb), 0.18);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
 .bf2d-import-card .card-header {
     align-items: center;
 }

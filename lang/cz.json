@@ -370,6 +370,9 @@
   "Ressourcenverwaltung Beschreibung": "Spravujte stroje a zařízení s jejich výrobními možnostmi.",
   "Ressourcename": "Název zdroje",
   "Ressourcenname eingeben": "Zadejte název zdroje",
+  "Verfügbare Biegerollen (mm)": "Dostupné průměry ohýbacích válců (mm)",
+  "Verfügbare Biegerollen": "Dostupné ohýbací válce",
+  "z. B. 48, 56": "např. 48, 56",
   "Beschreibung": "Popis",
   "Optionale Beschreibung": "Volitelný popis",
   "Min. Stabdurchmesser (mm)": "Min. průměr tyče (mm)",
@@ -393,5 +396,9 @@
   "Ressource aktualisiert.": "Zdroj byl aktualizován.",
   "Ressource gelöscht.": "Zdroj byl smazán.",
   "Maximalwert muss größer oder gleich dem Minimalwert sein.": "Maximální hodnota musí být větší nebo rovna minimální hodnotě.",
-  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Opravdu chcete odstranit zdroj \"{resourceName}\"?"
+  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Opravdu chcete odstranit zdroj \"{resourceName}\"?",
+  "Maschinen-Eignung": "Vhodnost strojů",
+  "Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.": "Zadejte průměr pro nalezení vhodných strojů.",
+  "Keine geeignete Maschine gefunden.": "Nebyl nalezen vhodný stroj.",
+  "Passende Maschinen: {count}": "Vhodné stroje: {count}"
 }

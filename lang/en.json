@@ -370,6 +370,9 @@
   "Ressourcenverwaltung Beschreibung": "Maintain machines and equipment with their production capabilities.",
   "Ressourcename": "Resource name",
   "Ressourcenname eingeben": "Enter resource name",
+  "Verfügbare Biegerollen (mm)": "Available bending rolls (mm)",
+  "Verfügbare Biegerollen": "Available bending rolls",
+  "z. B. 48, 56": "e.g. 48, 56",
   "Beschreibung": "Description",
   "Optionale Beschreibung": "Optional description",
   "Min. Stabdurchmesser (mm)": "Min. bar diameter (mm)",
@@ -393,5 +396,9 @@
   "Ressource aktualisiert.": "Resource updated.",
   "Ressource gelöscht.": "Resource deleted.",
   "Maximalwert muss größer oder gleich dem Minimalwert sein.": "Maximum value must be greater than or equal to the minimum value.",
-  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Do you really want to delete the resource \"{resourceName}\"?"
+  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Do you really want to delete the resource \"{resourceName}\"?",
+  "Maschinen-Eignung": "Machine suitability",
+  "Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.": "Enter a diameter to determine suitable machines.",
+  "Keine geeignete Maschine gefunden.": "No suitable machine found.",
+  "Passende Maschinen: {count}": "Matching machines: {count}"
 }

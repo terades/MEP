@@ -370,6 +370,9 @@
   "Ressourcenverwaltung Beschreibung": "Zarządzaj maszynami i urządzeniami wraz z ich możliwościami produkcyjnymi.",
   "Ressourcename": "Nazwa zasobu",
   "Ressourcenname eingeben": "Wprowadź nazwę zasobu",
+  "Verfügbare Biegerollen (mm)": "Dostępne średnice rolek (mm)",
+  "Verfügbare Biegerollen": "Dostępne rolki gięcia",
+  "z. B. 48, 56": "np. 48, 56",
   "Beschreibung": "Opis",
   "Optionale Beschreibung": "Opcjonalny opis",
   "Min. Stabdurchmesser (mm)": "Min. średnica pręta (mm)",
@@ -393,5 +396,9 @@
   "Ressource aktualisiert.": "Zasób zaktualizowano.",
   "Ressource gelöscht.": "Zasób usunięto.",
   "Maximalwert muss größer oder gleich dem Minimalwert sein.": "Wartość maksymalna musi być większa lub równa wartości minimalnej.",
-  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Czy na pewno usunąć zasób \"{resourceName}\"?"
+  "Soll die Ressource \"{resourceName}\" wirklich gelöscht werden?": "Czy na pewno usunąć zasób \"{resourceName}\"?",
+  "Maschinen-Eignung": "Dopasowanie maszyn",
+  "Bitte Durchmesser eingeben, um passende Maschinen zu ermitteln.": "Podaj średnicę, aby znaleźć odpowiednie maszyny.",
+  "Keine geeignete Maschine gefunden.": "Brak odpowiedniej maszyny.",
+  "Passende Maschinen: {count}": "Pasujące maszyny: {count}"
 }

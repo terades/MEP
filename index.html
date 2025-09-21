@@ -647,6 +647,15 @@
                             </div>
                             <div id="bf2dStatus" class="info-text" aria-live="polite"></div>
                         </div>
+                        <div class="card bf2d-machine-card">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="Maschinen-Eignung">Maschinen-Eignung</h2>
+                            </div>
+                            <div class="bf2d-machine-compatibility">
+                                <p id="bf2dMachineCompatibilityStatus" class="info-text" aria-live="polite"></p>
+                                <ul id="bf2dMachineCompatibilityList" class="bf2d-machine-list" role="list"></ul>
+                            </div>
+                        </div>
                         <div class="card">
                             <div class="card-header">
                                 <h2 class="card-title" data-i18n="Segmenteditor">Segmenteditor</h2>
@@ -1303,6 +1312,10 @@
                                     <div class="form-group">
                                         <label for="resourceMaxLegLength" data-i18n="Max. Schenkellänge (mm)">Max. Schenkellänge (mm)</label>
                                         <input type="number" id="resourceMaxLegLength" name="resourceMaxLegLength" min="0" step="1" inputmode="decimal">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="resourceRollDiameters" data-i18n="Verfügbare Biegerollen (mm)">Verfügbare Biegerollen (mm)</label>
+                                        <input type="text" id="resourceRollDiameters" name="resourceRollDiameters" data-i18n-placeholder="z. B. 48, 56" placeholder="z. B. 48, 56" autocomplete="off">
                                     </div>
                                 </div>
                                 <fieldset class="form-group resources-types-fieldset">
