@@ -528,6 +528,34 @@ select {
     }
 }
 
+.bf2d-optimizer-card .card-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bf2d-optimizer-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.bf2d-optimizer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bf2d-optimizer-item:last-child {
+    border-bottom: none;
+}
+
+.bf2d-optimizer-message {
+    font-size: .9rem;
+    line-height: 1.4;
+    margin-right: 1rem;
+}
+
 @media (min-width: 992px) {
     .preview-header {
         flex-direction: row;
@@ -3321,6 +3349,13 @@ body[data-theme="dark"] .bf2d-machine-list-item {
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+.bf2d-intersection-marker {
+    fill: #ff0000;
+    stroke: #ffffff;
+    stroke-width: 1px;
+    opacity: 0.8;
 }
 
 .bf2d-dimension-extension {

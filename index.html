@@ -617,6 +617,7 @@
                                     <button type="button" id="bf2dSaveShapeButton" class="btn-secondary" data-i18n="Speichern">Speichern</button>
                                     <button type="button" id="bf2dLoadShapeButton" class="btn-secondary" data-i18n="Laden" disabled>Laden</button>
                                     <button type="button" id="bf2dDeleteShapeButton" class="btn-danger" data-i18n="Löschen" disabled>Löschen</button>
+                                    <button type="button" id="bf2dOpenLibraryButton" class="btn-secondary" data-i18n="Bibliothek">Bibliothek</button>
                                 </div>
                             </div>
                             <div class="bf2d-summary-grid">
@@ -655,6 +656,12 @@
                                 <p id="bf2dMachineCompatibilityStatus" class="info-text" aria-live="polite"></p>
                                 <ul id="bf2dMachineCompatibilityList" class="bf2d-machine-list" role="list"></ul>
                             </div>
+                        </div>
+                        <div id="bf2dOptimizerCard" class="card bf2d-optimizer-card" style="display: none;">
+                            <div class="card-header">
+                                <h2 class="card-title" data-i18n="Optimierungs-Vorschläge">Optimierungs-Vorschläge</h2>
+                            </div>
+                            <div id="bf2dOptimizerList" class="bf2d-optimizer-list"></div>
                         </div>
                         <div class="card">
                             <div class="card-header">
@@ -1675,6 +1682,22 @@
             </div>
         </div>
         <div id="print-container" style="display: none;"></div>
+        <div id="standardShapeLibraryModal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="standardShapeLibraryModalTitle">
+                <div class="modal-header card-header">
+                    <h2 id="standardShapeLibraryModalTitle" class="modal-title card-title" data-i18n="Standard-Biegeformen Bibliothek">Standard-Biegeformen Bibliothek</h2>
+                    <button type="button" id="closeStandardShapeLibraryModalBtn" class="close-modal-btn" data-i18n-title="Schließen" title="Schließen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="standardShapeLibraryList" class="saved-shapes-grid" data-view-mode="grid"></div>
+                </div>
+                <div class="modal-footer button-group" style="justify-content: flex-end;">
+                    <button type="button" id="cancelStandardShapeLibraryBtn" class="btn-secondary" data-i18n="Abbrechen">Abbrechen</button>
+                </div>
+            </div>
+        </div>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/4.1.1/bwip-js.min.js"></script>
     </body>
