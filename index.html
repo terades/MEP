@@ -804,91 +804,93 @@
                     </div>
                 </div>
 <div id="bf3dView" class="app-container" style="display:none;">
-    <div class="bf2d-layout">
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title" data-i18n="BF3D Konfigurator">BF3D Konfigurator</h2>
-            </div>
-            <div class="bf2d-form-grid">
-                <div class="form-group">
-                    <label for="bf3dPosition" data-i18n="Pos.-Nr. (p)">Pos.-Nr. (p)</label>
-                    <input type="text" id="bf3dPosition" value="1">
+    <div class="bf3d-layout">
+        <div class="bf3d-column">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="BF3D Konfigurator">BF3D Konfigurator</h2>
+                </div>
+                <div class="bf2d-form-grid">
+                    <div class="form-group">
+                        <label for="bf3dPosition" data-i18n="Pos.-Nr. (p)">Pos.-Nr. (p)</label>
+                        <input type="text" id="bf3dPosition" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bf3dQuantity" data-i18n="Anzahl (n)">Anzahl (n)</label>
+                        <input type="number" id="bf3dQuantity" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bf3dDiameter" data-i18n="Durchmesser (d)">Durchmesser (d)</label>
+                        <input type="number" id="bf3dDiameter" value="10" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="bf3dSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
+                        <select id="bf3dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bf3dBendingRoller" data-i18n="Biegerolle (s)">Biegerolle (s)</label>
+                        <select id="bf3dBendingRoller" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="40"></select>
+                    </div>
+                </div>
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="Geometrie">Geometrie</h2>
+                </div>
+                <div class="bf2d-segment-table-wrapper">
+                    <table class="full-width-table" id="bf3dPointTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="Punkt">Punkt</th>
+                                <th data-i18n="X">X</th>
+                                <th data-i18n="Y">Y</th>
+                                <th data-i18n="Z">Z</th>
+                                <th data-i18n="Aktionen">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bf3dPointTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="button-group">
+                    <button type="button" id="bf3dAddPoint" class="btn-secondary" data-i18n="Punkt hinzufügen">Punkt hinzufügen</button>
+                    <button type="button" id="bf3dRemovePoint" class="btn-danger" data-i18n="Punkt löschen" disabled>Punkt löschen</button>
                 </div>
                 <div class="form-group">
-                    <label for="bf3dQuantity" data-i18n="Anzahl (n)">Anzahl (n)</label>
-                    <input type="number" id="bf3dQuantity" value="1" min="1">
+                    <label><input type="checkbox" id="bf3dSnapGrid"> <span data-i18n="Am Raster fangen">Am Raster fangen</span></label>
+                    <input type="number" id="bf3dGridSize" value="10" min="1" style="width: 60px;"> mm
                 </div>
                 <div class="form-group">
-                    <label for="bf3dDiameter" data-i18n="Durchmesser (d)">Durchmesser (d)</label>
-                    <input type="number" id="bf3dDiameter" value="10" min="1">
+                    <label><input type="checkbox" id="bf3dForceIntegers"> <span data-i18n="Ganzzahlen erzwingen">Ganzzahlen erzwingen</span></label>
                 </div>
-                <div class="form-group">
-                    <label for="bf3dSteelGrade" data-i18n="Stahlsorte (g)">Stahlsorte (g)</label>
-                    <select id="bf3dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
-                </div>
-                <div class="form-group">
-                    <label for="bf3dBendingRoller" data-i18n="Biegerolle (s)">Biegerolle (s)</label>
-                    <select id="bf3dBendingRoller" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="40"></select>
-                </div>
-            </div>
-             <div class="card-header">
-                <h2 class="card-title" data-i18n="Geometrie">Geometrie</h2>
-            </div>
-            <div class="bf2d-segment-table-wrapper">
-                <table class="full-width-table" id="bf3dPointTable">
-                    <thead>
-                        <tr>
-                            <th data-i18n="Punkt">Punkt</th>
-                            <th data-i18n="X">X</th>
-                            <th data-i18n="Y">Y</th>
-                            <th data-i18n="Z">Z</th>
-                            <th data-i18n="Aktionen">Aktionen</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bf3dPointTableBody"></tbody>
-                </table>
-            </div>
-            <div class="button-group">
-                <button type="button" id="bf3dAddPoint" class="btn-secondary" data-i18n="Punkt hinzufügen">Punkt hinzufügen</button>
-                <button type="button" id="bf3dRemovePoint" class="btn-danger" data-i18n="Punkt löschen" disabled>Punkt löschen</button>
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="bf3dSnapGrid"> <span data-i18n="Am Raster fangen">Am Raster fangen</span></label>
-                <input type="number" id="bf3dGridSize" value="10" min="1" style="width: 60px;"> mm
-            </div>
-             <div class="form-group">
-                <label><input type="checkbox" id="bf3dForceIntegers"> <span data-i18n="Ganzzahlen erzwingen">Ganzzahlen erzwingen</span></label>
-            </div>
 
-            <div class="card-header">
-                <h2 class="card-title" data-i18n="Quick-Aktionen">Quick-Aktionen</h2>
-            </div>
-            <div class="button-group">
-                <input type="number" id="bf3dStraightLength" value="100" style="width: 80px;">
-                <select id="bf3dStraightDirection">
-                    <option value="x">X</option>
-                    <option value="y">Y</option>
-                    <option value="z">Z</option>
-                </select>
-                <button type="button" id="bf3dAddStraight" class="btn-secondary" data-i18n="Gerade hinzufügen">Gerade hinzufügen</button>
-            </div>
-            <div class="button-group">
-                <input type="number" id="bf3dArcRadius" value="50" style="width: 80px;">
-                <select id="bf3dArcPlane">
-                    <option value="xy">XY</option>
-                    <option value="yz">YZ</option>
-                    <option value="xz">XZ</option>
-                </select>
-                <select id="bf3dArcDirection" title="Drehrichtung" data-i18n-title="Drehrichtung">
-                    <option value="ccw" data-i18n="Links (CCW)">Links (CCW)</option>
-                    <option value="cw" data-i18n="Rechts (CW)">Rechts (CW)</option>
-                </select>
-                <button type="button" id="bf3dAddArc" class="btn-secondary" data-i18n="90°-Bogen hinzufügen">90°-Bogen hinzufügen</button>
+                <div class="card-header">
+                    <h2 class="card-title" data-i18n="Quick-Aktionen">Quick-Aktionen</h2>
+                </div>
+                <div class="button-group">
+                    <input type="number" id="bf3dStraightLength" value="100" style="width: 80px;">
+                    <select id="bf3dStraightDirection">
+                        <option value="x">X</option>
+                        <option value="y">Y</option>
+                        <option value="z">Z</option>
+                    </select>
+                    <button type="button" id="bf3dAddStraight" class="btn-secondary" data-i18n="Gerade hinzufügen">Gerade hinzufügen</button>
+                </div>
+                <div class="button-group">
+                    <input type="number" id="bf3dArcRadius" value="50" style="width: 80px;">
+                    <select id="bf3dArcPlane">
+                        <option value="xy">XY</option>
+                        <option value="yz">YZ</option>
+                        <option value="xz">XZ</option>
+                    </select>
+                    <select id="bf3dArcDirection" title="Drehrichtung" data-i18n-title="Drehrichtung">
+                        <option value="ccw" data-i18n="Links (CCW)">Links (CCW)</option>
+                        <option value="cw" data-i18n="Rechts (CW)">Rechts (CW)</option>
+                    </select>
+                    <button type="button" id="bf3dAddArc" class="btn-secondary" data-i18n="90°-Bogen hinzufügen">90°-Bogen hinzufügen</button>
+                </div>
             </div>
         </div>
-        <div class="preview-column">
+        <div class="bf3d-column bf3d-column--preview">
             <div class="card preview-card">
-                 <div class="card-header">
+                <div class="card-header">
                     <h2 class="card-title" data-i18n="Vorschau">Vorschau</h2>
                     <div class="bf2d-preview-controls" style="margin-left: auto;">
                         <div class="bf2d-view-toggle" role="group" aria-label="Ansicht umschalten">
@@ -897,25 +899,29 @@
                         </div>
                     </div>
                 </div>
-                    <div class="bfma-preview-container" data-view-mode="2d">
-                        <canvas id="bf3dPreview2d" style="width: 100%; height: 300px;"></canvas>
-                        <div class="bf3d-dimension-toggle-group" aria-label="Bemaßungen umschalten">
-                            <label class="bf3d-dimension-toggle">
-                                <input type="checkbox" id="bf3dToggleDimensions" checked>
-                                <span data-i18n="Maße anzeigen">Maße anzeigen</span>
-                            </label>
-                            <label class="bf3d-dimension-toggle">
-                                <input type="checkbox" id="bf3dToggleZoneLengths" checked>
-                                <span data-i18n="Zonenlängen">Zonenlängen</span>
-                            </label>
-                            <label class="bf3d-dimension-toggle">
-                                <input type="checkbox" id="bf3dToggleOverhangs" checked>
-                                <span data-i18n="Überstände">Überstände</span>
-                            </label>
-                        </div>
-                        <div id="bf3dPreview3d" class="bfma-preview-3d" style="display: none; width: 100%; height: 300px; position: relative;" aria-hidden="true"></div>
+                <div class="bf3d-preview-container" data-view-mode="2d">
+                    <div class="bf3d-preview-stage" role="img" aria-label="BF3D Vorschau">
+                        <canvas id="bf3dPreview2d"></canvas>
+                        <div id="bf3dPreview3d" class="bf3d-preview-3d" style="display: none;" aria-hidden="true"></div>
                     </div>
+                    <div class="bf3d-dimension-toggle-group" aria-label="Bemaßungen umschalten">
+                        <label class="bf3d-dimension-toggle">
+                            <input type="checkbox" id="bf3dToggleDimensions" checked>
+                            <span data-i18n="Maße anzeigen">Maße anzeigen</span>
+                        </label>
+                        <label class="bf3d-dimension-toggle">
+                            <input type="checkbox" id="bf3dToggleZoneLengths" checked>
+                            <span data-i18n="Zonenlängen">Zonenlängen</span>
+                        </label>
+                        <label class="bf3d-dimension-toggle">
+                            <input type="checkbox" id="bf3dToggleOverhangs" checked>
+                            <span data-i18n="Überstände">Überstände</span>
+                        </label>
+                    </div>
+                </div>
             </div>
+        </div>
+        <div class="bf3d-column">
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title" data-i18n="BVBS-ABS Datensatz">BVBS-ABS Datensatz</h2>

@@ -144,6 +144,7 @@ body[data-density="compact"] .settings-section {
 }
 body[data-density="compact"] .main-grid,
 body[data-density="compact"] .bf2d-layout,
+body[data-density="compact"] #bf3dView .bf3d-layout,
 body[data-density="compact"] .bfma-layout,
 body[data-density="compact"] .preview-column,
 body[data-density="compact"] .resources-layout {
@@ -3117,6 +3118,80 @@ select.status-select.done {
     grid-auto-flow: row;
 }
 
+#bf3dView .bf3d-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px) minmax(360px, 1fr) minmax(260px, 320px);
+    gap: clamp(1.5rem, 2.5vw, 2.5rem);
+    align-items: start;
+    width: 100%;
+}
+
+#bf3dView .bf3d-column {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.25rem, 2vw, 1.75rem);
+    min-width: 0;
+}
+
+#bf3dView .bf3d-column > .card {
+    margin: 0;
+}
+
+#bf3dView .bf3d-column--preview .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#bf3dView .bf3d-preview-container {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.75rem, 1.5vw, 1.25rem);
+    flex: 1;
+}
+
+#bf3dView .bf3d-preview-stage {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--card-bg-color);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    min-height: clamp(320px, 45vh, 520px);
+}
+
+#bf3dPreview2d,
+#bf3dPreview3d {
+    width: 100%;
+    height: 100%;
+    min-height: clamp(320px, 45vh, 520px);
+    display: block;
+}
+
+#bf3dPreview3d {
+    position: absolute;
+    inset: 0;
+}
+
+#bf3dView .bf3d-dimension-toggle-group {
+    margin: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+#bf3dView .bf3d-dimension-toggle input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+}
+
+#bf3dView .card textarea {
+    width: 100%;
+}
+
 #bf2dView.app-container,
 #bf3dView.app-container,
 #bfmaView.app-container {
@@ -3144,10 +3219,16 @@ body.is-bending-view .app-main {
     .bf2d-layout {
         grid-template-columns: repeat(2, minmax(320px, 1fr));
     }
+    #bf3dView .bf3d-layout {
+        grid-template-columns: repeat(2, minmax(320px, 1fr));
+    }
 }
 
 @media (max-width: 1024px) {
     .bf2d-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    #bf3dView .bf3d-layout {
         grid-template-columns: minmax(0, 1fr);
     }
 }
@@ -3705,6 +3786,19 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 #bf2dDatasetOutput {
     width: 100%;
     min-height: 240px;
+    font-family: 'Fira Code', 'Source Code Pro', monospace;
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background: var(--light-bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+#bf3dDatasetOutput {
+    width: 100%;
+    min-height: 280px;
     font-family: 'Fira Code', 'Source Code Pro', monospace;
     font-size: 0.85rem;
     border: 1px solid var(--border-color);
