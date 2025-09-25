@@ -311,7 +311,9 @@ function computeDimensionSegments(pathSegments) {
                 endAngle,
                 midAngle: startAngle + sweep / 2,
                 clockwise: segment.clockwise !== undefined ? !!segment.clockwise : sweep < 0,
-                length
+                length,
+                angleRad: angle,
+                angleDeg: THREE.MathUtils.radToDeg(angle)
             });
         }
     });
@@ -379,24 +381,13 @@ function addLineLabel(segment, offsetDistance, boundsCenter) {
 }
 
 function addArcLabel(segment, offsetDistance) {
-    const directionPrefix = segment.clockwise ? 'R' : 'L';
-    const label = createLabel(`${directionPrefix}${formatMeasurement(segment.length)} mm`, 'bf2d-dim-label--arc');
+    const angleDeg = Number(segment.angleDeg);
+    const label = createLabel(`${formatMeasurement(angleDeg)}°`, 'bf2d-dim-label--arc');
     label.position.copy(computeArcLabelPosition(segment, offsetDistance));
     state.labelRoot?.add(label);
 }
 
-function addTotalLengthLabel(totalLength, bounds, offsetDistance) {
-    if (!bounds) {
-        return;
-    }
-    const label = createLabel(`L=${formatMeasurement(totalLength)} mm`, 'bf2d-dim-label--total');
-    const center = bounds.getCenter(new THREE.Vector3());
-    const position = new THREE.Vector3(center.x, bounds.max.y + offsetDistance * 0.6, bounds.max.z + offsetDistance * 0.05);
-    label.position.copy(position);
-    state.labelRoot?.add(label);
-}
-
-function updateDimensionLabels({ segments, totalLength, settings, tubeRadius, bounds }) {
+function updateDimensionLabels({ segments, settings, tubeRadius, bounds }) {
     clearLabels();
 
     if (!settings?.showDimensions) {
@@ -406,9 +397,6 @@ function updateDimensionLabels({ segments, totalLength, settings, tubeRadius, bo
     const offsetDistance = Math.max((Number(tubeRadius) || 0) * 3, 40);
 
     if (!Array.isArray(segments) || !segments.length) {
-        if (totalLength > 0 && bounds) {
-            addTotalLengthLabel(totalLength, bounds, offsetDistance);
-        }
         return;
     }
 
@@ -427,10 +415,6 @@ function updateDimensionLabels({ segments, totalLength, settings, tubeRadius, bo
             addArcLabel(segment, offsetDistance * 0.8);
         }
     });
-
-    if (totalLength > 0 && bounds) {
-        addTotalLengthLabel(totalLength, bounds, offsetDistance);
-    }
 }
 
 function fitCameraToBounds(box, { useDefaultDirection = false, immediate = false } = {}) {
@@ -548,7 +532,6 @@ function update(data) {
 
     updateDimensionLabels({
         segments: dimensionData.segments,
-        totalLength: dimensionData.totalLength,
         settings: dimensionSettings,
         tubeRadius: radius,
         bounds: state.currentBounds
