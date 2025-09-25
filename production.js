@@ -1646,6 +1646,7 @@ function showView(view) {
         } else {
             document.body.classList.remove('is-bending-view');
         }
+        document.body.classList.toggle('is-generator-view', view === 'generatorView');
     }
     const mainElement = document.querySelector('.app-main');
     if (mainElement && typeof mainElement.scrollTo === 'function') {
