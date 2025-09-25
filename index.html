@@ -1510,6 +1510,9 @@
                                     <label for="bvbsListFilterInput" data-i18n="Filter">Filter</label>
                                     <input type="search" id="bvbsListFilterInput" data-i18n-placeholder="Filter" placeholder="Filter" autocomplete="off">
                                 </div>
+                                <div class="bvbs-print-actions">
+                                    <button type="button" id="bvbsPrintButton" class="btn-secondary" data-i18n="BVBS-Liste drucken">BVBS-Liste drucken</button>
+                                </div>
                                 <div class="bvbs-column-filter">
                                     <button type="button" id="bvbsColumnFilterToggle" class="btn-secondary" aria-expanded="false" aria-controls="bvbsColumnFilterMenu" data-i18n="Spaltenfilter">Spaltenfilter</button>
                                     <div id="bvbsColumnFilterMenu" class="bvbs-column-filter-menu" hidden aria-hidden="true">
@@ -1789,6 +1792,7 @@
             </div>
         </div>
         <div id="print-container" style="display: none;"></div>
+        <div id="bvbsPrintContainer" class="bvbs-print-container" aria-hidden="true"></div>
         <div id="standardShapeLibraryModal" class="modal-overlay" aria-hidden="true">
             <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="standardShapeLibraryModalTitle">
                 <div class="modal-header card-header">

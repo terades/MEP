@@ -26,6 +26,7 @@
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
+    let printButton, printContainer;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
     let columnVisibilityList, columnVisibilityResetBtn;
@@ -34,6 +35,17 @@
 
     const columnFilterInputs = new Map();
     const columnVisibilityInputs = new Map();
+    const NUMERIC_COLUMN_KEYS = new Set([
+        'quantity',
+        'weight',
+        'totalLength',
+        'diameter',
+        'rollDiameter',
+        'bendCount',
+        'maxSegmentLength',
+        'totalWeight',
+        'totalLengthMeters'
+    ]);
 
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
@@ -47,6 +59,31 @@
             text = text.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
         }
         return text;
+    }
+
+    function translate(key, fallback) {
+        if (typeof i18n !== 'undefined' && typeof i18n.t === 'function') {
+            return i18n.t(key);
+        }
+        return typeof fallback === 'string' ? fallback : key;
+    }
+
+    function formatPrintDate(date = new Date()) {
+        const target = date instanceof Date ? date : new Date();
+        try {
+            if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+                const locale = typeof navigator !== 'undefined' && navigator?.language
+                    ? navigator.language
+                    : undefined;
+                return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(target);
+            }
+        } catch (error) {
+            // Ignore formatting errors and use fallback below
+        }
+        if (typeof target.toLocaleString === 'function') {
+            return target.toLocaleString();
+        }
+        return target.toString();
     }
 
     const TABLE_COLUMNS = [
@@ -1091,8 +1128,12 @@
         });
 
         if (!state.sortKey || !state.sortDirection) {
-            return filteredEntries;
-        }
+        return filteredEntries;
+    }
+
+    function getVisibleColumns() {
+        return TABLE_COLUMNS.filter(column => isColumnVisible(column.key));
+    }
 
         const definition = SORT_DEFINITIONS[state.sortKey];
         if (!definition) {
@@ -1390,6 +1431,7 @@
         if (!tableBody) return;
 
         const visibleEntries = getVisibleEntries();
+        updatePrintButtonState(visibleEntries.length);
         tableBody.innerHTML = '';
 
         updateHeaderSortState();
@@ -1463,6 +1505,189 @@
         applyColumnVisibilityToTable();
     }
 
+    function updatePrintButtonState(entryCount) {
+        if (!printButton) {
+            return;
+        }
+        const hasEntries = entryCount > 0;
+        const hasColumns = getVisibleColumns().length > 0;
+        const disabled = !hasEntries || !hasColumns;
+        printButton.disabled = disabled;
+        if (disabled) {
+            printButton.setAttribute('aria-disabled', 'true');
+            const message = hasEntries
+                ? translate('Keine Spalten ausgewählt.', 'No columns selected.')
+                : translate('Keine Einträge zum Drucken verfügbar.', 'No entries available for printing.');
+            printButton.setAttribute('title', message);
+        } else {
+            printButton.removeAttribute('aria-disabled');
+            printButton.removeAttribute('title');
+        }
+    }
+
+    function createPrintMetaItem(label, value) {
+        let textValue = value;
+        if (typeof textValue === 'string') {
+            textValue = textValue.trim();
+        }
+        if (textValue === '' || textValue === null || typeof textValue === 'undefined') {
+            return null;
+        }
+        const item = document.createElement('li');
+        item.className = 'bvbs-print-meta-item';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'bvbs-print-meta-label';
+        labelEl.textContent = label;
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'bvbs-print-meta-value';
+        valueEl.textContent = String(textValue);
+
+        item.appendChild(labelEl);
+        item.appendChild(valueEl);
+        return item;
+    }
+
+    function buildPrintTable(entries, columns) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bvbs-print-wrapper';
+
+        const header = document.createElement('div');
+        header.className = 'bvbs-print-header';
+
+        const title = document.createElement('h1');
+        title.className = 'bvbs-print-title';
+        title.textContent = translate('BVBS-Liste', 'BVBS list');
+        header.appendChild(title);
+
+        const metaList = document.createElement('ul');
+        metaList.className = 'bvbs-print-meta';
+
+        const now = new Date();
+        const metaItems = [];
+        metaItems.push(createPrintMetaItem(translate('Druckdatum', 'Print date'), formatPrintDate(now)));
+        if (state.fileName) {
+            metaItems.push(createPrintMetaItem(translate('Datei', 'File'), state.fileName));
+        }
+        metaItems.push(createPrintMetaItem(translate('Einträge', 'Entries'), entries.length));
+        if (state.filterText && state.filterText.trim()) {
+            metaItems.push(createPrintMetaItem(translate('Filter', 'Filter'), state.filterText.trim()));
+        }
+
+        metaItems.filter(Boolean).forEach(item => metaList.appendChild(item));
+        if (metaList.children.length > 0) {
+            header.appendChild(metaList);
+        }
+
+        wrapper.appendChild(header);
+
+        const table = document.createElement('table');
+        table.className = 'bvbs-print-table';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        columns.forEach(column => {
+            const th = document.createElement('th');
+            th.textContent = getColumnLabel(column.key);
+            if (column.isPreview) {
+                th.classList.add('bvbs-print-preview-cell');
+            }
+            if (NUMERIC_COLUMN_KEYS.has(column.key)) {
+                th.classList.add('is-numeric');
+            }
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        entries.forEach(entry => {
+            const row = document.createElement('tr');
+            columns.forEach(column => {
+                const cell = document.createElement('td');
+                if (NUMERIC_COLUMN_KEYS.has(column.key)) {
+                    cell.classList.add('is-numeric');
+                }
+                if (column.isPreview) {
+                    cell.classList.add('bvbs-print-preview-cell');
+                    const svg = document.createElementNS(SVG_NS, 'svg');
+                    svg.setAttribute('class', 'bvbs-print-preview');
+                    renderEntryPreview(svg, entry);
+                    cell.appendChild(svg);
+                } else {
+                    const value = column.render(entry);
+                    cell.textContent = value === null || typeof value === 'undefined'
+                        ? '—'
+                        : String(value);
+                }
+                row.appendChild(cell);
+            });
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        wrapper.appendChild(table);
+
+        return wrapper;
+    }
+
+    function cleanupPrintContainer() {
+        if (!printContainer) {
+            return;
+        }
+        printContainer.innerHTML = '';
+        printContainer.classList.remove('is-active');
+        printContainer.setAttribute('aria-hidden', 'true');
+    }
+
+    function showPrintError(message) {
+        if (!statusEl) {
+            window.alert(message);
+            return;
+        }
+
+        const restoreMessage = statusEl.dataset?.baseMessage || '';
+        statusEl.textContent = message;
+        statusEl.classList.add('error-message');
+
+        window.setTimeout(() => {
+            if (!statusEl) {
+                return;
+            }
+            const currentBase = statusEl.dataset?.baseMessage || '';
+            const nextMessage = currentBase || restoreMessage;
+            statusEl.textContent = nextMessage || '';
+            statusEl.classList.remove('error-message');
+        }, 4000);
+    }
+
+    function handlePrintButtonClick() {
+        if (!printContainer) {
+            return;
+        }
+
+        const entries = getVisibleEntries();
+        if (!entries.length) {
+            showPrintError(translate('Keine Einträge zum Drucken verfügbar.', 'No entries available for printing.'));
+            return;
+        }
+
+        const columns = getVisibleColumns();
+        if (!columns.length) {
+            showPrintError(translate('Keine Spalten ausgewählt.', 'No columns selected.'));
+            return;
+        }
+
+        printContainer.innerHTML = '';
+        const content = buildPrintTable(entries, columns);
+        printContainer.appendChild(content);
+        printContainer.classList.add('is-active');
+        printContainer.setAttribute('aria-hidden', 'false');
+
+        window.print();
+        cleanupPrintContainer();
+    }
     function handleFilterChange(event) {
         const value = event?.target?.value || '';
         state.filterText = value;
@@ -1591,6 +1816,8 @@
         tableBody = document.getElementById('bvbsListTableBody');
         statusEl = document.getElementById('bvbsListImportStatus');
         filterInput = document.getElementById('bvbsListFilterInput');
+        printButton = document.getElementById('bvbsPrintButton');
+        printContainer = document.getElementById('bvbsPrintContainer');
         previewModal = document.getElementById('bvbsPreviewModal');
         previewModalSvg = document.getElementById('bvbsPreviewModalSvg');
         previewModalCloseBtn = document.getElementById('bvbsPreviewModalClose');
@@ -1615,6 +1842,12 @@
         }
         if (filterInput) {
             filterInput.addEventListener('input', handleFilterChange);
+        }
+        if (printButton) {
+            printButton.addEventListener('click', handlePrintButtonClick);
+        }
+        if (printContainer) {
+            printContainer.setAttribute('aria-hidden', 'true');
         }
         if (statusEl) {
             statusEl.dataset.baseMessage = statusEl.dataset?.baseMessage || '';
@@ -1660,6 +1893,8 @@
         updateColumnFilterToggleState();
         renderTable();
     };
+
+    window.addEventListener('afterprint', cleanupPrintContainer);
 
     document.addEventListener('DOMContentLoaded', init);
 
