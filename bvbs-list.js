@@ -5,6 +5,11 @@
     // --- CONSTANTS ---
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const ABS_START_TOKEN_REGEX = /^(BF2D|BF3D|BFWE|BFMA|BFGT|BFAU)@/;
+    const START_TYPE_MAP = {
+        BF2D: 'BWS',
+        BF3D: 'BWS',
+        BFMA: 'BWM'
+    };
     const ABS_BLOCK_START_REGEX = /(?:(?<=@)|^)([HGMAPCXYE])/g;
     const ABS_FIELD_REGEX = /([a-z])([^@]*)@/g;
 
@@ -250,6 +255,7 @@
             blocks: [],
             blockMap: new Map(),
             metadata: {},
+            displayType: '',
             segmentDefinitions: null,
             hasGeometry: false,
             lengthFromGeometry: NaN,
@@ -310,6 +316,9 @@
             entry.warningMessages.push('H-Block fehlt');
         }
 
+        const mappedType = START_TYPE_MAP[entry.type];
+        entry.displayType = mappedType || entry.metadata.type || entry.type || '';
+
         const geometryBlocks = entry.blockMap.get('G') || [];
         if (geometryBlocks.length) {
             const segments = buildSegmentsFromGeometryBlocks(geometryBlocks, entry);
@@ -339,22 +348,41 @@
         let orientation = 0;
         let current = { x: 0, y: 0 };
         const mathPoints = [{ x: 0, y: 0 }];
+        const segmentScreenData = [];
+        const bendLabelData = [];
         const rollRadius = (Number(rollDiameter) || 0) / 2;
 
         segments.forEach((segment, index) => {
+            const startPoint = { ...current };
             const length = Math.max(0, Number(segment.length) || 0);
-            const dir = { x: Math.cos(orientation), y: Math.sin(orientation) };
+            const startOrientation = orientation;
+            const dir = { x: Math.cos(startOrientation), y: Math.sin(startOrientation) };
             current = { x: current.x + dir.x * length, y: current.y + dir.y * length };
             mathPoints.push({ ...current });
 
+            const screenStart = { x: startPoint.x, y: -startPoint.y };
+            const screenEnd = { x: current.x, y: -current.y };
+            segmentScreenData.push({ start: screenStart, end: screenEnd });
+
             const isLast = index === segments.length - 1;
-            if (isLast) return;
+            if (isLast) {
+                return;
+            }
 
             const angleDeg = Number(segment.bendAngle) || 0;
             const sign = segment.bendDirection === 'R' ? -1 : 1;
             const signedAngleRad = (angleDeg * Math.PI / 180) * sign;
-            const radius = enforceMinimumRadius(rollRadius, rollRadius);
+            const nextOrientation = startOrientation + signedAngleRad;
 
+            const startDirScreen = { x: Math.cos(startOrientation), y: -Math.sin(startOrientation) };
+            const endDirScreen = { x: Math.cos(nextOrientation), y: -Math.sin(nextOrientation) };
+            bendLabelData.push({
+                position: { ...screenEnd },
+                startDir: startDirScreen,
+                endDir: endDirScreen
+            });
+
+            const radius = enforceMinimumRadius(rollRadius, rollRadius);
             if (angleDeg > 0 && radius > 0) {
                 const arcStart = { ...current };
                 const leftNormal = { x: -dir.y, y: dir.x };
@@ -368,7 +396,8 @@
                 }
                 current = { ...mathPoints[mathPoints.length - 1] };
             }
-            orientation += signedAngleRad;
+
+            orientation = nextOrientation;
         });
 
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -403,7 +432,7 @@
             .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
             .join(' ');
 
-        return { pathData, viewBox };
+        return { pathData, viewBox, screenPoints, segmentScreenData, bendLabelData };
     }
 
     function renderEntryPreview(svg, entry) {
@@ -423,9 +452,91 @@
             return;
         }
 
-        const { viewBox, pathData } = geometry;
+        const { viewBox, pathData, segmentScreenData = [], bendLabelData = [] } = geometry;
         svg.setAttribute('viewBox', `${viewBox.x.toFixed(2)} ${viewBox.y.toFixed(2)} ${viewBox.width.toFixed(2)} ${viewBox.height.toFixed(2)}`);
-        svg.innerHTML = `<path class="bf2d-svg-path" d="${pathData}" style="stroke-width: ${viewBox.width / 50};" />`;
+        svg.innerHTML = '';
+
+        const path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('class', 'bf2d-svg-path');
+        const strokeReference = Math.max(viewBox.width, viewBox.height) || 100;
+        const strokeWidth = Math.max(Math.min(strokeReference / 50, 6), 1.25);
+        path.setAttribute('d', pathData);
+        path.style.strokeWidth = `${strokeWidth.toFixed(2)}`;
+        svg.appendChild(path);
+
+        const labelLayer = document.createElementNS(SVG_NS, 'g');
+        labelLayer.setAttribute('class', 'bf2d-preview-labels');
+        svg.appendChild(labelLayer);
+
+        const baseSize = Math.max(viewBox.width, viewBox.height) || 100;
+        const lengthFontSize = Math.min(Math.max(baseSize * 0.12, 8), 20);
+        const angleFontSize = Math.min(Math.max(baseSize * 0.1, 8), 18);
+        const lengthOffset = Math.min(Math.max(baseSize * 0.08, 12), baseSize * 0.3);
+        const angleOffset = Math.min(Math.max(baseSize * 0.12, 14), baseSize * 0.35);
+        const outlineWidth = Math.max(baseSize / 400, 0.75);
+
+        function createLabel(text, x, y, className, fontSize) {
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            const label = document.createElementNS(SVG_NS, 'text');
+            label.setAttribute('class', className);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('dominant-baseline', 'middle');
+            label.setAttribute('font-size', fontSize.toFixed(2));
+            label.setAttribute('x', x.toFixed(2));
+            label.setAttribute('y', y.toFixed(2));
+            label.setAttribute('fill', 'var(--text-color, #1f2937)');
+            label.setAttribute('stroke', 'var(--card-bg-color, #ffffff)');
+            label.setAttribute('stroke-width', outlineWidth.toFixed(2));
+            label.setAttribute('paint-order', 'stroke');
+            label.setAttribute('stroke-linejoin', 'round');
+            label.textContent = text;
+            labelLayer.appendChild(label);
+        }
+
+        segmentScreenData.forEach((data, index) => {
+            const lengthValue = Number(segments[index]?.length);
+            if (!Number.isFinite(lengthValue) || lengthValue <= 0) {
+                return;
+            }
+            const { start, end } = data;
+            if (!start || !end) return;
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const distance = Math.hypot(dx, dy);
+            if (!Number.isFinite(distance) || distance === 0) return;
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            const nx = -dy / distance;
+            const ny = dx / distance;
+            const labelX = midX + nx * lengthOffset;
+            const labelY = midY + ny * lengthOffset;
+            const decimals = Number.isInteger(lengthValue) ? 0 : 1;
+            const labelText = `${formatDisplayNumber(lengthValue, decimals)} mm`;
+            createLabel(labelText, labelX, labelY, 'bf2d-dimension-text', lengthFontSize);
+        });
+
+        bendLabelData.forEach((bendInfo, index) => {
+            const angleValue = Number(segments[index]?.bendAngle);
+            if (!Number.isFinite(angleValue) || angleValue < 0) {
+                return;
+            }
+            const { position, startDir, endDir } = bendInfo || {};
+            if (!position || !startDir || !endDir) return;
+            let direction = { x: startDir.x + endDir.x, y: startDir.y + endDir.y };
+            let magnitude = Math.hypot(direction.x, direction.y);
+            if (!Number.isFinite(magnitude) || magnitude < 1e-3) {
+                direction = { x: -startDir.y, y: startDir.x };
+                magnitude = Math.hypot(direction.x, direction.y);
+            }
+            if (!Number.isFinite(magnitude) || magnitude < 1e-3) return;
+            direction.x /= magnitude;
+            direction.y /= magnitude;
+            const labelX = position.x + direction.x * angleOffset;
+            const labelY = position.y + direction.y * angleOffset;
+            const decimals = angleValue % 1 === 0 ? 0 : 1;
+            const labelText = `${formatDisplayNumber(angleValue, decimals)}°`;
+            createLabel(labelText, labelX, labelY, 'bf2d-angle-text', angleFontSize);
+        });
     }
 
     // --- RENDERING ---
@@ -445,7 +556,7 @@
 
         state.entries.forEach(entry => {
             const row = tableBody.insertRow();
-            row.insertCell().textContent = entry.metadata.type || '—';
+            row.insertCell().textContent = entry.displayType || '—';
             row.insertCell().textContent = entry.metadata.position || '—';
             row.insertCell().textContent = formatDisplayNumber(entry.metadata.diameter, 1);
             row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLength, 1);
