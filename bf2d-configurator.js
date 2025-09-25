@@ -983,12 +983,64 @@
         return true;
     }
 
-    function handleLoadSelectedShape() {
+    function loadShapeSnapshot(name, data, options = {}) {
+        const { silent = false } = options;
+        if (!data || typeof data !== 'object') {
+            if (!silent && typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht geladen werden.') : 'Biegeform konnte nicht geladen werden.';
+                showFeedback('bf2dStatus', message, 'error', 4000);
+            }
+            return false;
+        }
+        if (!initialized) {
+            init();
+        }
+        const sanitizedName = sanitizeText(name);
+        if (sanitizedName) {
+            setShapeNameInputValue(sanitizedName);
+        }
+        if (!applySavedShapeData(data)) {
+            if (!silent && typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht geladen werden.') : 'Biegeform konnte nicht geladen werden.';
+                showFeedback('bf2dStatus', message, 'error', 4000);
+            }
+            return false;
+        }
+        populateSavedFormsSelect(sanitizedName || '');
+        if (!silent && typeof showFeedback === 'function') {
+            const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform geladen.') : 'Biegeform geladen.';
+            showFeedback('bf2dStatus', message, 'success', 2000);
+        }
+        return true;
+    }
+
+    function loadSavedShapeByName(name, options = {}) {
+        const { silent = false } = options;
         const storage = getLocalStorageSafe();
         if (!storage) {
-            showStorageUnavailableFeedback();
-            return;
+            if (!silent) {
+                showStorageUnavailableFeedback();
+            }
+            return false;
         }
+        const sanitizedName = sanitizeText(name);
+        if (!sanitizedName) {
+            return false;
+        }
+        const forms = readSavedForms();
+        const data = forms[sanitizedName];
+        if (!data) {
+            if (!silent && typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform nicht gefunden.') : 'Biegeform nicht gefunden.';
+                showFeedback('bf2dStatus', message, 'warning', 3000);
+            }
+            populateSavedFormsSelect('');
+            return false;
+        }
+        return loadShapeSnapshot(sanitizedName, data, { silent });
+    }
+
+    function handleLoadSelectedShape() {
         const name = resolveTargetShapeName();
         if (!name) {
             if (typeof showFeedback === 'function') {
@@ -997,29 +1049,7 @@
             }
             return;
         }
-        const forms = readSavedForms();
-        const data = forms[name];
-        if (!data) {
-            if (typeof showFeedback === 'function') {
-                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform nicht gefunden.') : 'Biegeform nicht gefunden.';
-                showFeedback('bf2dStatus', message, 'warning', 3000);
-            }
-            populateSavedFormsSelect('');
-            return;
-        }
-        setShapeNameInputValue(name);
-        if (!applySavedShapeData(data)) {
-            if (typeof showFeedback === 'function') {
-                const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht geladen werden.') : 'Biegeform konnte nicht geladen werden.';
-                showFeedback('bf2dStatus', message, 'error', 4000);
-            }
-            return;
-        }
-        populateSavedFormsSelect(name);
-        if (typeof showFeedback === 'function') {
-            const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform geladen.') : 'Biegeform geladen.';
-            showFeedback('bf2dStatus', message, 'success', 2000);
-        }
+        loadSavedShapeByName(name, { silent: false });
     }
 
     function handleDeleteSelectedShape() {
@@ -3115,7 +3145,9 @@
             renderSegmentTable();
             setPreviewViewMode(state.viewMode || '2d');
             updateOutputs();
-        }
+        },
+        loadSavedShapeByName,
+        loadShapeSnapshot
     };
 
     window.bf2dConfigurator = configurator;

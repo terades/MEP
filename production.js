@@ -845,7 +845,9 @@ function collectSaved2dShapes() {
                 steelGradeNormalized,
                 segmentCount,
                 totalLength,
-                searchText
+                searchText,
+                rawData: data,
+                storageKey: 'bf2dSavedForms'
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
@@ -854,6 +856,7 @@ function collectSaved2dShapes() {
 function collectSaved3dShapes() {
     const keys = ['bf3dSavedShapes', 'bf3dSavedForms'];
     let entries = [];
+    let sourceKey = '';
     for (const key of keys) {
         const raw = readLocalStorageJson(key);
         if (!raw) {
@@ -888,6 +891,7 @@ function collectSaved3dShapes() {
                 .filter(Boolean);
         }
         if (entries.length) {
+            sourceKey = key;
             break;
         }
     }
@@ -1020,7 +1024,9 @@ function collectSaved3dShapes() {
                 steelGradeNormalized,
                 segmentCount,
                 totalLength,
-                searchText
+                searchText,
+                rawData: data,
+                storageKey: sourceKey
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
@@ -1142,7 +1148,9 @@ function collectSavedMeshes() {
                 steelGradeNormalized: '',
                 segmentCount,
                 totalLength: Number.isFinite(length) && Number.isFinite(width) ? (length + width) : 0,
-                searchText
+                searchText,
+                rawData: state,
+                storageKey: 'bfmaSavedMeshes'
             };
         })
         .filter(Boolean)
@@ -1192,6 +1200,16 @@ function createSavedShapeCard(item) {
         card.classList.add('saved-shape-card--list');
     }
     card.dataset.shapeType = item.type;
+    if (item.id) {
+        card.dataset.shapeId = item.id;
+    }
+    card.dataset.storageKey = item.storageKey || '';
+    card.dataset.shapeName = item.name || '';
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    const editLabel = getTranslation('Bearbeiten', 'Bearbeiten');
+    card.setAttribute('aria-label', `${editLabel}: ${item.name}`);
+    card.title = `${editLabel}: ${item.name}`;
 
     const header = document.createElement('header');
     header.className = 'saved-shape-card-header';
@@ -1272,7 +1290,108 @@ function createSavedShapeCard(item) {
         card.appendChild(body);
     }
 
+    const activate = event => {
+        if (event) {
+            event.preventDefault();
+        }
+        handleSavedShapeSelection(item);
+    };
+    card.addEventListener('click', activate);
+    card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            activate(event);
+        }
+    });
+
     return card;
+}
+
+function tryLoadBf2dShape(item) {
+    if (!item || !window.bf2dConfigurator) {
+        return false;
+    }
+    if (typeof window.bf2dConfigurator.loadSavedShapeByName === 'function') {
+        const loaded = window.bf2dConfigurator.loadSavedShapeByName(item.name, { silent: true });
+        if (loaded) {
+            return true;
+        }
+    }
+    if (item.rawData && typeof window.bf2dConfigurator.loadShapeSnapshot === 'function') {
+        return window.bf2dConfigurator.loadShapeSnapshot(item.name, item.rawData, { silent: true });
+    }
+    return false;
+}
+
+function tryLoadBf3dShape(item) {
+    if (!item || !window.bf3dConfigurator) {
+        return false;
+    }
+    if (typeof window.bf3dConfigurator.loadSavedShapeByName === 'function') {
+        const loaded = window.bf3dConfigurator.loadSavedShapeByName(item.name, { silent: true });
+        if (loaded) {
+            return true;
+        }
+    }
+    if (item.rawData && typeof window.bf3dConfigurator.loadShapeSnapshot === 'function') {
+        return window.bf3dConfigurator.loadShapeSnapshot(item.name, item.rawData, { silent: true });
+    }
+    return false;
+}
+
+function tryLoadBfmaShape(item) {
+    if (!item || !window.bfmaConfigurator) {
+        return false;
+    }
+    if (typeof window.bfmaConfigurator.loadMeshByName === 'function') {
+        const loaded = window.bfmaConfigurator.loadMeshByName(item.name, { silent: true });
+        if (loaded) {
+            return true;
+        }
+    }
+    if (item.rawData && typeof window.bfmaConfigurator.loadMeshSnapshot === 'function') {
+        return window.bfmaConfigurator.loadMeshSnapshot(item.name, item.rawData, { silent: true });
+    }
+    return false;
+}
+
+function handleSavedShapeSelection(item) {
+    if (!item || !item.type) {
+        return;
+    }
+    let targetView = null;
+    if (item.type === '2d') {
+        targetView = 'bf2dView';
+    } else if (item.type === '3d') {
+        targetView = 'bf3dView';
+    } else if (item.type === 'mesh') {
+        targetView = 'bfmaView';
+    }
+    if (!targetView) {
+        return;
+    }
+    showView(targetView);
+    setTimeout(() => {
+        let loaded = false;
+        try {
+            if (item.type === '2d') {
+                loaded = tryLoadBf2dShape(item);
+            } else if (item.type === '3d') {
+                loaded = tryLoadBf3dShape(item);
+            } else if (item.type === 'mesh') {
+                loaded = tryLoadBfmaShape(item);
+            }
+        } catch (error) {
+            console.error('Failed to load saved shape', error);
+        }
+        if (!loaded) {
+            const message = getTranslation('Biegeform konnte nicht geladen werden.', 'Biegeform konnte nicht geladen werden.');
+            if (typeof window.alert === 'function') {
+                window.alert(message);
+            } else {
+                console.warn(message);
+            }
+        }
+    }, 50);
 }
 
 function renderSavedShapesGroup({ items, totalCount, gridId, countId, emptyId }) {

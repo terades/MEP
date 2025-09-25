@@ -725,7 +725,7 @@
         }
     }
 
-    function populateSavedMeshesSelect() {
+    function populateSavedMeshesSelect(selectedName = '') {
         const select = document.getElementById('bfmaSavedShapes');
         if(!select) return;
         const meshes = readSavedMeshes();
@@ -743,6 +743,9 @@
             fragment.appendChild(option);
         });
         select.appendChild(fragment);
+        if (selectedName && names.includes(selectedName)) {
+            select.value = selectedName;
+        }
         select.disabled = names.length === 0;
         document.getElementById('bfmaLoadShapeButton').disabled = names.length === 0;
         document.getElementById('bfmaDeleteShapeButton').disabled = names.length === 0;
@@ -875,33 +878,65 @@
         alert(`Matte "${name}" gespeichert.`);
     }
 
+    function loadMeshSnapshot(name, entry, options = {}) {
+        const { silent = false } = options;
+        if (!entry || typeof entry !== 'object') {
+            if (!silent) {
+                alert('Matte konnte nicht geladen werden.');
+            }
+            return false;
+        }
+        if (!initialized) {
+            init();
+        }
+        const sourceState = (typeof entry.state === 'object' && entry.state !== null) ? entry.state : entry;
+        const savedState = JSON.parse(JSON.stringify(sourceState));
+        state.header = { ...state.header, ...(savedState.header || {}) };
+        state.yBars = Array.isArray(savedState.yBars) ? savedState.yBars : [];
+        state.xBars = Array.isArray(savedState.xBars) ? savedState.xBars : [];
+        state.eBars = Array.isArray(savedState.eBars) ? savedState.eBars : [];
+        const savedBending = savedState.bending || {};
+        state.bending = {
+            active: !!savedBending.active,
+            direction: savedBending.direction || 'Gy',
+            sequence: Array.isArray(savedBending.sequence) ? savedBending.sequence : []
+        };
+        state.preview = normalizePreviewSettings(savedState.preview ?? state.preview);
+        weightAutoUpdate = false;
+        refreshIdCounters();
+        applyStateToUI();
+        document.getElementById('bfmaShapeName').value = name || '';
+        populateSavedMeshesSelect(name || '');
+        scheduleUpdate({ immediate: true });
+        if (!silent) {
+            alert(`Matte "${name}" geladen.`);
+        }
+        return true;
+    }
+
+    function loadMeshByName(name, options = {}) {
+        const { silent = false } = options;
+        const sanitized = typeof name === 'string' ? name.trim() : '';
+        if (!sanitized) {
+            return false;
+        }
+        const meshes = readSavedMeshes();
+        const saved = meshes[sanitized];
+        if (!saved) {
+            if (!silent) {
+                alert(`Matte "${sanitized}" nicht gefunden.`);
+            }
+            populateSavedMeshesSelect();
+            return false;
+        }
+        return loadMeshSnapshot(sanitized, saved, { silent });
+    }
+
     function loadSelectedMesh() {
         const select = document.getElementById('bfmaSavedShapes');
         const name = select.value;
         if (!name) return;
-        const meshes = readSavedMeshes();
-        const saved = meshes[name];
-        if (saved) {
-            // Simple state assignment, might need more robust merging
-            const savedState = JSON.parse(JSON.stringify(saved.state));
-            state.header = { ...state.header, ...(savedState.header || {}) };
-            state.yBars = Array.isArray(savedState.yBars) ? savedState.yBars : [];
-            state.xBars = Array.isArray(savedState.xBars) ? savedState.xBars : [];
-            state.eBars = Array.isArray(savedState.eBars) ? savedState.eBars : [];
-            const savedBending = savedState.bending || {};
-            state.bending = {
-                active: !!savedBending.active,
-                direction: savedBending.direction || 'Gy',
-                sequence: Array.isArray(savedBending.sequence) ? savedBending.sequence : []
-            };
-            state.preview = normalizePreviewSettings(savedState.preview ?? state.preview);
-            weightAutoUpdate = false;
-            refreshIdCounters();
-            applyStateToUI();
-            document.getElementById('bfmaShapeName').value = name;
-            scheduleUpdate({ immediate: true });
-            alert(`Matte "${name}" geladen.`);
-        }
+        loadMeshByName(name, { silent: false });
     }
 
     function deleteSelectedMesh() {
@@ -1267,6 +1302,8 @@
                 scheduleUpdate({ immediate: true });
             }
         },
-        forceUpdate: () => scheduleUpdate({ immediate: true })
+        forceUpdate: () => scheduleUpdate({ immediate: true }),
+        loadMeshByName,
+        loadMeshSnapshot
     };
 })();
