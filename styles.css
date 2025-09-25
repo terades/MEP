@@ -878,8 +878,8 @@ select {
 
 .main-grid {
     display: grid;
-    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-    gap: 1.75rem;
+    grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+    gap: 1.5rem;
     align-items: start;
     width: 100%;
 }
@@ -887,26 +887,15 @@ select {
 .input-column {
     display: flex;
     flex-direction: column;
-    position: relative;
+    min-width: 360px;
+    max-width: 440px;
 }
 
-.card-section {
+.input-column .input-scroll-container {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    min-width: 0;
-}
-
-.input-card {
-    gap: 1.5rem;
-    position: sticky;
-    top: calc(var(--header-height) + 1.5rem);
-    max-height: calc(100vh - var(--header-height) - 3rem);
-    overflow: hidden;
-}
-
-.input-card .input-scroll-container {
-    flex: 1;
+    gap: 1.35rem;
     overflow-y: auto;
     padding-right: 0.5rem;
     margin-right: -0.5rem;
@@ -914,16 +903,16 @@ select {
     scrollbar-width: thin;
 }
 
-.input-card .input-scroll-container::-webkit-scrollbar {
+.input-column .input-scroll-container::-webkit-scrollbar {
     width: 8px;
 }
 
-.input-card .input-scroll-container::-webkit-scrollbar-thumb {
+.input-column .input-scroll-container::-webkit-scrollbar-thumb {
     background-color: rgba(var(--primary-color-rgb), 0.35);
     border-radius: 999px;
 }
 
-.input-card .input-scroll-container::-webkit-scrollbar-track {
+.input-column .input-scroll-container::-webkit-scrollbar-track {
     background-color: transparent;
 }
 
@@ -958,11 +947,11 @@ select {
     .main-grid {
         grid-template-columns: minmax(0, 1fr);
     }
-    .input-card {
-        position: static;
-        max-height: none;
+    .input-column {
+        min-width: 0;
+        max-width: none;
     }
-    .input-card .input-scroll-container {
+    .input-column .input-scroll-container {
         overflow: visible;
         padding-right: 0;
         margin-right: 0;
@@ -1792,19 +1781,6 @@ h3.section-title.collapsed::after {
     margin-top: 0;
 }
 
-.input-scroll-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.35rem;
-    min-width: 0;
-}
-			.input-scroll-container::-webkit-scrollbar-thumb {
-			background: var(--text-muted-color);
-			border-radius: 10px;
-			}
-			.input-scroll-container::-webkit-scrollbar-thumb:hover {
-			background: var(--secondary-color);
-			}
 			div.zone-item-header {
 			display: flex;
 			justify-content: space-between;
