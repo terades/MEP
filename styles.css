@@ -3016,7 +3016,18 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     align-self: stretch;
 }
 
+#bvbsListView .bvbs-table-card .card-header {
+    margin-bottom: 0;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+#bvbsListView .bvbs-table-card .card-header .bvbs-filter-group {
+    margin-left: auto;
+}
+
 #bvbsListView .production-table-wrapper {
+    position: relative;
     overflow: auto;
     max-height: calc(100vh - 280px);
     border: 1px solid var(--border-color);
@@ -3024,8 +3035,11 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     background-color: var(--card-bg-color);
 }
 
-#bvbsListView .bvbs-table-card .card-header {
-    margin-bottom: 0;
+#bvbsListView .production-table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--secondary-color);
 }
 
 #bvbsListView #bvbsListImportStatus {
