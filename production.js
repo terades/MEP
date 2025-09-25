@@ -1639,6 +1639,14 @@ function showView(view) {
             el.style.display = viewId === view ? 'block' : 'none';
         }
     });
+    const bendingViews = new Set(['bf2dView', 'bf3dView', 'bfmaView']);
+    if (typeof document !== 'undefined' && document.body) {
+        if (bendingViews.has(view)) {
+            document.body.classList.add('is-bending-view');
+        } else {
+            document.body.classList.remove('is-bending-view');
+        }
+    }
     const mainElement = document.querySelector('.app-main');
     if (mainElement && typeof mainElement.scrollTo === 'function') {
         mainElement.scrollTo({ top: 0, behavior: 'auto' });
