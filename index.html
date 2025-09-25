@@ -1510,6 +1510,23 @@
                                     <label for="bvbsListFilterInput" data-i18n="Filter">Filter</label>
                                     <input type="search" id="bvbsListFilterInput" data-i18n-placeholder="Filter" placeholder="Filter" autocomplete="off">
                                 </div>
+                                <div class="bvbs-column-filter">
+                                    <button type="button" id="bvbsColumnFilterToggle" class="btn-secondary" aria-expanded="false" aria-controls="bvbsColumnFilterMenu" data-i18n="Spaltenfilter">Spaltenfilter</button>
+                                    <div id="bvbsColumnFilterMenu" class="bvbs-column-filter-menu" hidden aria-hidden="true">
+                                        <div class="column-filter-menu-header">
+                                            <h3 data-i18n="Spaltenfilter">Spaltenfilter</h3>
+                                            <button type="button" id="bvbsColumnFilterCloseBtn" class="column-filter-close-btn" data-i18n-title="Schließen" data-i18n-aria-label="Schließen" title="Schließen" aria-label="Schließen">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M18 6L6 18M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div id="bvbsColumnFilterList" class="column-filter-list"></div>
+                                        <div class="column-filter-actions">
+                                            <button type="button" id="bvbsColumnFilterResetBtn" class="column-filter-reset-btn" data-i18n="Filter zurücksetzen">Filter zurücksetzen</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="production-table-wrapper">
                                 <table id="bvbsListTable" class="full-width-table">

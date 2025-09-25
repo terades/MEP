@@ -109,6 +109,9 @@ async function loadLanguage(lang) {
         if (window.bf2dConfigurator && typeof window.bf2dConfigurator.refreshTranslations === 'function') {
             window.bf2dConfigurator.refreshTranslations();
         }
+        if (typeof window.bvbsListRefreshTranslations === 'function') {
+            window.bvbsListRefreshTranslations();
+        }
         // Fügen Sie hier alle weiteren Funktionen aus den Skripten hinzu,
         // die UI-Elemente mit Text aktualisieren.
 
@@ -153,6 +156,13 @@ function applyTranslations() {
             el.title = translations[key];
         } else {
             // console.warn(`applyTranslations: Übersetzung fehlt für Title-Schlüssel: "${key}" in Sprache "${currentLang}". Original-Title wird verwendet.`);
+        }
+    });
+
+    document.querySelectorAll("[data-i18n-aria-label]").forEach(el => {
+        const key = el.getAttribute("data-i18n-aria-label");
+        if (translations[key]) {
+            el.setAttribute('aria-label', translations[key]);
         }
     });
 }
