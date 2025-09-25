@@ -808,9 +808,10 @@ select {
 			max-width: 450px;
 			}
 			/* Damit der rechte Bereich bei Überbreite scrollt */
-			.preview-column {
-			overflow-x: auto;
-			}
+.preview-column {
+                        overflow-x: auto;
+                        min-width: 0;
+                        }
 			/* Optional: Button in der letzten Spalte zentrieren */
 			#zonesTable td:nth-child(5) .btn-delete-zone {
 			margin: auto;
@@ -837,6 +838,18 @@ select {
     }
     .app-container {
         padding: 0 calc(var(--page-side-padding) * 0.75);
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        padding: 0 calc(var(--page-side-padding) * 0.5);
+    }
+}
+
+@media (max-width: 600px) {
+    .app-container {
+        padding: 0 1rem;
     }
 }
 .app-header .btn-secondary {
@@ -2969,8 +2982,15 @@ select.status-select.done {
 
 .bf2d-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: clamp(1rem, 2vw, 1.75rem);
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .bf2d-layout {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
@@ -2981,13 +3001,13 @@ select.status-select.done {
 
 .bf2d-form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
 }
 
 .bf2d-storage-controls {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
     align-items: end;
@@ -3015,9 +3035,17 @@ select.status-select.done {
 
 .bf2d-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 0.75rem;
     margin-top: 1.25rem;
+}
+
+@media (max-width: 600px) {
+    .bf2d-form-grid,
+    .bf2d-storage-controls,
+    .bf2d-summary-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .bf2d-machine-card .card-header {
@@ -3537,12 +3565,18 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 /* BFMA Konfigurator */
 .bfma-layout {
     display: grid;
-    grid-template-columns: minmax(320px, 480px) minmax(320px, 1fr);
-    gap: 1.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: clamp(1.25rem, 2.5vw, 1.75rem);
     align-items: start;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
+    .bfma-layout {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
     .bfma-layout {
         grid-template-columns: 1fr;
     }
@@ -3588,10 +3622,18 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 
 .bfma-storage-controls {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     margin: 1.5rem 0;
     align-items: end;
+}
+
+@media (max-width: 600px) {
+    .bfma-form-grid,
+    .bfma-storage-controls,
+    .bfma-summary-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .bfma-storage-actions {

@@ -1639,6 +1639,13 @@ function showView(view) {
             el.style.display = viewId === view ? 'block' : 'none';
         }
     });
+    const mainElement = document.querySelector('.app-main');
+    if (mainElement && typeof mainElement.scrollTo === 'function') {
+        mainElement.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    }
     setActiveNavigation(view);
     if (view === 'productionView') {
         renderProductionList();
