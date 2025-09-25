@@ -27,21 +27,19 @@
         <script src="production.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
     </head>
-    <body>
-        <aside id="appSidebar" class="app-sidebar" aria-label="Hauptnavigation" aria-expanded="false" data-state="collapsed">
-            <div class="sidebar-top">
+    <body class="sidebar-open">
+        <aside id="appSidebar" class="app-sidebar" aria-label="Hauptnavigation" aria-expanded="true" data-state="expanded">
+            <div class="sidebar-header">
                 <div class="sidebar-brand">
                     <span class="sidebar-logo">MEP</span>
-                    <span class="sidebar-brand-text">BVBS Suite</span>
+                    <div class="sidebar-brand-meta">
+                        <span class="sidebar-brand-text">BVBS Suite</span>
+                        <span class="sidebar-brand-subtitle">Produktivitätsplattform</span>
+                    </div>
                 </div>
-                <button type="button" class="sidebar-toggle sidebar-toggle--inline" data-sidebar-toggle aria-expanded="false" aria-label="Menü ausklappen">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
             </div>
             <div class="sidebar-scroll">
-                <div class="sidebar-section">
+                <nav class="sidebar-section">
                     <p class="sidebar-section-title" data-i18n="Arbeitsbereiche">Arbeitsbereiche</p>
                     <button id="showGeneratorBtn" class="sidebar-link" data-view-target="generatorView" data-i18n-title="Generator" title="Generator">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +57,7 @@
                                 <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                         </button>
-                        <div class="sidebar-submenu-list" data-submenu-list hidden>
+                        <div class="sidebar-submenu-list" data-submenu-list aria-hidden="true">
                             <button id="showBf2dBtn" class="sidebar-link sidebar-submenu-link" data-view-target="bf2dView" data-i18n-title="Biegeformen 2D" title="Biegeformen 2D">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M4 5h8l4 4h4v2h-4l-4-4H4v10H2V5c0-1.1.9-2 2-2h10l4 4h4v2h-4l-4-4H4" />
@@ -92,8 +90,8 @@
                         </svg>
                         <span class="sidebar-text" data-i18n="Produktion">Produktion</span>
                     </button>
-                </div>
-                <div class="sidebar-section">
+                </nav>
+                <nav class="sidebar-section">
                     <p class="sidebar-section-title" data-i18n="Stammdaten">Stammdaten</p>
                     <button id="showResourcesBtn" class="sidebar-link" data-view-target="resourcesView" data-i18n-title="Ressourcen" title="Ressourcen">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -101,8 +99,8 @@
                         </svg>
                         <span class="sidebar-text" data-i18n="Ressourcen">Ressourcen</span>
                     </button>
-                </div>
-                <div class="sidebar-section">
+                </nav>
+                <nav class="sidebar-section">
                     <p class="sidebar-section-title" data-i18n="Schnellaktionen">Schnellaktionen</p>
                     <button id="quickReleaseButton" class="sidebar-link sidebar-link--action" data-i18n-title="Freigeben" title="Freigeben">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
