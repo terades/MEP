@@ -670,7 +670,7 @@ select {
     background: linear-gradient(135deg, var(--header-gradient-start), var(--header-gradient-end));
     color: var(--header-text-color);
     box-shadow: 0 24px 48px rgba(15, 23, 42, 0.4);
-    margin-bottom: 1.75rem;
+    margin-bottom: clamp(0.75rem, 1.5vw, 1.25rem);
     position: sticky;
     top: 0;
     z-index: 1400;
@@ -997,7 +997,7 @@ select {
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
     .app-header-wrapper {
-        padding: 1.1rem 0 1.6rem;
+        padding: 0.75rem 0 1.1rem;
     }
     .app-header {
         min-height: 64px;
@@ -1670,7 +1670,7 @@ body.sidebar-open .sidebar-overlay {
 
 @media (max-width: 768px) {
     .app-header-wrapper {
-        padding: 0.9rem 0 1.35rem;
+        padding: 0.65rem 0 1rem;
     }
     .app-header {
         padding: 0.9rem calc(var(--page-side-padding) * 0.55);
