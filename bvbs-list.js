@@ -21,6 +21,8 @@
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl;
+    let previewModal, previewModalSvg, previewModalCloseBtn;
+    let lastPreviewTrigger = null;
 
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
@@ -594,6 +596,56 @@
         });
     }
 
+    function handlePreviewKeydown(event) {
+        if (event.key === 'Escape') {
+            closePreviewModal();
+        }
+    }
+
+    function openPreviewModal(entry) {
+        if (!previewModal || !previewModalSvg || !entry) {
+            return;
+        }
+
+        previewModalSvg.innerHTML = '';
+        previewModalSvg.removeAttribute('viewBox');
+        renderEntryPreview(previewModalSvg, entry);
+
+        previewModal.classList.add('visible');
+        previewModal.setAttribute('aria-hidden', 'false');
+
+        document.addEventListener('keydown', handlePreviewKeydown);
+
+        if (previewModalCloseBtn) {
+            previewModalCloseBtn.focus({ preventScroll: true });
+        }
+    }
+
+    function closePreviewModal() {
+        if (!previewModal) {
+            return;
+        }
+
+        previewModal.classList.remove('visible');
+        previewModal.setAttribute('aria-hidden', 'true');
+
+        if (previewModalSvg) {
+            previewModalSvg.innerHTML = '';
+            previewModalSvg.removeAttribute('viewBox');
+        }
+
+        document.removeEventListener('keydown', handlePreviewKeydown);
+
+        if (lastPreviewTrigger && !document.body.contains(lastPreviewTrigger)) {
+            lastPreviewTrigger = null;
+        }
+
+        if (lastPreviewTrigger) {
+            lastPreviewTrigger.focus({ preventScroll: true });
+            lastPreviewTrigger = null;
+        }
+    }
+
     // --- RENDERING ---
     function renderTable() {
         if (!tableBody) return;
@@ -629,15 +681,28 @@
             row.insertCell().textContent = entry.metadata.rawLine || entry.originalLine || entry.rawLine || '—';
 
             const previewCell = row.insertCell();
-            previewCell.style.width = '150px';
-            previewCell.style.height = '75px';
+            previewCell.classList.add('bvbs-preview-cell');
+
+            const previewButton = document.createElement('button');
+            previewButton.type = 'button';
+            previewButton.className = 'bvbs-preview-trigger';
+            const enlargeLabel = typeof i18n !== 'undefined' ? i18n.t('Vergrößern') : 'Enlarge';
+            previewButton.setAttribute('data-i18n-title', 'Vergrößern');
+            previewButton.setAttribute('data-i18n-aria-label', 'Vergrößern');
+            previewButton.setAttribute('title', enlargeLabel);
+            previewButton.setAttribute('aria-label', enlargeLabel);
+
             const svg = document.createElementNS(SVG_NS, 'svg');
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
-            svg.style.display = 'block';
-            previewCell.appendChild(svg);
+            svg.setAttribute('class', 'bvbs-preview-svg');
+            previewButton.appendChild(svg);
+            previewCell.appendChild(previewButton);
 
             renderEntryPreview(svg, entry);
+
+            previewButton.addEventListener('click', () => {
+                lastPreviewTrigger = previewButton;
+                openPreviewModal(entry);
+            });
         });
     }
 
@@ -706,6 +771,9 @@
         openUploadBtn = document.getElementById('bvbsListOpenUploadBtn');
         tableBody = document.getElementById('bvbsListTableBody');
         statusEl = document.getElementById('bvbsListImportStatus');
+        previewModal = document.getElementById('bvbsPreviewModal');
+        previewModalSvg = document.getElementById('bvbsPreviewModalSvg');
+        previewModalCloseBtn = document.getElementById('bvbsPreviewModalClose');
 
         if (openUploadBtn && fileInput) {
             openUploadBtn.addEventListener('click', () => fileInput.click());
@@ -717,6 +785,16 @@
             dropZone.addEventListener('dragover', handleDragOver);
             dropZone.addEventListener('dragleave', handleDragLeave);
             dropZone.addEventListener('drop', handleDrop);
+        }
+        if (previewModalCloseBtn) {
+            previewModalCloseBtn.addEventListener('click', closePreviewModal);
+        }
+        if (previewModal) {
+            previewModal.addEventListener('click', event => {
+                if (event.target === previewModal) {
+                    closePreviewModal();
+                }
+            });
         }
 
         renderTable(); // Initial render for empty state
