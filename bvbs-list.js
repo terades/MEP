@@ -20,17 +20,20 @@
         filterText: '',
         sortKey: null,
         sortDirection: null,
-        columnFilters: {}
+        columnFilters: {},
+        columnVisibility: {}
     };
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
+    let columnVisibilityList, columnVisibilityResetBtn;
     let lastPreviewTrigger = null;
     let tableHeaders = [];
 
     const columnFilterInputs = new Map();
+    const columnVisibilityInputs = new Map();
 
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
@@ -907,6 +910,76 @@
         return combined.includes(normalizedSearchTerm);
     }
 
+    function ensureColumnVisibilityState() {
+        if (!state.columnVisibility || typeof state.columnVisibility !== 'object') {
+            state.columnVisibility = {};
+        }
+
+        TABLE_COLUMNS.forEach(column => {
+            if (typeof state.columnVisibility[column.key] === 'undefined') {
+                state.columnVisibility[column.key] = true;
+            }
+        });
+    }
+
+    function isColumnVisible(columnKey) {
+        ensureColumnVisibilityState();
+        return state.columnVisibility[columnKey] !== false;
+    }
+
+    function isColumnVisibilityModified() {
+        ensureColumnVisibilityState();
+        return TABLE_COLUMNS.some(column => state.columnVisibility[column.key] === false);
+    }
+
+    function setColumnVisibility(columnKey, visible, options = {}) {
+        if (!columnKey) {
+            return;
+        }
+
+        ensureColumnVisibilityState();
+        state.columnVisibility[columnKey] = visible !== false;
+
+        if (!options.skipInputUpdate) {
+            const input = columnVisibilityInputs.get(columnKey);
+            if (input) {
+                input.checked = state.columnVisibility[columnKey];
+            }
+        }
+
+        applyColumnVisibilityToTable();
+        updateColumnFilterToggleState();
+    }
+
+    function resetColumnVisibility() {
+        ensureColumnVisibilityState();
+
+        let changed = false;
+        TABLE_COLUMNS.forEach(column => {
+            if (state.columnVisibility[column.key] === false) {
+                state.columnVisibility[column.key] = true;
+                changed = true;
+            }
+        });
+
+        columnVisibilityInputs.forEach(input => {
+            input.checked = true;
+        });
+
+        if (changed) {
+            applyColumnVisibilityToTable();
+        }
+
+        updateColumnFilterToggleState();
+    }
+
+    function getVisibleColumnCount() {
+        ensureColumnVisibilityState();
+        return TABLE_COLUMNS.reduce((count, column) => (
+            count + (state.columnVisibility[column.key] === false ? 0 : 1)
+        ), 0);
+    }
+
     function isColumnFilterActive() {
         if (!state.columnFilters || typeof state.columnFilters !== 'object') {
             return false;
@@ -958,7 +1031,8 @@
     }
 
     function getColumnLabel(columnKey) {
-        const header = document.querySelector(`#bvbsListTable thead th[data-sort-key="${columnKey}"]`);
+        const selector = `#bvbsListTable thead th[data-column-key="${columnKey}"]`;
+        const header = document.querySelector(selector) || document.querySelector(`#bvbsListTable thead th[data-sort-key="${columnKey}"]`);
         if (header && typeof header.textContent === 'string') {
             const trimmed = header.textContent.trim();
             if (trimmed) {
@@ -1066,13 +1140,25 @@
     }
 
     function updateColumnFilterToggleState() {
-        if (!columnFilterToggle) {
+        const filtersActive = isColumnFilterActive();
+        const visibilityModified = isColumnVisibilityModified();
+        const active = filtersActive || visibilityModified;
+
+        if (columnFilterToggle) {
+            columnFilterToggle.classList.toggle('is-active', active);
+            columnFilterToggle.setAttribute('data-filter-active', filtersActive ? 'true' : 'false');
+            columnFilterToggle.setAttribute('data-visibility-active', visibilityModified ? 'true' : 'false');
+        }
+
+        updateColumnVisibilityResetButtonState();
+    }
+
+    function updateColumnVisibilityResetButtonState() {
+        if (!columnVisibilityResetBtn) {
             return;
         }
 
-        const active = isColumnFilterActive();
-        columnFilterToggle.classList.toggle('is-active', active);
-        columnFilterToggle.setAttribute('data-filter-active', active ? 'true' : 'false');
+        columnVisibilityResetBtn.disabled = !isColumnVisibilityModified();
     }
 
     function handleColumnFilterInput(event) {
@@ -1098,6 +1184,28 @@
         }
 
         renderTable();
+    }
+
+    function handleColumnVisibilityInput(event) {
+        const input = event?.target;
+        if (!input || !(input instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const columnKey = input.dataset?.columnKey;
+        if (!columnKey) {
+            return;
+        }
+
+        if (!input.checked) {
+            const visibleCount = getVisibleColumnCount();
+            if (visibleCount <= 1) {
+                input.checked = true;
+                return;
+            }
+        }
+
+        setColumnVisibility(columnKey, input.checked, { skipInputUpdate: true });
     }
 
     function clearColumnFilters(options = {}) {
@@ -1179,7 +1287,37 @@
     }
 
     function buildColumnFilterMenu() {
+        ensureColumnVisibilityState();
+
+        if (columnVisibilityList) {
+            columnVisibilityInputs.clear();
+            columnVisibilityList.innerHTML = '';
+
+            TABLE_COLUMNS.forEach(column => {
+                const item = document.createElement('label');
+                item.className = 'column-visibility-item';
+                item.setAttribute('for', `bvbsColumnVisibility_${column.key}`);
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `bvbsColumnVisibility_${column.key}`;
+                checkbox.dataset.columnKey = column.key;
+                checkbox.checked = isColumnVisible(column.key);
+                checkbox.addEventListener('change', handleColumnVisibilityInput);
+
+                const labelText = getColumnLabel(column.key);
+                const span = document.createElement('span');
+                span.textContent = labelText;
+
+                item.appendChild(checkbox);
+                item.appendChild(span);
+                columnVisibilityList.appendChild(item);
+                columnVisibilityInputs.set(column.key, checkbox);
+            });
+        }
+
         if (!columnFilterList) {
+            updateColumnVisibilityResetButtonState();
             return;
         }
 
@@ -1216,6 +1354,36 @@
             columnFilterList.appendChild(item);
             columnFilterInputs.set(column.key, input);
         });
+
+        updateColumnVisibilityResetButtonState();
+    }
+
+    function applyColumnVisibilityToTable() {
+        ensureColumnVisibilityState();
+
+        const table = document.getElementById('bvbsListTable');
+        if (!table) {
+            return;
+        }
+
+        TABLE_COLUMNS.forEach(column => {
+            const visible = isColumnVisible(column.key);
+            const header = table.querySelector(`thead th[data-column-key="${column.key}"]`);
+            if (header) {
+                header.hidden = !visible;
+            }
+
+            const cells = table.querySelectorAll(`tbody td[data-column-key="${column.key}"]`);
+            cells.forEach(cell => {
+                cell.hidden = !visible;
+            });
+        });
+
+        const visibleColumnCount = Math.max(getVisibleColumnCount(), 1);
+        const adjustableCells = table.querySelectorAll('tbody td[data-colspan-adjust="true"]');
+        adjustableCells.forEach(cell => {
+            cell.colSpan = visibleColumnCount;
+        });
     }
 
     function renderTable() {
@@ -1231,7 +1399,8 @@
         if (state.entries.length === 0) {
             const row = tableBody.insertRow();
             const cell = row.insertCell();
-            cell.colSpan = TABLE_COLUMNS.length;
+            cell.dataset.colspanAdjust = 'true';
+            cell.colSpan = Math.max(getVisibleColumnCount(), 1);
             cell.textContent = typeof i18n !== 'undefined'
                 ? i18n.t('Keine Daten zum Anzeigen. Bitte laden Sie eine BVBS-Datei hoch.')
                 : 'No data to display. Please upload a BVBS file.';
@@ -1243,7 +1412,8 @@
         if (visibleEntries.length === 0) {
             const row = tableBody.insertRow();
             const cell = row.insertCell();
-            cell.colSpan = TABLE_COLUMNS.length;
+            cell.dataset.colspanAdjust = 'true';
+            cell.colSpan = Math.max(getVisibleColumnCount(), 1);
             cell.textContent = typeof i18n !== 'undefined'
                 ? i18n.t('Keine Einträge entsprechen dem aktuellen Filter.')
                 : 'No entries match the current filter.';
@@ -1257,6 +1427,7 @@
 
             TABLE_COLUMNS.forEach(column => {
                 const cell = row.insertCell();
+                cell.dataset.columnKey = column.key;
                 if (column.className) {
                     cell.classList.add(column.className);
                 }
@@ -1288,6 +1459,8 @@
                 cell.textContent = column.render(entry);
             });
         });
+
+        applyColumnVisibilityToTable();
     }
 
     function handleFilterChange(event) {
@@ -1426,6 +1599,8 @@
         columnFilterList = document.getElementById('bvbsColumnFilterList');
         columnFilterResetBtn = document.getElementById('bvbsColumnFilterResetBtn');
         columnFilterCloseBtn = document.getElementById('bvbsColumnFilterCloseBtn');
+        columnVisibilityList = document.getElementById('bvbsColumnVisibilityList');
+        columnVisibilityResetBtn = document.getElementById('bvbsColumnVisibilityResetBtn');
 
         if (openUploadBtn && fileInput) {
             openUploadBtn.addEventListener('click', () => fileInput.click());
@@ -1455,6 +1630,7 @@
             });
         }
 
+        ensureColumnVisibilityState();
         buildColumnFilterMenu();
         updateColumnFilterToggleState();
 
@@ -1463,6 +1639,9 @@
         }
         if (columnFilterResetBtn) {
             columnFilterResetBtn.addEventListener('click', () => clearColumnFilters());
+        }
+        if (columnVisibilityResetBtn) {
+            columnVisibilityResetBtn.addEventListener('click', () => resetColumnVisibility());
         }
         if (columnFilterCloseBtn) {
             columnFilterCloseBtn.addEventListener('click', () => closeColumnFilterMenu({ focusToggle: true }));
@@ -1476,9 +1655,8 @@
     }
 
     window.bvbsListRefreshTranslations = function () {
-        if (columnFilterList) {
-            buildColumnFilterMenu();
-        }
+        ensureColumnVisibilityState();
+        buildColumnFilterMenu();
         updateColumnFilterToggleState();
         renderTable();
     };
