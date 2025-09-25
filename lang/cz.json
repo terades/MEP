@@ -278,7 +278,7 @@
   "Nach oben": "Nahoru",
   "Nach unten": "Dolů",
   "Segment entfernen": "Odstranit segment",
-  "Mindestens zwei Segmente erforderlich.": "Jsou potřeba alespoň dva segmenty.",
+  "Mindestens ein Segment erforderlich.": "Je potřeba alespoň jeden segment.",
   "Segment {index}: Länge muss größer als 0 sein.": "Segment {index}: délka musí být větší než 0.",
   "Segment {index}: Biegewinkel muss zwischen 0° und 180° liegen.": "Segment {index}: úhel ohybu musí být mezi 0° a 180°.",
   "Segment {index}: Radius muss größer als 0 sein, wenn ein Winkel definiert ist.": "Segment {index}: poloměr musí být větší než 0, pokud je zadán úhel.",

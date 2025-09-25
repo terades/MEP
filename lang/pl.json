@@ -278,7 +278,7 @@
   "Nach oben": "Do góry",
   "Nach unten": "W dół",
   "Segment entfernen": "Usuń segment",
-  "Mindestens zwei Segmente erforderlich.": "Wymagane są co najmniej dwa segmenty.",
+  "Mindestens ein Segment erforderlich.": "Wymagany jest co najmniej jeden segment.",
   "Segment {index}: Länge muss größer als 0 sein.": "Segment {index}: długość musi być większa od 0.",
   "Segment {index}: Biegewinkel muss zwischen 0° und 180° liegen.": "Segment {index}: kąt gięcia musi mieścić się w przedziale 0°–180°.",
   "Segment {index}: Radius muss größer als 0 sein, wenn ein Winkel definiert ist.": "Segment {index}: promień musi być większy od 0, jeśli zdefiniowano kąt.",
