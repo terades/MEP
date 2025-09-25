@@ -4,6 +4,7 @@
         project: '',
         order: '',
         position: '',
+        type: 'BWS',
         diameter: 12,
         rollDiameter: 48,
         quantity: 1,
@@ -515,6 +516,7 @@
             { id: 'bf2dProject', key: 'project', parser: value => (value || '').trim() },
             { id: 'bf2dOrder', key: 'order', parser: value => (value || '').trim() },
             { id: 'bf2dPosition', key: 'position', parser: value => (value || '').trim() },
+            { id: 'bf2dType', key: 'type', parser: value => (value || '').trim() },
             {
                 id: 'bf2dDiameter',
                 key: 'diameter',
@@ -2187,6 +2189,7 @@
         const project = sanitizeText(state.meta.project);
         const order = sanitizeText(state.meta.order);
         const position = sanitizeText(state.meta.position);
+        const type = sanitizeText(state.meta.type) || 'BWS';
         const steelGrade = sanitizeText(state.meta.steelGrade);
         const remark = sanitizeText(state.meta.remark);
         const diameter = Number(state.meta.diameter) || 0;
@@ -2197,7 +2200,7 @@
         lines.push('BVBS;3.1;ABS');
         lines.push('ST;FORM;BF2D');
         lines.push(`ID;${project};${order};${position};${remark}`);
-        lines.push(`PR;DIAMETER;${formatNumberForDataset(diameter)};STEEL;${steelGrade};QUANTITY;${quantity};S;${formatNumberForDataset(Math.max(rollDiameter, 0))}`);
+        lines.push(`PR;TYPE;${type};DIAMETER;${formatNumberForDataset(diameter)};STEEL;${steelGrade};QUANTITY;${quantity};S;${formatNumberForDataset(Math.max(rollDiameter, 0))}`);
         lines.push(`RE;STRAIGHT;${formatNumberForDataset(summary.straightLength)};ARC;${formatNumberForDataset(summary.arcLength)};TOTAL;${formatNumberForDataset(summary.totalLength)}`);
 
         state.segments.forEach((segment, index) => {
@@ -2599,6 +2602,7 @@
                 project: getFirstFieldValue(headerBlock, 'j') || '',
                 order: getFirstFieldValue(headerBlock, 'i') || '',
                 position: getFirstFieldValue(headerBlock, 'p') || '',
+                type: getFirstFieldValue(headerBlock, 't') || '',
                 diameter,
                 diameterRaw: typeof diameterRaw === 'string' ? diameterRaw : '',
                 totalLength: Number.isFinite(totalLength) ? totalLength : NaN,
@@ -2613,6 +2617,7 @@
                 project: '',
                 order: '',
                 position: '',
+                type: '',
                 diameter: NaN,
                 diameterRaw: '',
                 totalLength: NaN,
@@ -3065,6 +3070,7 @@
         meta.project = header.project || META_DEFAULTS.project;
         meta.order = header.order || META_DEFAULTS.order;
         meta.position = header.position || META_DEFAULTS.position;
+        meta.type = header.type || META_DEFAULTS.type;
         meta.steelGrade = header.steelGrade || META_DEFAULTS.steelGrade;
         meta.remark = header.remark || META_DEFAULTS.remark;
         const quantity = Number.isFinite(header.quantity) && header.quantity > 0 ? Math.round(header.quantity) : META_DEFAULTS.quantity;
