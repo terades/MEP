@@ -31,6 +31,8 @@
         offsetY: 0
     };
 
+    const SAVED_SHAPE_STORAGE_KEYS = Object.freeze(['bf3dSavedShapes', 'bf3dSavedForms']);
+
     function translate(key, fallback = key) {
         if (window.i18n && typeof window.i18n.t === 'function') {
             const translated = window.i18n.t(key);
@@ -1021,12 +1023,187 @@
         scheduleUpdate();
     }
 
+    function getLocalStorageSafe() {
+        try {
+            if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+                return null;
+            }
+            return window.localStorage;
+        } catch (error) {
+            console.warn('localStorage nicht verfügbar', error);
+            return null;
+        }
+    }
+
+    function readSavedShapesFromKey(key) {
+        const storage = getLocalStorageSafe();
+        if (!storage) {
+            return null;
+        }
+        try {
+            const raw = storage.getItem(key);
+            if (!raw) {
+                return null;
+            }
+            return JSON.parse(raw);
+        } catch (error) {
+            console.warn('Gespeicherte BF3D-Formen konnten nicht gelesen werden', error);
+            return null;
+        }
+    }
+
+    function findSavedShapeByName(name) {
+        const target = String(name || '').trim().toLowerCase();
+        if (!target) {
+            return null;
+        }
+        for (const key of SAVED_SHAPE_STORAGE_KEYS) {
+            const stored = readSavedShapesFromKey(key);
+            if (!stored) {
+                continue;
+            }
+            if (Array.isArray(stored)) {
+                for (const item of stored) {
+                    if (!item || typeof item !== 'object') {
+                        continue;
+                    }
+                    const entryName = String(item.name || item.title || item.id || '').trim();
+                    if (!entryName) {
+                        continue;
+                    }
+                    if (entryName.toLowerCase() === target) {
+                        const stateData = (typeof item.state === 'object' && item.state !== null)
+                            ? item.state
+                            : (typeof item.data === 'object' && item.data !== null ? item.data : item);
+                        if (stateData && typeof stateData === 'object') {
+                            return { name: entryName, data: stateData };
+                        }
+                    }
+                }
+            } else if (typeof stored === 'object') {
+                for (const [entryName, value] of Object.entries(stored)) {
+                    if (String(entryName || '').trim().toLowerCase() !== target) {
+                        continue;
+                    }
+                    if (!value || typeof value !== 'object') {
+                        continue;
+                    }
+                    const stateData = (typeof value.state === 'object' && value.state !== null) ? value.state : value;
+                    if (stateData && typeof stateData === 'object') {
+                        return { name: entryName, data: stateData };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    function normalizeSavedPoint(value) {
+        if (Array.isArray(value)) {
+            const [x, y, z] = value;
+            return {
+                x: Number(x) || 0,
+                y: Number(y) || 0,
+                z: Number(z) || 0
+            };
+        }
+        if (value && typeof value === 'object') {
+            const maybeArray = Array.isArray(value) ? value : [];
+            const x = Number(value.x ?? value.X ?? maybeArray[0]) || 0;
+            const y = Number(value.y ?? value.Y ?? maybeArray[1]) || 0;
+            const z = Number(value.z ?? value.Z ?? maybeArray[2]) || 0;
+            return { x, y, z };
+        }
+        return null;
+    }
+
+    function loadShapeSnapshot(name, entry, options = {}) {
+        const { silent = false } = options;
+        if (!entry || typeof entry !== 'object') {
+            if (!silent && typeof window.alert === 'function') {
+                window.alert('Biegeform konnte nicht geladen werden.');
+            }
+            return false;
+        }
+        init();
+        const headerSource = (typeof entry.header === 'object' && entry.header !== null) ? entry.header : {};
+        const meta = (typeof entry.meta === 'object' && entry.meta !== null) ? entry.meta : {};
+        const fallbackHeader = { ...state.header };
+        const toNumber = (value, fallback) => {
+            const num = Number(value);
+            return Number.isFinite(num) ? num : fallback;
+        };
+        const toStringValue = (value, fallback) => {
+            if (typeof value === 'string' && value.trim()) {
+                return value.trim();
+            }
+            if (Number.isFinite(Number(value))) {
+                return String(value);
+            }
+            return fallback;
+        };
+        state.header.p = toStringValue(headerSource.p ?? headerSource.position ?? meta.position, fallbackHeader.p);
+        state.header.n = Math.max(1, Math.round(toNumber(headerSource.n ?? headerSource.quantity ?? meta.quantity, fallbackHeader.n)));
+        state.header.d = toNumber(headerSource.d ?? headerSource.diameter ?? meta.diameter, fallbackHeader.d);
+        state.header.g = toStringValue(headerSource.g ?? headerSource.steelGrade ?? meta.steelGrade, fallbackHeader.g);
+        state.header.s = toNumber(headerSource.s ?? headerSource.rollDiameter ?? meta.rollDiameter, fallbackHeader.s);
+
+        const possiblePoints = [
+            entry.points,
+            entry.state?.points,
+            entry.geometry?.points,
+            entry.path?.points
+        ].find(points => Array.isArray(points) && points.length > 0) || [];
+
+        pointIdCounter = 0;
+        const normalizedPoints = possiblePoints
+            .map(normalizeSavedPoint)
+            .filter(point => point !== null)
+            .map(point => ({ ...point, id: ++pointIdCounter }));
+
+        if (normalizedPoints.length >= 2) {
+            state.points = normalizedPoints;
+        } else {
+            state.points = [
+                { id: ++pointIdCounter, x: 0, y: 0, z: 0 },
+                { id: ++pointIdCounter, x: 0, y: 500, z: 0 }
+            ];
+        }
+        state.selectedPointId = state.points.length ? state.points[state.points.length - 1].id : null;
+        state.history = [];
+        state.historyIndex = -1;
+        saveState();
+        scheduleUpdate();
+        if (!silent && typeof window.alert === 'function') {
+            window.alert(`Biegeform "${name}" geladen.`);
+        }
+        return true;
+    }
+
+    function loadSavedShapeByName(name, options = {}) {
+        const { silent = false } = options;
+        const sanitized = String(name || '').trim();
+        if (!sanitized) {
+            return false;
+        }
+        const match = findSavedShapeByName(sanitized);
+        if (!match) {
+            if (!silent && typeof window.alert === 'function') {
+                window.alert(`Biegeform "${sanitized}" nicht gefunden.`);
+            }
+            return false;
+        }
+        return loadShapeSnapshot(match.name, match.data, { silent });
+    }
+
     window.bf3dConfigurator = {
         onShow() {
             init();
         },
         getState() {
             return state;
-        }
+        },
+        loadSavedShapeByName,
+        loadShapeSnapshot
     };
 })();
