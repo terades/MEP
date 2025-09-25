@@ -3903,7 +3903,7 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 /* BFMA Konfigurator */
 .bfma-layout {
     display: grid;
-    grid-template-columns: minmax(360px, 1.2fr) minmax(320px, 1fr) minmax(320px, 1fr);
+    grid-template-columns: minmax(360px, 1.2fr) minmax(320px, 1fr);
     gap: clamp(1.5rem, 2.5vw, 2.5rem);
     align-items: start;
     grid-auto-flow: row;
@@ -3932,14 +3932,14 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 }
 
 #bfmaView .bfma-import-card {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 2;
     align-self: start;
 }
 
 #bfmaView .bfma-output-card {
-    grid-column: 3;
-    grid-row: 1 / span 2;
+    grid-column: 2;
+    grid-row: 2;
     align-self: stretch;
 }
 
