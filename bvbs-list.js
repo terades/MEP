@@ -1639,6 +1639,10 @@
         printContainer.innerHTML = '';
         printContainer.classList.remove('is-active');
         printContainer.setAttribute('aria-hidden', 'true');
+        const printStyle = document.getElementById('bvbs-print-page-style');
+        if (printStyle && printStyle.parentNode) {
+            printStyle.parentNode.removeChild(printStyle);
+        }
     }
 
     function showPrintError(message) {
@@ -1685,8 +1689,20 @@
         printContainer.classList.add('is-active');
         printContainer.setAttribute('aria-hidden', 'false');
 
-        window.print();
-        cleanupPrintContainer();
+        const styleId = 'bvbs-print-page-style';
+        let printStyle = document.getElementById(styleId);
+        if (!printStyle) {
+            printStyle = document.createElement('style');
+            printStyle.id = styleId;
+            printStyle.textContent = '@page { size: A4 landscape; margin: 10mm; }';
+            document.head.appendChild(printStyle);
+        }
+
+        try {
+            window.print();
+        } finally {
+            cleanupPrintContainer();
+        }
     }
     function handleFilterChange(event) {
         const value = event?.target?.value || '';
