@@ -141,12 +141,13 @@
         <div class="app-main">
             <main class="app-content">
                 <div id="generatorView" class="app-container">
-            <div class="main-grid">
-                <div class="input-column card">
-                    <div class="card-header">
-                        <h2 class="card-title" data-i18n="Eingabedaten">Eingabedaten</h2>
-                    </div>
-                    <div class="generator-summary" role="status" aria-live="polite">
+                <div class="main-grid">
+                <aside class="input-column">
+                    <div class="card input-card">
+                        <div class="card-header">
+                            <h2 class="card-title" data-i18n="Eingabedaten">Eingabedaten</h2>
+                        </div>
+                        <div class="card-section generator-summary" role="status" aria-live="polite">
                         <div class="summary-item">
                             <span class="summary-label" data-i18n="Aktuelle Gesamtlänge">Aktuelle Gesamtlänge</span>
                             <span class="summary-value" id="summaryTotalLength">0 mm</span>
@@ -160,8 +161,8 @@
                             <span class="summary-value" id="summaryStirrupCount">0</span>
                         </div>
                         <div class="summary-status summary-status--warning" id="summaryStatus" data-i18n="Füge Zonen hinzu, um zu starten.">Füge Zonen hinzu, um zu starten.</div>
-                    </div>
-                    <div class="input-scroll-container">
+                        </div>
+                        <div class="card-section input-scroll-container">
                         <h3 class="section-title collapsible-header" data-i18n="Allgemein">Allgemein</h3>
                         <div class="collapsible-content section-content-bg">
                             <div class="form-group">
@@ -291,9 +292,11 @@
                         </button>
                         <div id="generateError" class="info-text" style="margin-top: .5rem; min-height: 1.2em;"></div>
                     </div>
-                </div>
+                        </div>
+                    </div>
+                </aside>
                 <div class="preview-column">
-                    <div class="card preview-card">
+                    <div class="card preview-card layout-full">
                         <div class="card-header preview-header">
                             <div class="preview-title">
                                 <h2 class="card-title" data-i18n="Visuelle Vorschau Korb">Visuelle Vorschau Korb</h2>
@@ -349,7 +352,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card">
+                    <div class="card optional-data-card">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h3 class="section-title collapsible-header" data-i18n="Optionale (PREFORM 4.0) Daten">Optionale (PREFORM 4.0) Daten</h3>
                         </div>
@@ -399,7 +402,7 @@
                             </table>
                         </div>
                     </div>
-                    <div class="card generated-code-container">
+                    <div class="card generated-code-container layout-full">
                         <div class="card-header">
                             <h2 class="card-title" data-i18n="Generierter BVBS Code">Generierter BVBS Code</h2>
                         </div>
@@ -439,7 +442,7 @@
                     </div>
                     <div id="barcodeSvgContainer" class="hidden"></div>
                     <div id="barcodeError" class="info-text" style="display:none;"></div>
-                    <div class="card">
+                    <div class="card label-preview-card layout-full">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h2 class="card-title" data-i18n="Druck-Label Vorschau">Druck-Label Vorschau</h2>
                             <button id="printLabelButton" style="margin-left: auto;">

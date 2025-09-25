@@ -363,12 +363,12 @@ select {
 .generator-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.75rem;
-    padding: 1rem;
-    margin: 0 0 1.25rem;
+    gap: 0.85rem;
+    padding: 1.1rem;
+    margin: 0;
     background-color: var(--light-bg-color);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    border-radius: calc(var(--border-radius) - 0.2rem);
     box-shadow: var(--shadow-sm);
 }
 
@@ -795,30 +795,100 @@ select {
     font-size: 0.85rem;
     color: var(--text-muted-color);
 }
-			.main-grid {
-			display: grid;
-			/* Erste Spalte min. 300px, max. 450px, zweite nimmt Rest */
-			grid-template-columns: minmax(300px, 450px) 1fr;
-			gap: 1.5rem;
-			}
-			/* Die .input-column braucht kein flex mehr, das Grid übernimmt */
-			.input-column {
-			/* Optional: zwinge sie in der Spanne zwischen 300 und 400 */
-			min-width: 400px;
-			max-width: 450px;
-			}
-			/* Damit der rechte Bereich bei Überbreite scrollt */
+
+.main-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    gap: 1.75rem;
+    align-items: start;
+    width: 100%;
+}
+
+.input-column {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.card-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+.input-card {
+    gap: 1.5rem;
+    position: sticky;
+    top: calc(var(--header-height) + 1.5rem);
+    max-height: calc(100vh - var(--header-height) - 3rem);
+    overflow: hidden;
+}
+
+.input-card .input-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    margin-right: -0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.input-card .input-scroll-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.input-card .input-scroll-container::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--primary-color-rgb), 0.35);
+    border-radius: 999px;
+}
+
+.input-card .input-scroll-container::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
 .preview-column {
-                        overflow-x: auto;
-                        min-width: 0;
-                        }
-			/* Optional: Button in der letzten Spalte zentrieren */
-			#zonesTable td:nth-child(5) .btn-delete-zone {
-			margin: auto;
-			}
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+    min-width: 0;
+}
+
+.layout-full {
+    grid-column: 1 / -1;
+}
+
+.optional-data-card,
+.zone-summary-table-container,
+.generated-code-container,
+.label-preview-card {
+    min-width: 0;
+}
+
+.preview-column > #barcodeSvgContainer,
+.preview-column > #barcodeError {
+    grid-column: 1 / -1;
+}
+
+#zonesTable td:nth-child(5) .btn-delete-zone {
+    margin: auto;
+}
 @media (max-width: 1024px) {
     .main-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .input-card {
+        position: static;
+        max-height: none;
+    }
+    .input-card .input-scroll-container {
+        overflow: visible;
+        padding-right: 0;
+        margin-right: 0;
+    }
+    .preview-column {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
     .app-header-wrapper {
         padding: 1.1rem 0 1.6rem;
@@ -844,6 +914,12 @@ select {
 @media (max-width: 768px) {
     .app-container {
         padding: 0 calc(var(--page-side-padding) * 0.5);
+    }
+    .preview-column {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .layout-full {
+        grid-column: 1 / -1;
     }
 }
 
@@ -1531,120 +1607,117 @@ body.sidebar-open .sidebar-overlay {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-md);
-    padding: 1.5rem; /* Increased padding */
-    margin-bottom: 2rem; /* Increased margin */
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    height: 100%;
-    max-height: calc(100vh - 120px); /* Keep cards within the viewport */
-    overflow: hidden;
-    transition: all 0.3s ease;
+    gap: 1.25rem;
+    min-width: 0;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
 }
-			.card.preview-card {
-			flex: none;
-			min-height: unset;
-			max-height: unset;
-			height: auto;
-			}
-			.card:not(.preview-card) {
-			flex: unset !important;
-			height: auto !important;
-			max-height: none !important;
-			min-height: 0 !important;
-			}
-			#zoneTable input {
-			padding: 4px 6px;
-			font-size: 14px;
-			box-sizing: border-box;
-			}
-			#zoneTable th, #zoneTable td {
-			text-align: center;
-			vertical-align: middle;
-			}
-			.card-header {
-			border-bottom: 1px solid var(--border-color);
-			padding-bottom: .6rem;
-			margin-bottom: .6rem;
-			flex-shrink: 0;
-			}
-			.card-title {
-			font-size: 1.1rem;
-			font-weight: 600;
-			margin: 0;
-			color: var(--heading-color);
-			}
-			h3.section-title {
-			font-size: 1rem;
-			font-weight: 600;
-			margin-top: 1rem;
-			margin-bottom: .6rem;
-			color: var(--heading-color);
-			cursor: pointer;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			padding: .5rem 0;
-			border-bottom: 1px solid var(--border-color);
-			}
-			h3.section-title::after {
-			content: '▼';
-			font-size: .8em;
-			margin-left: .5rem;
-			transition: transform .2s ease-in-out;
-			}
-			h3.section-title.collapsed::after {
-			transform: rotate(-90deg);
-			}
-			.collapsible-content {
-			max-height: 2000px;
-			overflow: hidden;
-			transition: max-height .4s ease-in-out, padding-top .4s ease-in-out, padding-bottom .4s ease-in-out;
-			padding-top: .6rem;
-			padding-bottom: .1rem;
-			}
-			.collapsible-content.collapsed {
-			max-height: 0;
-			padding-top: 0;
-			padding-bottom: 0;
-			}
-			.collapsible-content.section-content-bg {
-			background-color: var(--light-bg-color);
-			border-radius: var(--border-radius);
-			padding: 1rem;
-			margin-top: .6rem;
-			margin-bottom: .8rem;
-			}
-			.collapsible-content.section-content-bg .form-group {
-			margin-left: 0;
-			margin-right: 0;
-			padding-left: 0;
-			padding-right: 0;
-			}
-			.collapsible-content.section-content-bg > h4 {
-			margin-top: 0;
-			}
-			.input-scroll-container {
-			flex-grow: 1;
-			overflow-y: auto;
-			padding-right: .5rem;
-			-webkit-overflow-scrolling: touch;
-			box-sizing: border-box;
-			min-height: 0;
-			}
-			.input-scroll-container::-webkit-scrollbar {
-			width: 8px;
-			}
-			.input-scroll-container::-webkit-scrollbar-track {
-			background: var(--light-bg-color);
-			border-radius: 10px;
-			}
+
+.main-grid .card {
+    margin: 0;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--heading-color);
+}
+
+h3.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.6rem;
+    color: var(--heading-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h3.section-title::after {
+    content: '▼';
+    font-size: 0.8em;
+    margin-left: 0.5rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+h3.section-title.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out, padding-top 0.4s ease-in-out, padding-bottom 0.4s ease-in-out;
+    padding-top: 0.6rem;
+    padding-bottom: 0.1rem;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+#zonesTable input {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+#zonesTable th,
+#zonesTable td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.5rem;
+}
+.collapsible-content.section-content-bg {
+    background-color: var(--light-bg-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-top: 0.6rem;
+    margin-bottom: 0.8rem;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.collapsible-content.section-content-bg .form-group {
+    margin: 0;
+    padding: 0;
+}
+
+.collapsible-content.section-content-bg > h4 {
+    margin-top: 0;
+}
+
+.input-scroll-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    min-width: 0;
+}
 			.input-scroll-container::-webkit-scrollbar-thumb {
 			background: var(--text-muted-color);
 			border-radius: 10px;
