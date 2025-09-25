@@ -664,6 +664,15 @@ select {
     padding: 0 0 2rem;
 }
 
+body:not(.is-generator-view) .app-content {
+    display: none;
+}
+
+body:not(.is-generator-view) .app-main {
+    min-height: auto;
+    padding-bottom: 0;
+}
+
 .app-header-wrapper {
     width: 100%;
     padding: 0;
@@ -3248,6 +3257,10 @@ select.status-select.done {
 body.is-bending-view .app-main {
     padding-top: 0;
     padding-bottom: clamp(1.5rem, 2vw, 3rem);
+}
+
+body.is-bending-view:not(.is-generator-view) .app-main {
+    padding-bottom: 0;
 }
 
 @media (max-width: 1600px) {
