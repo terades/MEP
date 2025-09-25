@@ -2239,7 +2239,6 @@ function populateResourceForm(resourceId) {
     const minLegInput = form.querySelector('#resourceMinLegLength');
     const maxLegInput = form.querySelector('#resourceMaxLegLength');
     const rollDiametersInput = form.querySelector('#resourceRollDiameters');
-    const rollDiametersInput = form.querySelector('#resourceRollDiameters');
     if (nameInput) nameInput.value = resource.name || '';
     if (descriptionInput) descriptionInput.value = resource.description || '';
     if (minDiameterInput) minDiameterInput.value = resource.minDiameter ?? '';
