@@ -661,7 +661,7 @@ select {
     flex-direction: column;
     background: var(--body-bg-color);
     position: relative;
-    padding: 1.5rem 0 2rem;
+    padding: 0 0 2rem;
 }
 
 .app-header-wrapper {
@@ -677,7 +677,7 @@ select {
     box-sizing: border-box;
     backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    overflow: hidden;
+    overflow: visible;
     isolation: isolate;
 }
 
