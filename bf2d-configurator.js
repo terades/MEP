@@ -57,8 +57,6 @@
     const ABS_START_TOKEN_REGEX = /^(BF2D|BF3D|BFWE|BFMA|BFGT|BFAU)@/;
     const ABS_BLOCK_START_REGEX = /(?:(?<=@)|^)([HGMAPCXYE])/g;
     const ABS_FIELD_REGEX = /([a-z])([^@]*)@/g;
-    const ABS_CHECKSUM_REGEX = /^C(\d+)@/;
-
     const importState = {
         entries: [],
         selectedIds: new Set(),
@@ -721,11 +719,6 @@
         const exportButton = document.getElementById('bf2dExportSelectionButton');
         if (exportButton) {
             exportButton.addEventListener('click', exportSelectedAbsEntries);
-        }
-
-        const importTableBody = document.getElementById('bf2dImportTableBody');
-        if (importTableBody) {
-            importTableBody.addEventListener('click', handleImportTableClick);
         }
 
         const selectAll = document.getElementById('bf2dImportSelectAll');
@@ -2274,14 +2267,6 @@
         return trimmed.replace(/@\s+([HGMAPCXYE])/g, '@$1');
     }
 
-    function computeImportChecksumPrefix(text) {
-        let sum = 0;
-        for (let i = 0; i < text.length; i++) {
-            sum += text.charCodeAt(i);
-        }
-        return sum;
-    }
-
     function parseAbsBlock(rawBlock, blockId) {
         const block = {
             id: blockId,
@@ -2295,13 +2280,7 @@
             return block;
         }
         if (blockId === 'C') {
-            const match = ABS_CHECKSUM_REGEX.exec(rawBlock.trim());
-            if (match) {
-                block.checkValue = Number(match[1]);
-            } else {
-                block.checkValue = NaN;
-                block.errors.push('Prüfsummenwert fehlt');
-            }
+            block.checkValue = null;
             return block;
         }
         const content = rawBlock.slice(1);
@@ -2432,7 +2411,7 @@
             segmentDefinitions: null,
             hasGeometry: false,
             lengthFromGeometry: NaN,
-            checksum: { status: 'Fehlt', expected: null, actual: null },
+            checksum: null,
             errorMessages: [],
             warningMessages: []
         };
@@ -2519,34 +2498,6 @@
                 doubleBar: false
             };
             entry.warningMessages.push('H-Block fehlt');
-        }
-
-        const checksumBlocks = entry.blockMap.get('C') || [];
-        if (checksumBlocks.length) {
-            const block = checksumBlocks[0];
-            const prefix = typeof block.startIndex === 'number' ? line.slice(0, block.startIndex + 1) : '';
-            if (prefix) {
-                const sum = computeImportChecksumPrefix(prefix);
-                const expected = 96 - (sum % 32);
-                entry.checksum.expected = expected;
-                const actual = Number(block.checkValue);
-                if (Number.isFinite(actual)) {
-                    entry.checksum.actual = actual;
-                    entry.checksum.status = actual === expected ? 'OK' : 'Fehler';
-                } else {
-                    entry.checksum.status = 'Fehler';
-                }
-            } else {
-                entry.checksum.status = 'Fehler';
-            }
-        } else {
-            entry.checksum.status = 'Fehlt';
-        }
-
-        if (entry.checksum.status === 'Fehler') {
-            entry.errorMessages.push('Prüfsummenprüfung fehlgeschlagen');
-        } else if (entry.checksum.status === 'Fehlt') {
-            entry.errorMessages.push('Prüfsummenblock fehlt');
         }
 
         const nodes = [];
@@ -2696,7 +2647,7 @@
             statusEl.classList.remove('error-message', 'warning-message', 'success-message');
             return;
         }
-        const errorCount = importState.entries.filter(entry => entry.errorMessages.length > 0 || entry.checksum?.status === 'Fehler' || entry.checksum?.status === 'Fehlt' || entry.startValid === false).length;
+        const errorCount = importState.entries.filter(entry => entry.errorMessages.length > 0 || entry.startValid === false).length;
         const warningCount = importState.entries.filter(entry => entry.errorMessages.length === 0 && entry.warningMessages.length > 0).length;
         const parts = [];
         if (typeof i18n?.t === 'function') {
@@ -2745,7 +2696,7 @@
         entries.forEach(entry => {
             const row = document.createElement('tr');
             row.dataset.entryId = entry.id;
-            if (entry.errorMessages.length || entry.checksum?.status === 'Fehler' || entry.checksum?.status === 'Fehlt' || entry.startValid === false) {
+            if (entry.errorMessages.length || entry.startValid === false) {
                 row.classList.add('bf2d-import-error');
             } else if (entry.warningMessages.length) {
                 row.classList.add('bf2d-import-warning');
@@ -2771,6 +2722,19 @@
             checkbox.className = 'bf2d-import-select';
             checkbox.dataset.entryId = entry.id;
             checkbox.checked = importState.selectedIds.has(entry.id);
+            checkbox.addEventListener('change', event => {
+                const input = event.currentTarget;
+                if (!(input instanceof HTMLInputElement)) {
+                    return;
+                }
+                if (input.checked) {
+                    importState.selectedIds.add(entry.id);
+                } else {
+                    importState.selectedIds.delete(entry.id);
+                }
+                updateImportControls();
+                updateImportStatusDisplay();
+            });
             selectCell.appendChild(checkbox);
             row.appendChild(selectCell);
 
@@ -2798,25 +2762,26 @@
 
             const checksumCell = document.createElement('td');
             checksumCell.className = 'bf2d-import-checksum-cell';
-            const status = entry.checksum?.status || 'Fehlt';
-            let checksumLabel;
-            if (status === 'OK') {
-                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('OK') : 'OK';
-            } else if (status === 'Fehlt') {
-                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('Fehlt') : 'Fehlt';
-            } else {
-                checksumLabel = typeof i18n?.t === 'function' ? i18n.t('Fehler') : 'Fehler';
-            }
-            if (status !== 'OK') {
-                checksumCell.classList.add('bf2d-import-checksum-error');
-                const expected = entry.checksum?.expected;
-                const actual = entry.checksum?.actual;
-                if (Number.isFinite(expected) && Number.isFinite(actual)) {
-                    checksumLabel += ` (${actual} ≠ ${expected})`;
-                }
-            }
-            checksumCell.textContent = checksumLabel;
+            checksumCell.textContent = '—';
             row.appendChild(checksumCell);
+
+            row.tabIndex = 0;
+            row.addEventListener('click', event => {
+                if (event.target.closest('.bf2d-import-select')) {
+                    return;
+                }
+                loadImportEntry(entry);
+            });
+
+            row.addEventListener('keydown', event => {
+                if (event.target.closest('.bf2d-import-select')) {
+                    return;
+                }
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    loadImportEntry(entry);
+                }
+            });
 
             tbody.appendChild(row);
         });
@@ -2924,28 +2889,6 @@
                 setImportView('data'); // Show error message inside the content area
             }
         }
-    }
-
-    function handleImportTableClick(event) {
-        const checkbox = event.target.closest('.bf2d-import-select');
-        if (checkbox) {
-            const entryId = checkbox.dataset.entryId;
-            if (!entryId) return;
-            if (checkbox.checked) {
-                importState.selectedIds.add(entryId);
-            } else {
-                importState.selectedIds.delete(entryId);
-            }
-            updateImportControls();
-            updateImportStatusDisplay();
-            return;
-        }
-        const row = event.target.closest('tr[data-entry-id]');
-        if (!row) return;
-        const entryId = row.dataset.entryId;
-        const entry = importState.entries.find(item => item.id === entryId);
-        if (!entry) return;
-        loadImportEntry(entry);
     }
 
     function handleImportSelectAll(event) {
