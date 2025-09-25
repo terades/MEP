@@ -1475,31 +1475,39 @@
                 </div>
                 <div id="bvbsListView" class="app-container" style="display:none;">
                     <div class="bvbs-list-layout">
-                        <div class="card bvbs-upload-card">
+                        <div class="card bvbs-toolbar-card">
                             <div class="card-header">
                                 <h2 class="card-title" data-i18n="BVBS-Datei-Upload">BVBS-Datei-Upload</h2>
-                                <div class="button-group" style="justify-content: flex-end;">
+                                <div class="button-group">
                                     <input type="file" id="bvbsListFileInput" accept=".bvbs,.abs,text/plain" style="display:none">
                                     <button type="button" id="bvbsListOpenUploadBtn" class="btn-primary">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-2.89 0-5.4 1.64-6.65 4.04C2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-                                    </svg>
-                                    <span data-i18n="Datei hochladen">Datei hochladen</span>
-                                </button>
-                            </div>
-                        </div>
-                            <div id="bvbsListDropZone" class="bf2d-drop-zone">
-                                <div class="bf2d-drop-zone-content">
-                                    <div class="bf2d-drop-zone-instructions">
-                                        <svg class="bf2d-drop-zone-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-2.89 0-5.4 1.64-6.65 4.04C2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                                         </svg>
-                                        <p data-i18n="BVBS-Datei hierher ziehen oder den Button verwenden.">BVBS-Datei hierher ziehen oder<br>den Button oben verwenden.</p>
-                                        <span class="bf2d-drop-zone-note" data-i18n="Dateityp: .bvbs, .abs">Dateityp: .bvbs, .abs</span>
-                                    </div>
+                                        <span data-i18n="Datei hochladen">Datei hochladen</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div id="bvbsListImportStatus" class="info-text" aria-live="polite" style="padding: 0 1rem 1rem;"></div>
+                            <div class="bvbs-toolbar-body">
+                                <div class="bvbs-toolbar-row">
+                                    <div class="bvbs-filter-group">
+                                        <label for="bvbsListFilterInput" data-i18n="Filter">Filter</label>
+                                        <input type="search" id="bvbsListFilterInput" data-i18n-placeholder="Filter" placeholder="Filter" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div id="bvbsListDropZone" class="bf2d-drop-zone">
+                                    <div class="bf2d-drop-zone-content">
+                                        <div class="bf2d-drop-zone-instructions">
+                                            <svg class="bf2d-drop-zone-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                                            </svg>
+                                            <p data-i18n="BVBS-Datei hierher ziehen oder den Button verwenden.">BVBS-Datei hierher ziehen oder<br>den Button oben verwenden.</p>
+                                            <span class="bf2d-drop-zone-note" data-i18n="Dateityp: .bvbs, .abs">Dateityp: .bvbs, .abs</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="bvbsListImportStatus" class="info-text" aria-live="polite"></div>
+                            </div>
                         </div>
                         <div class="card bvbs-table-card">
                             <div class="card-header">
@@ -1509,22 +1517,22 @@
                                 <table id="bvbsListTable" class="full-width-table">
                                     <thead>
                                         <tr>
-                                            <th data-i18n="Typ">Typ</th>
-                                            <th data-i18n="Projekt">Projekt</th>
-                                            <th data-i18n="Plan">Plan</th>
-                                            <th data-i18n="Pos.-Nr.">Pos.-Nr.</th>
-                                            <th data-i18n="itemID">itemID</th>
-                                            <th data-i18n="Anzahl">Anzahl</th>
-                                            <th data-i18n="Güte">Güte</th>
-                                            <th data-i18n="Gewicht">Gewicht</th>
-                                            <th data-i18n="Gesamtlänge">Gesamtlänge</th>
-                                            <th data-i18n="Durchmesser">Durchmesser</th>
-                                            <th data-i18n="Roll⌀">Roll⌀</th>
-                                            <th data-i18n="Biegungen">Biegungen</th>
-                                            <th data-i18n="MaxSchenkel">MaxSchenkel</th>
-                                            <th data-i18n="∑ kg">∑ kg</th>
-                                            <th data-i18n="∑ m">∑ m</th>
-                                            <th data-i18n="Zeile">Zeile</th>
+                                            <th data-sort-key="displayType" data-i18n="Typ">Typ</th>
+                                            <th data-sort-key="project" data-i18n="Projekt">Projekt</th>
+                                            <th data-sort-key="plan" data-i18n="Plan">Plan</th>
+                                            <th data-sort-key="position" data-i18n="Pos.-Nr.">Pos.-Nr.</th>
+                                            <th data-sort-key="itemId" data-i18n="itemID">itemID</th>
+                                            <th data-sort-key="quantity" data-i18n="Anzahl">Anzahl</th>
+                                            <th data-sort-key="steelGrade" data-i18n="Güte">Güte</th>
+                                            <th data-sort-key="weight" data-i18n="Gewicht">Gewicht</th>
+                                            <th data-sort-key="totalLength" data-i18n="Gesamtlänge">Gesamtlänge</th>
+                                            <th data-sort-key="diameter" data-i18n="Durchmesser">Durchmesser</th>
+                                            <th data-sort-key="rollDiameter" data-i18n="Roll⌀">Roll⌀</th>
+                                            <th data-sort-key="bendCount" data-i18n="Biegungen">Biegungen</th>
+                                            <th data-sort-key="maxSegmentLength" data-i18n="MaxSchenkel">MaxSchenkel</th>
+                                            <th data-sort-key="totalWeight" data-i18n="∑ kg">∑ kg</th>
+                                            <th data-sort-key="totalLengthMeters" data-i18n="∑ m">∑ m</th>
+                                            <th data-sort-key="rawLine" data-i18n="Zeile">Zeile</th>
                                             <th data-i18n="2D-Vorschau">2D-Vorschau</th>
                                         </tr>
                                     </thead>
