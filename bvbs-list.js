@@ -303,34 +303,89 @@
         const headerBlock = (entry.blockMap.get('H') || [])[0];
         if (headerBlock) {
             const diameter = parseDiameterValue(getFirstFieldValue(headerBlock, 'd'));
+            const rawRollDiameter = getFirstFieldValue(headerBlock, 'f');
+            const fallbackRollDiameter = getFirstFieldValue(headerBlock, 's');
+            const totalLength = parseNumberValue(getFirstFieldValue(headerBlock, 'l'));
+            const quantityValue = parseIntegerValue(getFirstFieldValue(headerBlock, 'n'));
+            const quantity = Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 1;
+            const weight = parseNumberValue(getFirstFieldValue(headerBlock, 'e'));
+
+            const totalWeight = Number.isFinite(weight) && Number.isFinite(quantity)
+                ? weight * quantity
+                : NaN;
+            const totalLengthMeters = Number.isFinite(totalLength) && Number.isFinite(quantity)
+                ? (totalLength * quantity) / 1000
+                : NaN;
+
             entry.metadata = {
                 position: getFirstFieldValue(headerBlock, 'p') || '',
                 type: getFirstFieldValue(headerBlock, 't') || '',
+                project: getFirstFieldValue(headerBlock, 'j') || '',
+                plan: getFirstFieldValue(headerBlock, 'r') || '',
+                steelGrade: getFirstFieldValue(headerBlock, 'g') || '',
                 diameter,
-                totalLength: parseNumberValue(getFirstFieldValue(headerBlock, 'l')),
-                quantity: parseIntegerValue(getFirstFieldValue(headerBlock, 'n')),
-                rollDiameter: parseNumberValue(getFirstFieldValue(headerBlock, 'f'))
+                totalLength,
+                quantity,
+                rollDiameter: parseNumberValue(rawRollDiameter) || parseNumberValue(fallbackRollDiameter),
+                weight,
+                totalWeight,
+                totalLengthMeters,
+                rawLine: (entry.originalLine || entry.rawLine || '').trim()
             };
         } else {
-            entry.metadata = { diameter: NaN, rollDiameter: NaN };
+            entry.metadata = {
+                diameter: NaN,
+                rollDiameter: NaN,
+                totalLength: NaN,
+                quantity: 1,
+                totalWeight: NaN,
+                totalLengthMeters: NaN,
+                rawLine: (entry.originalLine || entry.rawLine || '').trim()
+            };
             entry.warningMessages.push('H-Block fehlt');
         }
 
         const mappedType = START_TYPE_MAP[entry.type];
         entry.displayType = mappedType || entry.metadata.type || entry.type || '';
 
+        const itemIdParts = [];
+        if (entry.metadata.project) itemIdParts.push(entry.metadata.project);
+        if (entry.metadata.plan) itemIdParts.push(entry.metadata.plan);
+        const itemType = (entry.displayType || entry.metadata.type || '').toUpperCase();
+        if (itemType) itemIdParts.push(itemType);
+        if (entry.metadata.position) itemIdParts.push(entry.metadata.position);
+        entry.metadata.itemId = itemIdParts.join('-');
+
         const geometryBlocks = entry.blockMap.get('G') || [];
+        let maxSegmentLength = Number.isFinite(entry.metadata.totalLength) ? entry.metadata.totalLength : NaN;
+        let bendCount = 0;
         if (geometryBlocks.length) {
             const segments = buildSegmentsFromGeometryBlocks(geometryBlocks, entry);
             if (segments) {
                 entry.segmentDefinitions = segments;
                 entry.hasGeometry = true;
+
+                const segmentLengths = segments
+                    .map(segment => Number(segment.length))
+                    .filter(length => Number.isFinite(length) && length >= 0);
+                if (segmentLengths.length) {
+                    const longest = Math.max(...segmentLengths);
+                    if (Number.isFinite(longest)) {
+                        maxSegmentLength = longest;
+                    }
+                }
+                bendCount = segments
+                    .slice(0, -1)
+                    .reduce((count, segment) => count + (Number(segment.bendAngle) > 0 ? 1 : 0), 0);
             }
         }
 
         if (!entry.hasGeometry) {
             entry.warningMessages.push('Keine Geometrie gefunden');
         }
+
+        entry.metadata.maxSegmentLength = Number.isFinite(maxSegmentLength) ? maxSegmentLength : NaN;
+        entry.metadata.bendCount = Number.isFinite(bendCount) ? bendCount : 0;
 
         return entry;
     }
@@ -547,7 +602,7 @@
         if (state.entries.length === 0) {
             const row = tableBody.insertRow();
             const cell = row.insertCell();
-            cell.colSpan = 6;
+            cell.colSpan = 17;
             cell.textContent = typeof i18n !== 'undefined' ? i18n.t('Keine Daten zum Anzeigen. Bitte laden Sie eine BVBS-Datei hoch.') : 'No data to display. Please upload a BVBS file.';
             cell.style.textAlign = 'center';
             cell.style.padding = '1rem';
@@ -557,10 +612,21 @@
         state.entries.forEach(entry => {
             const row = tableBody.insertRow();
             row.insertCell().textContent = entry.displayType || '—';
+            row.insertCell().textContent = entry.metadata.project || '—';
+            row.insertCell().textContent = entry.metadata.plan || '—';
             row.insertCell().textContent = entry.metadata.position || '—';
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.diameter, 1);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLength, 1);
+            row.insertCell().textContent = entry.metadata.itemId || '—';
             row.insertCell().textContent = formatDisplayNumber(entry.metadata.quantity, 0);
+            row.insertCell().textContent = entry.metadata.steelGrade || '—';
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.weight, 3);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLength, 1);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.diameter, 1);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.rollDiameter, 1);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.bendCount, 0);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.maxSegmentLength, 1);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalWeight, 3);
+            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLengthMeters, 3);
+            row.insertCell().textContent = entry.metadata.rawLine || entry.originalLine || entry.rawLine || '—';
 
             const previewCell = row.insertCell();
             previewCell.style.width = '150px';
