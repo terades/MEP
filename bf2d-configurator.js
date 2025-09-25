@@ -236,8 +236,8 @@
         if (!Number.isFinite(numericRadius) || numericRadius <= 0) {
             return 0;
         }
-        if (rollRadius > 0 && numericRadius <= rollRadius) {
-            return rollRadius + 1;
+        if (rollRadius > 0 && numericRadius < rollRadius) {
+            return rollRadius;
         }
         return numericRadius;
     }
@@ -248,8 +248,9 @@
         const normalizedDirection = bendDirection === 'R' ? 'R' : 'L';
         let numericRadius = 0;
         if (numericAngle > 0) {
-            if (radius === null || typeof radius === 'undefined') {
-                numericRadius = enforceMinimumRadius(getRollRadius());
+            const rollRadius = getRollRadius();
+            if (radius === null || typeof radius === 'undefined' || rollRadius > 0) {
+                numericRadius = enforceMinimumRadius(rollRadius || 0);
             } else {
                 numericRadius = enforceMinimumRadius(Number(radius) || 0);
             }
@@ -319,7 +320,7 @@
                 segment.radius = 0;
             } else {
                 if (rollRadius > 0) {
-                    segment.radius = enforceMinimumRadius(rollRadius);
+                    segment.radius = rollRadius;
                 } else {
                     segment.radius = enforceMinimumRadius(segment.radius);
                 }
@@ -2362,6 +2363,96 @@
         return Number.isFinite(parsed) ? parsed : NaN;
     }
 
+    function extractGeometryValues(block, key) {
+        const results = [];
+        let invalidCount = 0;
+        if (!block || !block.fields || !block.fields[key]) {
+            return { values: results, invalidCount };
+        }
+        block.fields[key].forEach(value => {
+            const items = Array.isArray(value) ? value : [value];
+            items.forEach(item => {
+                const numeric = parseNumberValue(item);
+                if (Number.isFinite(numeric)) {
+                    results.push(numeric);
+                } else {
+                    invalidCount += 1;
+                }
+            });
+        });
+        return { values: results, invalidCount };
+    }
+
+    function buildSegmentsFromGeometryBlocks(blocks, entry) {
+        if (!Array.isArray(blocks) || !blocks.length) {
+            return null;
+        }
+
+        const lengths = [];
+        const angles = [];
+        let invalidLengths = 0;
+        let invalidAngles = 0;
+
+        blocks.forEach(block => {
+            const { values: blockLengths, invalidCount: blockInvalidLengths } = extractGeometryValues(block, 'l');
+            const { values: blockAngles, invalidCount: blockInvalidAngles } = extractGeometryValues(block, 'w');
+            if (blockLengths.length) {
+                lengths.push(...blockLengths);
+            }
+            if (blockAngles.length) {
+                angles.push(...blockAngles);
+            }
+            invalidLengths += blockInvalidLengths;
+            invalidAngles += blockInvalidAngles;
+        });
+
+        if (!lengths.length) {
+            if (entry) {
+                entry.warningMessages.push('Block G: Keine gültigen Längen gefunden');
+            }
+            return null;
+        }
+
+        if (invalidLengths && entry) {
+            entry.warningMessages.push(`Block G: ${invalidLengths} ungültige Längenwerte ignoriert`);
+        }
+        if (invalidAngles && entry) {
+            entry.warningMessages.push(`Block G: ${invalidAngles} ungültige Winkelwerte ignoriert`);
+        }
+
+        const segments = lengths.map((lengthValue, index) => {
+            const rawLength = Number(lengthValue);
+            const length = Number.isFinite(rawLength) && rawLength > 0 ? rawLength : 0;
+            let rawAngle = 0;
+            if (index < lengths.length - 1) {
+                const angleValue = angles[index];
+                rawAngle = Number.isFinite(angleValue) ? angleValue : 0;
+            }
+            const bendAngle = index < lengths.length - 1 ? Math.abs(rawAngle) : 0;
+            const bendDirection = index < lengths.length - 1
+                ? rawAngle > 0
+                    ? 'R'
+                    : rawAngle < 0
+                        ? 'L'
+                        : 'L'
+                : 'L';
+            return {
+                length,
+                bendAngle,
+                bendDirection
+            };
+        });
+
+        if (!segments.length) {
+            if (entry) {
+                entry.warningMessages.push('Block G: Keine gültige Geometrie gefunden');
+            }
+            return null;
+        }
+
+        return segments;
+    }
+
     function buildSegmentsFromNodes(nodes) {
         if (!Array.isArray(nodes) || nodes.length < 2) {
             return null;
@@ -2504,6 +2595,16 @@
             entry.warningMessages.push('H-Block fehlt');
         }
 
+        const geometryBlocks = entry.blockMap.get('G') || [];
+        if (geometryBlocks.length) {
+            const geometrySegments = buildSegmentsFromGeometryBlocks(geometryBlocks, entry);
+            if (geometrySegments && geometrySegments.length) {
+                entry.segmentDefinitions = geometrySegments;
+                entry.hasGeometry = geometrySegments.length >= 1;
+                entry.lengthFromGeometry = geometrySegments.reduce((total, segment) => total + Math.max(segment.length, 0), 0);
+            }
+        }
+
         const nodes = [];
         ['X', 'Y', 'E'].forEach(blockId => {
             const blocks = entry.blockMap.get(blockId) || [];
@@ -2531,7 +2632,7 @@
             });
         });
 
-        if (nodes.length >= 2) {
+        if (!entry.segmentDefinitions && nodes.length >= 2) {
             const sortedNodes = nodes.slice().sort((a, b) => {
                 if (a.sequence !== null && b.sequence !== null && a.sequence !== b.sequence) {
                     return a.sequence - b.sequence;
