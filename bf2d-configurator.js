@@ -1196,7 +1196,7 @@
             const downButton = createActionButton('↓', 'Nach unten', () => moveSegment(index, 1));
             downButton.disabled = index === state.segments.length - 1;
             const removeButton = createActionButton('✕', 'Segment entfernen', () => removeSegment(segment.id));
-            removeButton.disabled = state.segments.length <= 2;
+            removeButton.disabled = state.segments.length <= 1;
             actionsCell.appendChild(upButton);
             actionsCell.appendChild(downButton);
             actionsCell.appendChild(removeButton);
@@ -1225,9 +1225,9 @@
 
     function removeSegment(id) {
         state.previewNoteOverride = null;
-        if (state.segments.length <= 2) {
+        if (state.segments.length <= 1) {
             if (typeof showFeedback === 'function') {
-                showFeedback('bf2dStatus', i18n.t('Mindestens zwei Segmente erforderlich.'), 'warning', 3000);
+                showFeedback('bf2dStatus', i18n.t('Mindestens ein Segment erforderlich.'), 'warning', 3000);
             }
             return;
         }
@@ -1257,8 +1257,8 @@
         applyRollDiameterToSegments();
 
         const segments = state.segments;
-        if (segments.length < 2) {
-            errors.push(i18n.t('Mindestens zwei Segmente erforderlich.'));
+        if (segments.length < 1) {
+            errors.push(i18n.t('Mindestens ein Segment erforderlich.'));
         }
 
         let straightLength = 0;

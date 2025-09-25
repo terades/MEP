@@ -278,7 +278,7 @@
   "Nach oben": "Move up",
   "Nach unten": "Move down",
   "Segment entfernen": "Remove segment",
-  "Mindestens zwei Segmente erforderlich.": "At least two segments are required.",
+  "Mindestens ein Segment erforderlich.": "At least one segment is required.",
   "Segment {index}: Länge muss größer als 0 sein.": "Segment {index}: length must be greater than 0.",
   "Segment {index}: Biegewinkel muss zwischen 0° und 180° liegen.": "Segment {index}: bending angle must be between 0° and 180°.",
   "Segment {index}: Radius muss größer als 0 sein, wenn ein Winkel definiert ist.": "Segment {index}: radius must be greater than 0 when an angle is defined.",
