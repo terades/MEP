@@ -172,6 +172,8 @@
   "Generator": "Generator",
   "Produktionsliste": "Production List",
   "Filter": "Filter",
+  "Spaltenfilter": "Column filters",
+  "Filter zurücksetzen": "Reset filters",
   "Alle": "All",
   "Offen": "Open",
   "In Arbeit": "In Progress",
