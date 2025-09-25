@@ -2340,6 +2340,7 @@ function handleResourceFormSubmit(event) {
     const maxDiameterInput = form.querySelector('#resourceMaxDiameter');
     const minLegInput = form.querySelector('#resourceMinLegLength');
     const maxLegInput = form.querySelector('#resourceMaxLegLength');
+    const rollDiametersInput = form.querySelector('#resourceRollDiameters');
 
     const minDiameter = parseResourceNumber(minDiameterInput ? minDiameterInput.value : null);
     const maxDiameter = parseResourceNumber(maxDiameterInput ? maxDiameterInput.value : null);
@@ -2370,7 +2371,7 @@ function handleResourceFormSubmit(event) {
 
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const supportedTypes = Array.from(form.querySelectorAll('input[name="resourceTypes"]:checked')).map(input => input.value);
-    const availableRollDiameters = normalizeRollDiameterValues(rollDiametersInput ? rollDiametersInput.value : []);
+    const availableRollDiameters = normalizeRollDiameterValues(rollDiametersInput ? rollDiametersInput.value : '');
 
     if (editingResourceId) {
         const index = resources.findIndex(item => item.id === editingResourceId);

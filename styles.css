@@ -901,6 +901,10 @@ body:not(.is-generator-view) .app-main {
     box-sizing: border-box;
 }
 
+#resourcesView.app-container {
+    max-width: none;
+}
+
 .app-footer {
     margin-top: auto;
     padding: 0 0 2rem;
