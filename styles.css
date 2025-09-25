@@ -738,6 +738,64 @@ select {
     flex-wrap: wrap;
 }
 
+.app-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.header-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.35);
+    color: var(--header-text-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.45);
+}
+
+.header-action svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    opacity: 0.85;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.header-action:hover {
+    transform: translateY(-2px);
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(226, 232, 240, 0.45);
+    box-shadow: 0 22px 42px rgba(15, 23, 42, 0.55);
+}
+
+.header-action:hover svg {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.header-action--primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.65), rgba(14, 165, 233, 0.55));
+    border-color: rgba(59, 130, 246, 0.75);
+    box-shadow: 0 28px 46px rgba(37, 99, 235, 0.45);
+}
+
+.header-action--primary:hover {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.75), rgba(59, 130, 246, 0.65));
+    border-color: rgba(191, 219, 254, 0.9);
+}
+
+.header-action-text {
+    white-space: nowrap;
+}
+
 .title-group {
     display: flex;
     flex-direction: column;
@@ -795,6 +853,14 @@ select {
     height: 1px;
     border-radius: 999px;
     background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, 0.55));
+}
+
+.header-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+    flex-wrap: wrap;
 }
 
 .header-badge {
@@ -1658,6 +1724,7 @@ body.sidebar-open .sidebar-overlay {
     .app-header {
         padding: 0.9rem calc(var(--page-side-padding) * 0.55);
         gap: 1.1rem;
+        flex-direction: column;
     }
     .app-header .app-title {
         font-size: 1.4rem;
@@ -1668,8 +1735,25 @@ body.sidebar-open .sidebar-overlay {
     .app-container {
         padding: 0 calc(var(--page-side-padding) * 0.5);
     }
-    .header-badge {
+    .header-badges {
         display: none;
+    }
+    .app-header .left-section {
+        padding-right: 0;
+        border-right: none;
+    }
+    .app-header .right-section {
+        padding-left: 0;
+        justify-content: flex-start;
+        width: 100%;
+    }
+    .app-header-nav {
+        width: 100%;
+        gap: 0.65rem;
+    }
+    .header-action {
+        flex: 1 1 100%;
+        justify-content: center;
     }
 }
 .card {

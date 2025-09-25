@@ -100,33 +100,6 @@
                         <span class="sidebar-text" data-i18n="Ressourcen">Ressourcen</span>
                     </button>
                 </nav>
-                <nav class="sidebar-section">
-                    <p class="sidebar-section-title" data-i18n="Schnellaktionen">Schnellaktionen</p>
-                    <button id="quickReleaseButton" class="sidebar-link sidebar-link--action" data-i18n-title="Freigeben" title="Freigeben">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 3l7 7h-4v7h-6v-7H5l7-7z" />
-                        </svg>
-                        <span class="sidebar-text" data-i18n="Freigeben">Freigeben</span>
-                    </button>
-                    <button id="quickSavedOrdersButton" class="sidebar-link" data-i18n-title="Gespeicherte Aufträge" title="Gespeicherte Aufträge">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M10 4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6z" />
-                        </svg>
-                        <span class="sidebar-text" data-i18n="Gespeicherte Aufträge">Gespeicherte Aufträge</span>
-                    </button>
-                    <button id="quickSvgButton" class="sidebar-link" data-i18n-title="Vorschau als SVG" title="Vorschau als SVG">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm3 3h6v6H9z" />
-                        </svg>
-                        <span class="sidebar-text" data-i18n="Vorschau als SVG">Vorschau als SVG</span>
-                    </button>
-                    <button id="quickPrintLabelButton" class="sidebar-link" data-i18n-title="Label drucken" title="Label drucken">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 2h12v4H6V2zm12 6H6c-2.21 0-4 1.79-4 4v6h4v4h12v-4h4v-6c0-2.21-1.79-4-4-4zm-2 12H8v-5h8v5z" />
-                        </svg>
-                        <span class="sidebar-text" data-i18n="Label drucken">Label drucken</span>
-                    </button>
-                </div>
             </div>
             <div class="sidebar-footer">
                 <button id="showSettingsBtn" class="sidebar-link sidebar-link--settings" data-view-target="settingsView" data-i18n-title="Einstellungen" title="Einstellungen">
@@ -139,6 +112,48 @@
             </div>
         </aside>
         <div class="app-main">
+            <div class="app-header-wrapper">
+                <header class="app-header" role="banner">
+                    <div class="left-section">
+                        <div class="title-group">
+                            <span class="title-eyebrow">BVBS Suite</span>
+                            <h1 class="app-title" data-i18n="BVBS Korb Generator mit Label-Druck">BVBS Korb Generator mit Label-Druck</h1>
+                            <p class="app-subtitle" data-i18n="Intelligente Werkzeuge für Bewehrungskörbe">Intelligente Werkzeuge für Bewehrungskörbe</p>
+                            <div class="header-badges">
+                                <span class="header-badge" data-i18n="Produktivitätsplattform">Produktivitätsplattform</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="right-section">
+                        <nav class="app-header-nav" aria-label="Schnellaktionen">
+                            <button type="button" id="quickReleaseButton" class="header-action header-action--primary" data-i18n-title="Freigeben" title="Freigeben">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 3l7 7h-4v7h-6v-7H5l7-7z" />
+                                </svg>
+                                <span class="header-action-text" data-i18n="Freigeben">Freigeben</span>
+                            </button>
+                            <button type="button" id="quickSavedOrdersButton" class="header-action" data-i18n-title="Gespeicherte Aufträge" title="Gespeicherte Aufträge">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M10 4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6z" />
+                                </svg>
+                                <span class="header-action-text" data-i18n="Gespeicherte Aufträge">Gespeicherte Aufträge</span>
+                            </button>
+                            <button type="button" id="quickSvgButton" class="header-action" data-i18n-title="Vorschau als SVG" title="Vorschau als SVG">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm3 3h6v6H9z" />
+                                </svg>
+                                <span class="header-action-text" data-i18n="Vorschau als SVG">Vorschau als SVG</span>
+                            </button>
+                            <button type="button" id="quickPrintLabelButton" class="header-action" data-i18n-title="Label drucken" title="Label drucken">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 2h12v4H6V2zm12 6H6c-2.21 0-4 1.79-4 4v6h4v4h12v-4h4v-6c0-2.21-1.79-4-4-4zm-2 12H8v-5h8v5z" />
+                                </svg>
+                                <span class="header-action-text" data-i18n="Label drucken">Label drucken</span>
+                            </button>
+                        </nav>
+                    </div>
+                </header>
+            </div>
             <main class="app-content">
                 <div id="generatorView" class="app-container">
                     <div class="main-grid">
