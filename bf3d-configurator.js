@@ -5,7 +5,7 @@
     }
 
     const state = {
-        header: { p: '1', n: 1, d: 10, g: 'B500B', s: 40 },
+        header: { p: '1', t: 'BWS', n: 1, d: 10, g: 'B500B', s: 40 },
         points: [],
         selectedPointId: null,
         history: [],
@@ -515,7 +515,8 @@
             return "Fehler: Mindestens 2 Punkte erforderlich.";
         }
         const h = state.header;
-        const headerString = `BF3D@H@P${h.p}@N${h.n}@D${h.d}@G${h.g}@S${h.s}@`;
+        const sanitizeType = value => (value ?? '').toString().replace(/@/g, '').trim();
+        const headerString = `BF3D@H@P${h.p}@N${h.n}@D${h.d}@G${h.g}@S${h.s}@T${sanitizeType(h.t)}@`;
 
         let geometryString = 'G';
         let lastPoint = { x: 0, y: 0, z: 0 };
@@ -550,8 +551,11 @@
 
 
     function updateAll() {
+        state.header.t = (state.header.t ?? '').toString().trim() || 'BWS';
+
         const headerInputs = [
             { key: 'p', id: 'bf3dPosition', type: 'string' },
+            { key: 't', id: 'bf3dType', type: 'string' },
             { key: 'n', id: 'bf3dQuantity', type: 'number' },
             { key: 'd', id: 'bf3dDiameter', type: 'number' },
             { key: 'g', id: 'bf3dSteelGrade', type: 'string' },
@@ -861,7 +865,7 @@
         });
 
         // Header inputs
-        ['p:bf3dPosition', 'n:bf3dQuantity', 'd:bf3dDiameter', 'g:bf3dSteelGrade', 's:bf3dBendingRoller'].forEach(mapping => {
+        ['p:bf3dPosition', 't:bf3dType', 'n:bf3dQuantity', 'd:bf3dDiameter', 'g:bf3dSteelGrade', 's:bf3dBendingRoller'].forEach(mapping => {
             const [key, id] = mapping.split(':');
             const el = document.getElementById(id);
             if (el) {

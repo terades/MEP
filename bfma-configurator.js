@@ -2,7 +2,7 @@
 (function () {
     const STORAGE_KEY = 'bfmaSavedMeshes';
     const state = {
-        header: { p: '1', l: 5000, b: 2000, n: 1, e: 0, g: 'B500A', m: 'Q257', s: 0, v: '', a: '' },
+        header: { p: '1', l: 5000, b: 2000, n: 1, t: 'BWM', e: 0, g: 'B500A', m: 'Q257', s: 0, v: '', a: '' },
         yBars: [], xBars: [], eBars: [],
         bending: { active: false, direction: 'Gy', sequence: [] },
         preview: normalizePreviewSettings({ showDimensions: true, showPitch: false }),
@@ -785,6 +785,7 @@
 
     function buildAbsDataset() {
         const header = state.header;
+        header.t = (header.t ?? '').toString().trim() || 'BWM';
         const headerParts = [
             `P${header.p ?? ''}`,
             `L${formatDatasetNumber(parseNumber(header.l), 0)}`,
@@ -793,7 +794,8 @@
             `E${formatDatasetNumber(parseNumber(header.e), 2)}`,
             `G${header.g ?? ''}`,
             `M${header.m ?? ''}`,
-            `S${formatDatasetNumber(parseNumber(header.s), 0)}`
+            `S${formatDatasetNumber(parseNumber(header.s), 0)}`,
+            `T${header.t.replace(/@/g, '')}`
         ];
         const lines = ['BFMA@', `H@${headerParts.join('@')}@`];
         state.yBars.forEach((bar, index) => {
@@ -997,6 +999,7 @@
             { id: 'bfmaLength', key: 'l', parser: parseNumber },
             { id: 'bfmaWidth', key: 'b', parser: parseNumber },
             { id: 'bfmaQuantity', key: 'n', parser: parseNumber },
+            { id: 'bfmaType', key: 't', parser: value => value.trim() },
             { id: 'bfmaWeight', key: 'e', parser: parseNumber },
             { id: 'bfmaSteelGrade', key: 'g', parser: value => value.trim() },
             { id: 'bfmaMeshType', key: 'm', parser: value => value.trim() },
@@ -1008,14 +1011,17 @@
             const value = item.parser(el.value ?? '');
             state.header[item.key] = typeof value === 'string' ? value : parseNumber(value);
         });
+        state.header.t = (state.header.t ?? '').toString().trim() || 'BWM';
     }
 
     function applyHeaderStateToInputs() {
+        state.header.t = (state.header.t ?? '').toString().trim() || 'BWM';
         const mapping = [
             { id: 'bfmaPos', key: 'p' },
             { id: 'bfmaLength', key: 'l' },
             { id: 'bfmaWidth', key: 'b' },
             { id: 'bfmaQuantity', key: 'n' },
+            { id: 'bfmaType', key: 't' },
             { id: 'bfmaWeight', key: 'e' },
             { id: 'bfmaSteelGrade', key: 'g' },
             { id: 'bfmaMeshType', key: 'm' },
@@ -1065,6 +1071,7 @@
             { id: 'bfmaLength', key: 'l', handler: parseNumber },
             { id: 'bfmaWidth', key: 'b', handler: parseNumber },
             { id: 'bfmaQuantity', key: 'n', handler: parseNumber },
+            { id: 'bfmaType', key: 't', handler: value => value.trim() },
             { id: 'bfmaSteelGrade', key: 'g', handler: value => value.trim() },
             { id: 'bfmaMeshType', key: 'm', handler: value => value.trim() },
             { id: 'bfmaBendingRoll', key: 's', handler: parseNumber }
