@@ -524,38 +524,48 @@
                                 <h2 class="card-title" data-i18n="BF2D Konfigurator">BF2D Konfigurator</h2>
                             </div>
                             <div class="bf2d-form-grid">
-                                <div class="form-group">
-                                    <label for="bf2dProject" data-i18n="Projekt">Projekt</label>
-                                    <input type="text" id="bf2dProject" value="Projekt A">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dOrder" data-i18n="Auftrag">Auftrag</label>
-                                    <input type="text" id="bf2dOrder" value="A-001">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dPosition" data-i18n="Pos.-Nr.">Pos.-Nr.</label>
-                                    <input type="text" id="bf2dPosition" value="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dDiameter" data-i18n="Durchmesser (mm)">Durchmesser (mm)</label>
-                                    <input type="number" id="bf2dDiameter" value="12" min="1" step="0.1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dRollDiameter" data-i18n="Biegerollendurchmesser (mm)">Biegerollendurchmesser (mm)</label>
-                                    <select id="bf2dRollDiameter" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="48"></select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dQuantity" data-i18n="Stückzahl">Stückzahl</label>
-                                    <input type="number" id="bf2dQuantity" value="1" min="1" step="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dSteelGrade" data-i18n="Stahlsorte">Stahlsorte</label>
-                                    <select id="bf2dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="bf2dRemark" data-i18n="Bemerkung">Bemerkung</label>
-                                    <input type="text" id="bf2dRemark">
-                                </div>
+                                <section class="bf2d-form-section">
+                                    <h3 class="bf2d-form-section-title" data-i18n="Allgemeine Angaben">Allgemeine Angaben</h3>
+                                    <div class="bf2d-form-section-body">
+                                        <div class="form-group">
+                                            <label for="bf2dProject" data-i18n="Projekt">Projekt</label>
+                                            <input type="text" id="bf2dProject" value="Projekt A">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dOrder" data-i18n="Auftrag">Auftrag</label>
+                                            <input type="text" id="bf2dOrder" value="A-001">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dPosition" data-i18n="Pos.-Nr.">Pos.-Nr.</label>
+                                            <input type="text" id="bf2dPosition" value="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dRemark" data-i18n="Bemerkung">Bemerkung</label>
+                                            <input type="text" id="bf2dRemark">
+                                        </div>
+                                    </div>
+                                </section>
+                                <section class="bf2d-form-section">
+                                    <h3 class="bf2d-form-section-title" data-i18n="Produktionsparameter">Produktionsparameter</h3>
+                                    <div class="bf2d-form-section-body">
+                                        <div class="form-group">
+                                            <label for="bf2dDiameter" data-i18n="Durchmesser (mm)">Durchmesser (mm)</label>
+                                            <input type="number" id="bf2dDiameter" value="12" min="1" step="0.1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dRollDiameter" data-i18n="Biegerollendurchmesser (mm)">Biegerollendurchmesser (mm)</label>
+                                            <select id="bf2dRollDiameter" data-masterdata-source="rollDiameters" data-masterdata-placeholder-key="Biegerollendurchmesser auswählen…" data-masterdata-default="48"></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dQuantity" data-i18n="Stückzahl">Stückzahl</label>
+                                            <input type="number" id="bf2dQuantity" value="1" min="1" step="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bf2dSteelGrade" data-i18n="Stahlsorte">Stahlsorte</label>
+                                            <select id="bf2dSteelGrade" data-masterdata-source="steelGrades" data-masterdata-placeholder-key="Stahlsorte auswählen…" data-masterdata-default="B500B"></select>
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
                             <div class="bf2d-storage-controls">
                                 <div class="form-group">
