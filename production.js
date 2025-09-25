@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
 const DEFAULT_APP_SETTINGS = {
@@ -2561,6 +2561,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
         showGeneratorView();
+    });
+    document.getElementById('showBvbsListBtn')?.addEventListener('click', () => {
+        showView('bvbsListView');
     });
     document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
         showBf2dView();
