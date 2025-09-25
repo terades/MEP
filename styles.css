@@ -916,6 +916,7 @@ body:not(.is-generator-view) .app-main {
     box-sizing: border-box;
 }
 
+#generatorView.app-container,
 #resourcesView.app-container {
     max-width: none;
 }
