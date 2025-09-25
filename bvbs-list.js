@@ -17,12 +17,16 @@
     const state = {
         entries: [],
         fileName: '',
+        filterText: '',
+        sortKey: null,
+        sortDirection: null,
     };
 
     // --- DOM ELEMENTS ---
-    let fileInput, dropZone, openUploadBtn, tableBody, statusEl;
+    let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let lastPreviewTrigger = null;
+    let tableHeaders = [];
 
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
@@ -37,6 +41,209 @@
         }
         return text;
     }
+
+    const TABLE_COLUMNS = [
+        {
+            key: 'displayType',
+            render(entry) {
+                return entry?.displayType || '—';
+            }
+        },
+        {
+            key: 'project',
+            render(entry) {
+                return entry?.metadata?.project || '—';
+            }
+        },
+        {
+            key: 'plan',
+            render(entry) {
+                return entry?.metadata?.plan || '—';
+            }
+        },
+        {
+            key: 'position',
+            render(entry) {
+                return entry?.metadata?.position || '—';
+            }
+        },
+        {
+            key: 'itemId',
+            render(entry) {
+                return entry?.metadata?.itemId || '—';
+            }
+        },
+        {
+            key: 'quantity',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.quantity, 0);
+            }
+        },
+        {
+            key: 'steelGrade',
+            render(entry) {
+                return entry?.metadata?.steelGrade || '—';
+            }
+        },
+        {
+            key: 'weight',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.weight, 3);
+            }
+        },
+        {
+            key: 'totalLength',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.totalLength, 1);
+            }
+        },
+        {
+            key: 'diameter',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.diameter, 1);
+            }
+        },
+        {
+            key: 'rollDiameter',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.rollDiameter, 1);
+            }
+        },
+        {
+            key: 'bendCount',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.bendCount, 0);
+            }
+        },
+        {
+            key: 'maxSegmentLength',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.maxSegmentLength, 1);
+            }
+        },
+        {
+            key: 'totalWeight',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.totalWeight, 3);
+            }
+        },
+        {
+            key: 'totalLengthMeters',
+            render(entry) {
+                return formatDisplayNumber(entry?.metadata?.totalLengthMeters, 3);
+            }
+        },
+        {
+            key: 'rawLine',
+            render(entry) {
+                return entry?.metadata?.rawLine || entry?.originalLine || entry?.rawLine || '—';
+            }
+        },
+        {
+            key: 'preview',
+            className: 'bvbs-preview-cell',
+            isPreview: true
+        }
+    ];
+
+    const SORT_DEFINITIONS = {
+        displayType: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.displayType || '';
+            }
+        },
+        project: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.project || '';
+            }
+        },
+        plan: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.plan || '';
+            }
+        },
+        position: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.position || '';
+            }
+        },
+        itemId: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.itemId || '';
+            }
+        },
+        quantity: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.quantity;
+            }
+        },
+        steelGrade: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.steelGrade || '';
+            }
+        },
+        weight: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.weight;
+            }
+        },
+        totalLength: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.totalLength;
+            }
+        },
+        diameter: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.diameter;
+            }
+        },
+        rollDiameter: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.rollDiameter;
+            }
+        },
+        bendCount: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.bendCount;
+            }
+        },
+        maxSegmentLength: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.maxSegmentLength;
+            }
+        },
+        totalWeight: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.totalWeight;
+            }
+        },
+        totalLengthMeters: {
+            type: 'number',
+            getValue(entry) {
+                return entry?.metadata?.totalLengthMeters;
+            }
+        },
+        rawLine: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.metadata?.rawLine || entry?.originalLine || entry?.rawLine || '';
+            }
+        }
+    };
 
     function enforceMinimumRadius(radius, rollRadius = 0) {
         const numericRadius = Number(radius);
@@ -647,61 +854,261 @@
     }
 
     // --- RENDERING ---
+    function entryMatchesFilter(entry, normalizedSearchTerm) {
+        if (!normalizedSearchTerm) {
+            return true;
+        }
+
+        const metadata = entry?.metadata || {};
+        const values = [
+            entry?.displayType,
+            metadata.project,
+            metadata.plan,
+            metadata.position,
+            metadata.itemId,
+            metadata.steelGrade,
+            metadata.rawLine,
+            entry?.originalLine,
+            entry?.rawLine
+        ];
+
+        const numericKeys = [
+            'quantity',
+            'weight',
+            'totalLength',
+            'diameter',
+            'rollDiameter',
+            'bendCount',
+            'maxSegmentLength',
+            'totalWeight',
+            'totalLengthMeters'
+        ];
+
+        numericKeys.forEach(key => {
+            const value = metadata[key];
+            if (value !== undefined && value !== null && value !== '') {
+                values.push(value);
+            }
+        });
+
+        const combined = values
+            .filter(value => value !== undefined && value !== null && value !== '')
+            .map(value => String(value).toLowerCase())
+            .join(' ');
+
+        if (!combined) {
+            return false;
+        }
+
+        return combined.includes(normalizedSearchTerm);
+    }
+
+    function compareEntries(a, b, definition, direction) {
+        const dirMultiplier = direction === 'desc' ? -1 : 1;
+        const valueA = definition.getValue(a);
+        const valueB = definition.getValue(b);
+
+        if (definition.type === 'number') {
+            const numA = Number(valueA);
+            const numB = Number(valueB);
+            const hasA = Number.isFinite(numA);
+            const hasB = Number.isFinite(numB);
+
+            if (!hasA && !hasB) return 0;
+            if (!hasA) return dirMultiplier;
+            if (!hasB) return -dirMultiplier;
+            if (numA === numB) return 0;
+            return numA < numB ? -dirMultiplier : dirMultiplier;
+        }
+
+        const textA = (valueA ?? '').toString().trim().toLowerCase();
+        const textB = (valueB ?? '').toString().trim().toLowerCase();
+
+        if (!textA && !textB) return 0;
+        if (!textA) return dirMultiplier;
+        if (!textB) return -dirMultiplier;
+
+        const comparison = textA.localeCompare(textB, undefined, { numeric: true, sensitivity: 'base' });
+        if (comparison === 0) return 0;
+        return comparison * dirMultiplier;
+    }
+
+    function getVisibleEntries() {
+        const baseEntries = Array.isArray(state.entries) ? state.entries.slice() : [];
+        const normalizedSearch = state.filterText.trim().toLowerCase();
+
+        const filteredEntries = normalizedSearch
+            ? baseEntries.filter(entry => entryMatchesFilter(entry, normalizedSearch))
+            : baseEntries;
+
+        if (!state.sortKey || !state.sortDirection) {
+            return filteredEntries;
+        }
+
+        const definition = SORT_DEFINITIONS[state.sortKey];
+        if (!definition) {
+            return filteredEntries;
+        }
+
+        return filteredEntries.sort((a, b) => compareEntries(a, b, definition, state.sortDirection));
+    }
+
+    function updateStatusMessage(visibleCount) {
+        if (!statusEl) {
+            return;
+        }
+
+        if (!state.entries.length) {
+            statusEl.textContent = statusEl.dataset?.baseMessage || '';
+            return;
+        }
+
+        const baseMessage = statusEl.dataset?.baseMessage || '';
+        const filterActive = Boolean(state.filterText.trim());
+        const suffix = filterActive
+            ? `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen (Filter aktiv)`
+            : `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen`;
+        statusEl.textContent = baseMessage ? `${baseMessage} • ${suffix}` : suffix;
+    }
+
+    function updateHeaderSortState() {
+        if (!Array.isArray(tableHeaders) || !tableHeaders.length) {
+            return;
+        }
+
+        tableHeaders.forEach(th => {
+            const key = th.getAttribute('data-sort-key');
+            if (!key) return;
+
+            let ariaValue = 'none';
+            if (state.sortKey === key && state.sortDirection) {
+                ariaValue = state.sortDirection === 'desc' ? 'descending' : 'ascending';
+            }
+
+            th.setAttribute('aria-sort', ariaValue);
+            th.classList.toggle('is-sorted', state.sortKey === key && Boolean(state.sortDirection));
+        });
+    }
+
     function renderTable() {
         if (!tableBody) return;
+
+        const visibleEntries = getVisibleEntries();
         tableBody.innerHTML = '';
+
+        updateHeaderSortState();
+        updateStatusMessage(visibleEntries.length);
 
         if (state.entries.length === 0) {
             const row = tableBody.insertRow();
             const cell = row.insertCell();
-            cell.colSpan = 17;
-            cell.textContent = typeof i18n !== 'undefined' ? i18n.t('Keine Daten zum Anzeigen. Bitte laden Sie eine BVBS-Datei hoch.') : 'No data to display. Please upload a BVBS file.';
+            cell.colSpan = TABLE_COLUMNS.length;
+            cell.textContent = typeof i18n !== 'undefined'
+                ? i18n.t('Keine Daten zum Anzeigen. Bitte laden Sie eine BVBS-Datei hoch.')
+                : 'No data to display. Please upload a BVBS file.';
             cell.style.textAlign = 'center';
             cell.style.padding = '1rem';
             return;
         }
 
-        state.entries.forEach(entry => {
+        if (visibleEntries.length === 0) {
             const row = tableBody.insertRow();
-            row.insertCell().textContent = entry.displayType || '—';
-            row.insertCell().textContent = entry.metadata.project || '—';
-            row.insertCell().textContent = entry.metadata.plan || '—';
-            row.insertCell().textContent = entry.metadata.position || '—';
-            row.insertCell().textContent = entry.metadata.itemId || '—';
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.quantity, 0);
-            row.insertCell().textContent = entry.metadata.steelGrade || '—';
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.weight, 3);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLength, 1);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.diameter, 1);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.rollDiameter, 1);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.bendCount, 0);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.maxSegmentLength, 1);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalWeight, 3);
-            row.insertCell().textContent = formatDisplayNumber(entry.metadata.totalLengthMeters, 3);
-            row.insertCell().textContent = entry.metadata.rawLine || entry.originalLine || entry.rawLine || '—';
+            const cell = row.insertCell();
+            cell.colSpan = TABLE_COLUMNS.length;
+            cell.textContent = typeof i18n !== 'undefined'
+                ? i18n.t('Keine Einträge entsprechen dem aktuellen Filter.')
+                : 'No entries match the current filter.';
+            cell.style.textAlign = 'center';
+            cell.style.padding = '1rem';
+            return;
+        }
 
-            const previewCell = row.insertCell();
-            previewCell.classList.add('bvbs-preview-cell');
+        visibleEntries.forEach(entry => {
+            const row = tableBody.insertRow();
 
-            const previewButton = document.createElement('button');
-            previewButton.type = 'button';
-            previewButton.className = 'bvbs-preview-trigger';
-            const enlargeLabel = typeof i18n !== 'undefined' ? i18n.t('Vergrößern') : 'Enlarge';
-            previewButton.setAttribute('data-i18n-title', 'Vergrößern');
-            previewButton.setAttribute('data-i18n-aria-label', 'Vergrößern');
-            previewButton.setAttribute('title', enlargeLabel);
-            previewButton.setAttribute('aria-label', enlargeLabel);
+            TABLE_COLUMNS.forEach(column => {
+                const cell = row.insertCell();
+                if (column.className) {
+                    cell.classList.add(column.className);
+                }
 
-            const svg = document.createElementNS(SVG_NS, 'svg');
-            svg.setAttribute('class', 'bvbs-preview-svg');
-            previewButton.appendChild(svg);
-            previewCell.appendChild(previewButton);
+                if (column.isPreview) {
+                    const previewButton = document.createElement('button');
+                    previewButton.type = 'button';
+                    previewButton.className = 'bvbs-preview-trigger';
+                    const enlargeLabel = typeof i18n !== 'undefined' ? i18n.t('Vergrößern') : 'Enlarge';
+                    previewButton.setAttribute('data-i18n-title', 'Vergrößern');
+                    previewButton.setAttribute('data-i18n-aria-label', 'Vergrößern');
+                    previewButton.setAttribute('title', enlargeLabel);
+                    previewButton.setAttribute('aria-label', enlargeLabel);
 
-            renderEntryPreview(svg, entry);
+                    const svg = document.createElementNS(SVG_NS, 'svg');
+                    svg.setAttribute('class', 'bvbs-preview-svg');
+                    previewButton.appendChild(svg);
+                    cell.appendChild(previewButton);
 
-            previewButton.addEventListener('click', () => {
-                lastPreviewTrigger = previewButton;
-                openPreviewModal(entry);
+                    renderEntryPreview(svg, entry);
+
+                    previewButton.addEventListener('click', () => {
+                        lastPreviewTrigger = previewButton;
+                        openPreviewModal(entry);
+                    });
+                    return;
+                }
+
+                cell.textContent = column.render(entry);
+            });
+        });
+    }
+
+    function handleFilterChange(event) {
+        const value = event?.target?.value || '';
+        state.filterText = value;
+        renderTable();
+    }
+
+    function handleSort(sortKey) {
+        if (!sortKey) {
+            return;
+        }
+
+        if (state.sortKey === sortKey) {
+            if (state.sortDirection === 'asc') {
+                state.sortDirection = 'desc';
+            } else if (state.sortDirection === 'desc') {
+                state.sortKey = null;
+                state.sortDirection = null;
+            } else {
+                state.sortDirection = 'asc';
+            }
+        } else {
+            state.sortKey = sortKey;
+            state.sortDirection = 'asc';
+        }
+
+        renderTable();
+    }
+
+    function setupTableSorting() {
+        tableHeaders = Array.from(document.querySelectorAll('#bvbsListTable thead th[data-sort-key]'));
+        if (!tableHeaders.length) {
+            return;
+        }
+
+        tableHeaders.forEach(th => {
+            const key = th.getAttribute('data-sort-key');
+            if (!key) {
+                return;
+            }
+
+            th.setAttribute('tabindex', '0');
+            th.setAttribute('aria-sort', 'none');
+            th.addEventListener('click', () => handleSort(key));
+            th.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleSort(key);
+                }
             });
         });
     }
@@ -713,6 +1120,13 @@
             const text = await file.text();
             state.entries = parseAbsFileContent(text);
             state.fileName = file.name || '';
+            state.filterText = '';
+            state.sortKey = null;
+            state.sortDirection = null;
+
+            if (filterInput) {
+                filterInput.value = '';
+            }
 
             if (statusEl) {
                 const msg = typeof i18n !== 'undefined'
@@ -720,6 +1134,7 @@
                     : `${state.entries.length} positions loaded from ${state.fileName}`;
                 statusEl.textContent = msg;
                 statusEl.classList.remove('error-message');
+                statusEl.dataset.baseMessage = msg;
             }
 
             renderTable();
@@ -731,6 +1146,7 @@
                     : 'Error processing file.';
                 statusEl.textContent = msg;
                 statusEl.classList.add('error-message');
+                statusEl.dataset.baseMessage = '';
             }
         }
     }
@@ -771,6 +1187,7 @@
         openUploadBtn = document.getElementById('bvbsListOpenUploadBtn');
         tableBody = document.getElementById('bvbsListTableBody');
         statusEl = document.getElementById('bvbsListImportStatus');
+        filterInput = document.getElementById('bvbsListFilterInput');
         previewModal = document.getElementById('bvbsPreviewModal');
         previewModalSvg = document.getElementById('bvbsPreviewModalSvg');
         previewModalCloseBtn = document.getElementById('bvbsPreviewModalClose');
@@ -786,6 +1203,12 @@
             dropZone.addEventListener('dragleave', handleDragLeave);
             dropZone.addEventListener('drop', handleDrop);
         }
+        if (filterInput) {
+            filterInput.addEventListener('input', handleFilterChange);
+        }
+        if (statusEl) {
+            statusEl.dataset.baseMessage = statusEl.dataset?.baseMessage || '';
+        }
         if (previewModalCloseBtn) {
             previewModalCloseBtn.addEventListener('click', closePreviewModal);
         }
@@ -797,6 +1220,7 @@
             });
         }
 
+        setupTableSorting();
         renderTable(); // Initial render for empty state
     }
 
