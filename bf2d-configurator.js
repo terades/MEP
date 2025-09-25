@@ -706,14 +706,18 @@
 
         const dropZone = document.getElementById('bf2dDropZone');
         const importInput = document.getElementById('bf2dImportFileInput');
-        if (dropZone && importInput) {
-            dropZone.addEventListener('click', () => importInput.click());
+        if (dropZone) {
             dropZone.addEventListener('dragover', handleDragOver);
             dropZone.addEventListener('dragleave', handleDragLeave);
             dropZone.addEventListener('drop', handleDrop);
         }
         if (importInput) {
             importInput.addEventListener('change', handleFileInputChange);
+        }
+
+        const openImportButton = document.getElementById('bf2dOpenImportButton');
+        if (openImportButton && importInput) {
+            openImportButton.addEventListener('click', () => importInput.click());
         }
 
         const exportButton = document.getElementById('bf2dExportSelectionButton');
@@ -2803,7 +2807,7 @@
             content.style.display = 'none';
             clearButton.style.display = 'none';
             if (dropZone) {
-                dropZone.style.cursor = 'pointer';
+                dropZone.style.cursor = 'default';
             }
         } else if (state === 'data') {
             instructions.style.display = 'none';
