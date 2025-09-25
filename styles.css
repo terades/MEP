@@ -3005,18 +3005,21 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     }
 
     #print-container {
-        position: absolute;
-        left: 0;
-        top: 0;
+        position: static;
         width: 100%;
     }
 
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
     #bvbsPrintContainer {
-        position: absolute;
-        left: 0;
-        top: 0;
+        position: static;
+        inset: auto;
         width: 100%;
         padding: 0;
+        margin: 0;
         background: transparent;
         display: block !important;
         overflow: visible;
@@ -3026,7 +3029,52 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
         box-shadow: none;
         border: none;
         max-width: none;
+        width: 100%;
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6mm;
+        min-height: 100%;
+        page-break-after: avoid;
+    }
+
+    #bvbsPrintContainer .bvbs-print-header {
+        margin-bottom: 8mm;
+    }
+
+    #bvbsPrintContainer .bvbs-print-title {
+        font-size: 16pt;
+    }
+
+    #bvbsPrintContainer .bvbs-print-meta {
+        gap: 2mm 6mm;
+        font-size: 10pt;
+    }
+
+    #bvbsPrintContainer .bvbs-print-table {
+        width: 100%;
+        table-layout: fixed;
+        font-size: 9.5pt;
+    }
+
+    #bvbsPrintContainer .bvbs-print-table thead th {
+        padding: 4mm 3mm;
+    }
+
+    #bvbsPrintContainer .bvbs-print-table th,
+    #bvbsPrintContainer .bvbs-print-table td {
+        padding: 3mm;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+    #bvbsPrintContainer .bvbs-print-table tbody tr {
+        page-break-inside: avoid;
+    }
+
+    #bvbsPrintContainer .bvbs-print-preview {
+        width: 28mm;
+        height: 28mm;
     }
 
     .label-wrapper-print {
@@ -3036,6 +3084,7 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
         padding: 4mm;
         box-sizing: border-box;
         overflow: hidden;
+        page: labelPrint;
     }
 
     .printableLabel-batch {
@@ -3044,17 +3093,6 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
         font-family: 'Arial', sans-serif;
         color: #000;
         background: #fff;
-    }
-
-    /* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
-    @page {
-        size: 124mm 62mm;  /* Zebra-Label-Größe */
-        margin: 0;
-    }
-
-    body {
-        margin: 0;
-        padding: 0;
     }
 
     .sticker {
@@ -3072,30 +3110,32 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
         height: 54mm;
     }
 
-    /* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
     #labelBarcodeContainer canvas,
     #labelBarcodeContainer2 canvas,
     #labelBarcodeImage,
     #labelBarcodeImage2 {
         display: block;
         max-width: 100%;
-        height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
+        height: auto;
         margin: 0 auto;
     }
 
-    /* Das Elternelement des Labels im Druck auf Breite setzen,
-    um das "Abschneiden" zu verhindern, falls es eine Layout-Einschränkung gab. */
     #labelPreviewContainer {
-        display: block; /* Flexbox für Druckansicht entfernen, um Seitenumbrüche zu respektieren */
-        padding: 0; /* Kein Padding im Druckcontainer */
-        background-color: transparent; /* Hintergrund entfernen */
-        border-radius: 0; /* Keine Eckenradien */
-        border: none; /* Keine Rahmen */
+        display: block;
+        padding: 0;
+        background-color: transparent;
+        border-radius: 0;
+        border: none;
     }
 
     .label-grid {
-        display: grid; /* Grid-Layout beibehalten */
+        display: grid;
     }
+}
+
+@page labelPrint {
+    size: 124mm 62mm;
+    margin: 0;
 }
 
 /* Label layout editing */
