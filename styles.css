@@ -142,6 +142,86 @@ body[data-density="compact"] .settings-toggle {
 body[data-density="compact"] .settings-section {
     gap: 1rem;
 }
+body[data-density="compact"] .main-grid,
+body[data-density="compact"] .bf2d-layout,
+body[data-density="compact"] .bfma-layout,
+body[data-density="compact"] .preview-column,
+body[data-density="compact"] .resources-layout {
+    gap: 1rem;
+}
+
+body[data-density="compact"] .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+}
+
+body[data-density="compact"] .card-header {
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+body[data-density="compact"] .card-title {
+    font-size: 1rem;
+}
+
+body[data-density="compact"] .form-group {
+    margin-bottom: 0.65rem;
+    gap: 0.5rem;
+}
+body[data-density="compact"] .form-group label {
+    flex-basis: 110px;
+    padding-right: 0.5rem;
+    font-size: 0.85rem;
+}
+
+body[data-density="compact"] input[type="text"],
+body[data-density="compact"] input[type="number"],
+body[data-density="compact"] textarea,
+body[data-density="compact"] select {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.9rem;
+}
+body[data-density="compact"] .bf2d-form-grid,
+body[data-density="compact"] .bfma-form-grid {
+    gap: 0.75rem;
+}
+body[data-density="compact"] .bf2d-summary-grid,
+body[data-density="compact"] .bfma-summary-grid {
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+body[data-density="compact"] .bf2d-summary-item,
+body[data-density="compact"] .bfma-summary-item {
+    padding: 0.6rem 0.8rem;
+}
+
+body[data-density="compact"] .bf2d-summary-label,
+body[data-density="compact"] .bfma-summary-label {
+    font-size: 0.7rem;
+}
+
+body[data-density="compact"] .bf2d-summary-value,
+body[data-density="compact"] .bfma-summary-value {
+    font-size: 1rem;
+}
+
+body[data-density="compact"] .bf2d-segment-table th,
+body[data-density="compact"] .bf2d-segment-table td,
+body[data-density="compact"] .bfma-tabs .full-width-table th,
+body[data-density="compact"] .bfma-tabs .full-width-table td {
+    padding: 0.4rem 0.6rem;
+}
+
+body[data-density="compact"] .bf2d-drop-zone {
+    padding: 1rem;
+    min-height: 240px;
+}
+
+body[data-density="compact"] .bf2d-preview-container {
+    padding: 0.75rem;
+    min-height: 280px;
+}
 
 body[data-motion="reduced"] *,
 body[data-motion="reduced"] *::before,
