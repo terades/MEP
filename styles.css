@@ -3812,21 +3812,82 @@ body[data-theme="dark"] .bf2d-machine-list-item {
 /* BFMA Konfigurator */
 .bfma-layout {
     display: grid;
-    grid-template-columns: repeat(3, minmax(320px, 1fr));
+    grid-template-columns: minmax(360px, 1.2fr) minmax(320px, 1fr) minmax(320px, 1fr);
     gap: clamp(1.5rem, 2.5vw, 2.5rem);
     align-items: start;
     grid-auto-flow: row;
+}
+
+#bfmaView .bfma-layout > * {
+    margin-bottom: 0;
+}
+
+#bfmaView .bfma-layout > .card {
+    margin-bottom: 0;
+}
+
+#bfmaView .preview-column {
+    display: contents;
+}
+
+#bfmaView .bfma-config-card {
+    grid-column: 1;
+}
+
+#bfmaView .bfma-preview-card {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+}
+
+#bfmaView .bfma-import-card {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+}
+
+#bfmaView .bfma-output-card {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: stretch;
 }
 
 @media (max-width: 1600px) {
     .bfma-layout {
         grid-template-columns: repeat(2, minmax(320px, 1fr));
     }
+
+    #bfmaView .bfma-output-card {
+        grid-column: 2;
+        grid-row: auto;
+    }
 }
 
 @media (max-width: 1024px) {
     .bfma-layout {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 1400px) {
+    #bfmaView .bfma-output-card {
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 1200px) {
+    #bfmaView .preview-column {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: clamp(1.5rem, 2.5vw, 2.5rem);
+    }
+
+    #bfmaView .bfma-config-card,
+    #bfmaView .bfma-preview-card,
+    #bfmaView .bfma-import-card,
+    #bfmaView .bfma-output-card {
+        grid-column: auto;
+        grid-row: auto;
     }
 }
 
