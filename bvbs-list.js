@@ -1128,12 +1128,8 @@
         });
 
         if (!state.sortKey || !state.sortDirection) {
-        return filteredEntries;
-    }
-
-    function getVisibleColumns() {
-        return TABLE_COLUMNS.filter(column => isColumnVisible(column.key));
-    }
+            return filteredEntries;
+        }
 
         const definition = SORT_DEFINITIONS[state.sortKey];
         if (!definition) {
@@ -1141,6 +1137,10 @@
         }
 
         return filteredEntries.sort((a, b) => compareEntries(a, b, definition, state.sortDirection));
+    }
+
+    function getVisibleColumns() {
+        return TABLE_COLUMNS.filter(column => isColumnVisible(column.key));
     }
 
     function updateStatusMessage(visibleCount) {
