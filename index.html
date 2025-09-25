@@ -1521,9 +1521,19 @@
                                                 </svg>
                                             </button>
                                         </div>
-                                        <div id="bvbsColumnFilterList" class="column-filter-list"></div>
-                                        <div class="column-filter-actions">
-                                            <button type="button" id="bvbsColumnFilterResetBtn" class="column-filter-reset-btn" data-i18n="Filter zurücksetzen">Filter zurücksetzen</button>
+                                        <div class="column-filter-section">
+                                            <h4 data-i18n="Spaltensichtbarkeit">Spaltensichtbarkeit</h4>
+                                            <div id="bvbsColumnVisibilityList" class="column-visibility-list"></div>
+                                            <div class="column-filter-actions column-visibility-actions">
+                                                <button type="button" id="bvbsColumnVisibilityResetBtn" class="column-filter-reset-btn" data-i18n="Spalten zurücksetzen">Spalten zurücksetzen</button>
+                                            </div>
+                                        </div>
+                                        <div class="column-filter-section">
+                                            <h4 data-i18n="Spaltenfilter">Spaltenfilter</h4>
+                                            <div id="bvbsColumnFilterList" class="column-filter-list"></div>
+                                            <div class="column-filter-actions">
+                                                <button type="button" id="bvbsColumnFilterResetBtn" class="column-filter-reset-btn" data-i18n="Filter zurücksetzen">Filter zurücksetzen</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1532,23 +1542,23 @@
                                 <table id="bvbsListTable" class="full-width-table">
                                     <thead>
                                         <tr>
-                                            <th data-sort-key="displayType" data-i18n="Typ">Typ</th>
-                                            <th data-sort-key="project" data-i18n="Projekt">Projekt</th>
-                                            <th data-sort-key="plan" data-i18n="Plan">Plan</th>
-                                            <th data-sort-key="position" data-i18n="Pos.-Nr.">Pos.-Nr.</th>
-                                            <th data-sort-key="itemId" data-i18n="itemID">itemID</th>
-                                            <th data-sort-key="quantity" data-i18n="Anzahl">Anzahl</th>
-                                            <th data-sort-key="steelGrade" data-i18n="Güte">Güte</th>
-                                            <th data-sort-key="weight" data-i18n="Gewicht">Gewicht</th>
-                                            <th data-sort-key="totalLength" data-i18n="Gesamtlänge">Gesamtlänge</th>
-                                            <th data-sort-key="diameter" data-i18n="Durchmesser">Durchmesser</th>
-                                            <th data-sort-key="rollDiameter" data-i18n="Roll⌀">Roll⌀</th>
-                                            <th data-sort-key="bendCount" data-i18n="Biegungen">Biegungen</th>
-                                            <th data-sort-key="maxSegmentLength" data-i18n="MaxSchenkel">MaxSchenkel</th>
-                                            <th data-sort-key="totalWeight" data-i18n="∑ kg">∑ kg</th>
-                                            <th data-sort-key="totalLengthMeters" data-i18n="∑ m">∑ m</th>
-                                            <th data-sort-key="rawLine" data-i18n="Zeile">Zeile</th>
-                                            <th data-i18n="2D-Vorschau">2D-Vorschau</th>
+                                            <th data-column-key="displayType" data-sort-key="displayType" data-i18n="Typ">Typ</th>
+                                            <th data-column-key="project" data-sort-key="project" data-i18n="Projekt">Projekt</th>
+                                            <th data-column-key="plan" data-sort-key="plan" data-i18n="Plan">Plan</th>
+                                            <th data-column-key="position" data-sort-key="position" data-i18n="Pos.-Nr.">Pos.-Nr.</th>
+                                            <th data-column-key="itemId" data-sort-key="itemId" data-i18n="itemID">itemID</th>
+                                            <th data-column-key="quantity" data-sort-key="quantity" data-i18n="Anzahl">Anzahl</th>
+                                            <th data-column-key="steelGrade" data-sort-key="steelGrade" data-i18n="Güte">Güte</th>
+                                            <th data-column-key="weight" data-sort-key="weight" data-i18n="Gewicht">Gewicht</th>
+                                            <th data-column-key="totalLength" data-sort-key="totalLength" data-i18n="Gesamtlänge">Gesamtlänge</th>
+                                            <th data-column-key="diameter" data-sort-key="diameter" data-i18n="Durchmesser">Durchmesser</th>
+                                            <th data-column-key="rollDiameter" data-sort-key="rollDiameter" data-i18n="Roll⌀">Roll⌀</th>
+                                            <th data-column-key="bendCount" data-sort-key="bendCount" data-i18n="Biegungen">Biegungen</th>
+                                            <th data-column-key="maxSegmentLength" data-sort-key="maxSegmentLength" data-i18n="MaxSchenkel">MaxSchenkel</th>
+                                            <th data-column-key="totalWeight" data-sort-key="totalWeight" data-i18n="∑ kg">∑ kg</th>
+                                            <th data-column-key="totalLengthMeters" data-sort-key="totalLengthMeters" data-i18n="∑ m">∑ m</th>
+                                            <th data-column-key="rawLine" data-sort-key="rawLine" data-i18n="Zeile">Zeile</th>
+                                            <th data-column-key="preview" data-i18n="2D-Vorschau">2D-Vorschau</th>
                                         </tr>
                                     </thead>
                                     <tbody id="bvbsListTableBody">
