@@ -2814,126 +2814,276 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
 			}
 
 			#printableLabel, #printableLabel2 {
-			font-family: 'Arial', sans-serif;
-			color: #000;
-			background: #fff;
-			padding: 4mm;
-			box-sizing: border-box;
-			overflow: hidden;
-			}
+    font-family: 'Arial', sans-serif;
+    color: #000;
+    background: #fff;
+    padding: 4mm;
+    box-sizing: border-box;
+    overflow: hidden;
+}
 
-                        #printableLabel h3, #printableLabel2 h3 {
-                        text-align: center;
-                        margin: 0 0 4mm 0;
-                        font-size: 16pt;
-                        font-weight: bold;
-                        }
-                        .label-grid {
-                        display: grid;
-                        grid-template-columns: 1fr 2fr;
-                        gap: 1mm 3mm;
-                        font-size: 12pt;
-                        margin-bottom: 4mm;
-                        }
-			.label-grid > div:nth-child(odd) {
-			font-weight: bold;
-			text-align: right;
-			}
-                        #labelBarcodeImage,
-                        #labelBarcodeImage2 {
-                        max-width: 100%;
-                        height: 30px;
-                        display: block;
-                        }
-			@media print {
-			body * {
-				visibility: hidden;
-			}
+#printableLabel h3,
+#printableLabel2 h3 {
+    text-align: center;
+    margin: 0 0 4mm 0;
+    font-size: 16pt;
+    font-weight: bold;
+}
 
-            #print-container, #print-container * {
-                visibility: visible;
-            }
+.label-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1mm 3mm;
+    font-size: 12pt;
+    margin-bottom: 4mm;
+}
 
-            #print-container {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
+.label-grid > div:nth-child(odd) {
+    font-weight: bold;
+    text-align: right;
+}
 
-            .label-wrapper-print {
-                page-break-after: always;
-                width: 100mm;
-                height: 58mm;
-                padding: 4mm;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
+#labelBarcodeImage,
+#labelBarcodeImage2 {
+    max-width: 100%;
+    height: 30px;
+    display: block;
+}
 
-            .printableLabel-batch {
-                width: 100%;
-                height: 100%;
-                font-family: 'Arial', sans-serif;
-			    color: #000;
-			    background: #fff;
-            }
+#bvbsPrintContainer {
+    display: none;
+}
 
-						/* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
-                        @page {
-							size: 124mm 62mm;  /* Zebra-Label-Größe */
-							margin: 0;
-						}
+#bvbsPrintContainer.is-active {
+    position: fixed;
+    inset: 0;
+    padding: clamp(1.5rem, 3vw, 3rem);
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: auto;
+    z-index: 1200;
+}
 
-						body {
-							margin: 0;
-							padding: 0;
-						}
+#bvbsPrintContainer .bvbs-print-wrapper {
+    background: #ffffff;
+    color: #0f172a;
+    width: 100%;
+    max-width: 297mm;
+    padding: clamp(1.5rem, 2.5vw, 2.75rem);
+    border-radius: var(--border-radius, 16px);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.25);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+}
 
-						.sticker {
-							display: flex;
-							align-items: center;
-							justify-content: center;
-							width: 124mm;
-							height: 62mm;
-							box-sizing: border-box;
-							page-break-after: always;
-						}
+#bvbsPrintContainer .bvbs-print-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
 
-						.sticker-content {
-							width: 116mm;
-							height: 54mm;
-						}
+#bvbsPrintContainer .bvbs-print-title {
+    font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.015em;
+}
 
+#bvbsPrintContainer .bvbs-print-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    font-size: 0.95rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
 
+#bvbsPrintContainer .bvbs-print-meta-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+}
 
+#bvbsPrintContainer .bvbs-print-meta-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+    color: #475569;
+}
 
-			/* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
-                        #labelBarcodeContainer canvas,
-                        #labelBarcodeContainer2 canvas,
-                        #labelBarcodeImage,
-                        #labelBarcodeImage2 {
-                                display: block;
-                                max-width: 100%;
-                                height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
-                                margin: 0 auto;
-                        }
+#bvbsPrintContainer .bvbs-print-meta-value {
+    font-weight: 600;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
 
-			/* Das Elternelement des Labels im Druck auf Breite setzen,
-			um das "Abschneiden" zu verhindern, falls es eine Layout-Einschränkung gab. */
-			#labelPreviewContainer {
-				display: block; /* Flexbox für Druckansicht entfernen, um Seitenumbrüche zu respektieren */
-				padding: 0; /* Kein Padding im Druckcontainer */
-				background-color: transparent; /* Hintergrund entfernen */
-				border-radius: 0; /* Keine Eckenradien */
-				border: none; /* Keine Rahmen */
-			}
+#bvbsPrintContainer .bvbs-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #0f172a;
+    font-size: clamp(0.85rem, 1.6vw, 0.95rem);
+    table-layout: auto;
+}
 
-			.label-grid {
-				display: grid; /* Grid-Layout beibehalten */
-			}
-		}
+#bvbsPrintContainer .bvbs-print-table thead th {
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.75rem;
+    border: 1px solid #0f172a;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
 
-                        /* Label layout editing */
+#bvbsPrintContainer .bvbs-print-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+#bvbsPrintContainer .bvbs-print-table tbody tr:hover {
+    background: rgba(148, 163, 184, 0.25);
+}
+
+#bvbsPrintContainer .bvbs-print-table th,
+#bvbsPrintContainer .bvbs-print-table td {
+    border: 1px solid rgba(148, 163, 184, 0.75);
+    padding: 0.6rem;
+    vertical-align: middle;
+}
+
+#bvbsPrintContainer .bvbs-print-table .is-numeric {
+    text-align: right;
+}
+
+#bvbsPrintContainer .bvbs-print-table .bvbs-print-preview-cell {
+    text-align: center;
+    width: clamp(80px, 12vw, 110px);
+}
+
+#bvbsPrintContainer .bvbs-print-preview {
+    width: clamp(70px, 11vw, 100px);
+    height: clamp(70px, 11vw, 100px);
+}
+
+#bvbsPrintContainer .bvbs-print-note {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #475569;
+    font-style: italic;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #print-container,
+    #print-container *,
+    #bvbsPrintContainer,
+    #bvbsPrintContainer * {
+        visibility: visible;
+    }
+
+    #print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    #bvbsPrintContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        background: transparent;
+        display: block !important;
+        overflow: visible;
+    }
+
+    #bvbsPrintContainer .bvbs-print-wrapper {
+        box-shadow: none;
+        border: none;
+        max-width: none;
+        padding: 0;
+    }
+
+    .label-wrapper-print {
+        page-break-after: always;
+        width: 100mm;
+        height: 58mm;
+        padding: 4mm;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .printableLabel-batch {
+        width: 100%;
+        height: 100%;
+        font-family: 'Arial', sans-serif;
+        color: #000;
+        background: #fff;
+    }
+
+    /* Optionale Optimierungen für den Druckbereich (falls der Browser sie unterstützt) */
+    @page {
+        size: 124mm 62mm;  /* Zebra-Label-Größe */
+        margin: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .sticker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 124mm;
+        height: 62mm;
+        box-sizing: border-box;
+        page-break-after: always;
+    }
+
+    .sticker-content {
+        width: 116mm;
+        height: 54mm;
+    }
+
+    /* Sicherstellen, dass Barcodes im Druck sichtbar sind und richtig skaliert werden */
+    #labelBarcodeContainer canvas,
+    #labelBarcodeContainer2 canvas,
+    #labelBarcodeImage,
+    #labelBarcodeImage2 {
+        display: block;
+        max-width: 100%;
+        height: auto; /* Wichtig: Automatische Höhe für korrekte Skalierung */
+        margin: 0 auto;
+    }
+
+    /* Das Elternelement des Labels im Druck auf Breite setzen,
+    um das "Abschneiden" zu verhindern, falls es eine Layout-Einschränkung gab. */
+    #labelPreviewContainer {
+        display: block; /* Flexbox für Druckansicht entfernen, um Seitenumbrüche zu respektieren */
+        padding: 0; /* Kein Padding im Druckcontainer */
+        background-color: transparent; /* Hintergrund entfernen */
+        border-radius: 0; /* Keine Eckenradien */
+        border: none; /* Keine Rahmen */
+    }
+
+    .label-grid {
+        display: grid; /* Grid-Layout beibehalten */
+    }
+}
+
+/* Label layout editing */
                         #printableLabel.label-edit-mode,
                         #printableLabel2.label-edit-mode {
                             position: relative;
@@ -3030,6 +3180,16 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
 
 #bvbsListView .bvbs-table-card .card-header .bvbs-filter-group {
     margin-left: auto;
+}
+
+#bvbsListView .bvbs-print-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#bvbsListView .bvbs-print-actions .btn-secondary {
+    white-space: nowrap;
 }
 
 #bvbsListView .bvbs-column-filter {
