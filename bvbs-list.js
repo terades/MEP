@@ -22,12 +22,14 @@
         sortDirection: null,
         columnFilters: {},
         columnVisibility: {},
-        printHeadingText: ''
+        printHeadingText: '',
+        selectedEntryIds: new Set()
     };
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
-    let printButton, printContainer, printHeadingInput;
+    let printButton, selectedPrintButton, printContainer, printHeadingInput;
+    let selectAllCheckbox;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
     let columnVisibilityList, columnVisibilityResetBtn;
@@ -119,7 +121,146 @@
         return target.toString();
     }
 
+    function ensureSelectionSet() {
+        if (!(state.selectedEntryIds instanceof Set)) {
+            state.selectedEntryIds = new Set();
+        }
+        return state.selectedEntryIds;
+    }
+
+    function isEntrySelected(entryId) {
+        if (!entryId) {
+            return false;
+        }
+        const selectedSet = ensureSelectionSet();
+        return selectedSet.has(entryId);
+    }
+
+    function escapeSelector(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+            return CSS.escape(value);
+        }
+        return value.replace(/(["'\\\[\]\.:#@$%^&*(),+=<>/?{}|~-])/g, '\\$1');
+    }
+
+    function updateEntrySelectionIndicators(entryId) {
+        if (!tableBody || !entryId) {
+            return;
+        }
+        const selector = `tr[data-entry-id="${escapeSelector(entryId)}"]`;
+        const row = tableBody.querySelector(selector);
+        if (!row) {
+            return;
+        }
+        const isSelected = isEntrySelected(entryId);
+        row.classList.toggle('is-selected', isSelected);
+        const checkbox = row.querySelector('.bvbs-selection-checkbox');
+        if (checkbox instanceof HTMLInputElement) {
+            checkbox.checked = isSelected;
+        }
+    }
+
+    function toggleEntrySelection(entryId, shouldSelect, options = {}) {
+        if (!entryId) {
+            return false;
+        }
+
+        const selectedSet = ensureSelectionSet();
+        const currentlySelected = selectedSet.has(entryId);
+        const targetState = typeof shouldSelect === 'boolean' ? shouldSelect : !currentlySelected;
+
+        if (targetState === currentlySelected) {
+            return false;
+        }
+
+        if (targetState) {
+            selectedSet.add(entryId);
+        } else {
+            selectedSet.delete(entryId);
+        }
+
+        if (!options.skipRowUpdate) {
+            updateEntrySelectionIndicators(entryId);
+        }
+        if (!options.skipSelectAllUpdate) {
+            updateSelectAllCheckbox();
+        }
+        if (!options.silent) {
+            updateSelectedPrintButtonState();
+        }
+
+        return true;
+    }
+
+    function clearSelection(options = {}) {
+        const selectedSet = ensureSelectionSet();
+        if (!selectedSet.size) {
+            if (!options.skipButtonUpdate) {
+                updateSelectedPrintButtonState();
+            }
+            if (!options.skipSelectAllUpdate) {
+                updateSelectAllCheckbox();
+            }
+            return;
+        }
+
+        selectedSet.clear();
+
+        if (!options.skipRowUpdate && tableBody) {
+            tableBody.querySelectorAll('tr.is-selected').forEach(row => {
+                row.classList.remove('is-selected');
+                const checkbox = row.querySelector('.bvbs-selection-checkbox');
+                if (checkbox instanceof HTMLInputElement) {
+                    checkbox.checked = false;
+                }
+            });
+        }
+
+        if (!options.skipButtonUpdate) {
+            updateSelectedPrintButtonState();
+        }
+
+        if (!options.skipSelectAllUpdate) {
+            updateSelectAllCheckbox();
+        }
+    }
+
+    function getSelectedEntries() {
+        const selectedSet = ensureSelectionSet();
+        if (!Array.isArray(state.entries) || !selectedSet.size) {
+            return [];
+        }
+        return state.entries.filter(entry => entry?.id && selectedSet.has(entry.id));
+    }
+
     const TABLE_COLUMNS = [
+        {
+            key: 'selection',
+            className: 'bvbs-selection-cell',
+            isSelection: true,
+            excludeFromVisibility: true,
+            excludeFromFilters: true,
+            includeInPrint: false,
+            render(entry, options = {}) {
+                if (options?.mode === 'print') {
+                    return '';
+                }
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'bvbs-selection-checkbox';
+                checkbox.dataset.entryId = entry?.id || '';
+                checkbox.checked = isEntrySelected(entry?.id);
+                const label = translate('Zeile auswählen', 'Select row');
+                checkbox.setAttribute('aria-label', label);
+                checkbox.addEventListener('change', event => {
+                    toggleEntrySelection(entry?.id, event.target.checked);
+                });
+                return checkbox;
+            }
+        },
         {
             key: 'displayType',
             render(entry) {
@@ -1016,6 +1157,10 @@
         }
 
         TABLE_COLUMNS.forEach(column => {
+            if (column.excludeFromVisibility) {
+                state.columnVisibility[column.key] = true;
+                return;
+            }
             if (typeof state.columnVisibility[column.key] === 'undefined') {
                 state.columnVisibility[column.key] = true;
             }
@@ -1024,12 +1169,16 @@
 
     function isColumnVisible(columnKey) {
         ensureColumnVisibilityState();
+        const column = getColumnDefinitionByKey(columnKey);
+        if (column?.excludeFromVisibility) {
+            return true;
+        }
         return state.columnVisibility[columnKey] !== false;
     }
 
     function isColumnVisibilityModified() {
         ensureColumnVisibilityState();
-        return TABLE_COLUMNS.some(column => state.columnVisibility[column.key] === false);
+        return TABLE_COLUMNS.some(column => !column.excludeFromVisibility && state.columnVisibility[column.key] === false);
     }
 
     function setColumnVisibility(columnKey, visible, options = {}) {
@@ -1038,6 +1187,11 @@
         }
 
         ensureColumnVisibilityState();
+        const column = getColumnDefinitionByKey(columnKey);
+        if (column?.excludeFromVisibility) {
+            state.columnVisibility[column.key] = true;
+            return;
+        }
         state.columnVisibility[columnKey] = visible !== false;
 
         if (!options.skipInputUpdate) {
@@ -1056,6 +1210,10 @@
 
         let changed = false;
         TABLE_COLUMNS.forEach(column => {
+            if (column.excludeFromVisibility) {
+                state.columnVisibility[column.key] = true;
+                return;
+            }
             if (state.columnVisibility[column.key] === false) {
                 state.columnVisibility[column.key] = true;
                 changed = true;
@@ -1075,9 +1233,12 @@
 
     function getVisibleColumnCount() {
         ensureColumnVisibilityState();
-        return TABLE_COLUMNS.reduce((count, column) => (
-            count + (state.columnVisibility[column.key] === false ? 0 : 1)
-        ), 0);
+        return TABLE_COLUMNS.reduce((count, column) => {
+            if (column.excludeFromVisibility) {
+                return count + 1;
+            }
+            return count + (state.columnVisibility[column.key] === false ? 0 : 1);
+        }, 0);
     }
 
     function isColumnFilterActive() {
@@ -1203,7 +1364,7 @@
     }
 
     function getVisibleColumns() {
-        return TABLE_COLUMNS.filter(column => isColumnVisible(column.key));
+        return TABLE_COLUMNS.filter(column => column.includeInPrint !== false && isColumnVisible(column.key));
     }
 
     function updateStatusMessage(visibleCount) {
@@ -1398,6 +1559,9 @@
             columnVisibilityList.innerHTML = '';
 
             TABLE_COLUMNS.forEach(column => {
+                if (column.excludeFromVisibility) {
+                    return;
+                }
                 const item = document.createElement('label');
                 item.className = 'column-visibility-item';
                 item.setAttribute('for', `bvbsColumnVisibility_${column.key}`);
@@ -1428,7 +1592,7 @@
         columnFilterInputs.clear();
         columnFilterList.innerHTML = '';
 
-        const columns = TABLE_COLUMNS.filter(column => !column.isPreview);
+        const columns = TABLE_COLUMNS.filter(column => !column.isPreview && !column.excludeFromFilters);
         columns.forEach(column => {
             const item = document.createElement('div');
             item.className = 'column-filter-item';
@@ -1493,6 +1657,7 @@
     function renderTable() {
         if (!tableBody) return;
 
+        ensureSelectionSet();
         const visibleEntries = getVisibleEntries();
         updatePrintButtonState(visibleEntries.length);
         tableBody.innerHTML = '';
@@ -1529,12 +1694,22 @@
 
         visibleEntries.forEach(entry => {
             const row = tableBody.insertRow();
+            const entryId = entry?.id || '';
+            if (entryId) {
+                row.dataset.entryId = entryId;
+            }
+            row.classList.toggle('is-selected', isEntrySelected(entryId));
+            row.addEventListener('click', event => handleRowClick(event, entry));
 
             TABLE_COLUMNS.forEach(column => {
                 const cell = row.insertCell();
                 cell.dataset.columnKey = column.key;
                 if (column.className) {
                     cell.classList.add(column.className);
+                }
+
+                if (column.isSelection) {
+                    cell.setAttribute('data-selection-cell', 'true');
                 }
 
                 if (column.isPreview) {
@@ -1575,10 +1750,104 @@
                 } else {
                     cell.textContent = String(renderedValue);
                 }
+
+                if (column.isSelection) {
+                    cell.addEventListener('click', event => {
+                        if (event.target instanceof HTMLInputElement) {
+                            return;
+                        }
+                        if (!entryId) {
+                            return;
+                        }
+                        toggleEntrySelection(entryId);
+                    });
+                }
             });
         });
 
         applyColumnVisibilityToTable();
+        updateSelectAllCheckbox(visibleEntries);
+    }
+
+    function handleRowClick(event, entry) {
+        if (!entry?.id) {
+            return;
+        }
+
+        const target = event?.target;
+        if (!target || !(target instanceof Node)) {
+            return;
+        }
+
+        if (target.closest('button, a, input, textarea, select, label')) {
+            return;
+        }
+
+        if (target.closest('[data-selection-cell="true"]')) {
+            return;
+        }
+
+        toggleEntrySelection(entry.id);
+    }
+
+    function updateSelectAllCheckbox(visibleEntries) {
+        if (!selectAllCheckbox) {
+            return;
+        }
+
+        const entries = Array.isArray(visibleEntries) ? visibleEntries : getVisibleEntries();
+        if (!entries.length) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.disabled = true;
+            return;
+        }
+
+        selectAllCheckbox.disabled = false;
+        const selectedCount = entries.filter(entry => entry?.id && isEntrySelected(entry.id)).length;
+        if (selectedCount === entries.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+        if (selectedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+            return;
+        }
+
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    }
+
+    function updateSelectedPrintButtonState() {
+        if (!selectedPrintButton) {
+            return;
+        }
+
+        const selectedEntries = getSelectedEntries();
+        const count = selectedEntries.length;
+        const columns = getVisibleColumns();
+        const hasColumns = columns.length > 0;
+
+        const baseLabelKey = selectedPrintButton.getAttribute('data-i18n-base-label') || 'Auswahl drucken';
+        const fallback = selectedPrintButton.getAttribute('data-base-label-fallback') || 'Print selection';
+        const baseLabel = translate(baseLabelKey, fallback);
+        selectedPrintButton.dataset.baseLabel = baseLabel;
+        selectedPrintButton.textContent = `${baseLabel} (${count})`;
+
+        const disabled = count === 0 || !hasColumns;
+        selectedPrintButton.disabled = disabled;
+        if (disabled) {
+            selectedPrintButton.setAttribute('aria-disabled', 'true');
+            const message = count === 0
+                ? translate('Keine Positionen ausgewählt.', 'No positions selected.')
+                : translate('Keine Spalten ausgewählt.', 'No columns selected.');
+            selectedPrintButton.setAttribute('title', message);
+        } else {
+            selectedPrintButton.removeAttribute('aria-disabled');
+            selectedPrintButton.removeAttribute('title');
+        }
     }
 
     function updatePrintButtonState(entryCount) {
@@ -1599,6 +1868,27 @@
             printButton.removeAttribute('aria-disabled');
             printButton.removeAttribute('title');
         }
+
+        updateSelectedPrintButtonState();
+    }
+
+    function handleSelectAllChange(event) {
+        const checkbox = event?.target;
+        if (!(checkbox instanceof HTMLInputElement)) {
+            return;
+        }
+
+        checkbox.indeterminate = false;
+        const shouldSelect = checkbox.checked;
+        const visibleEntries = getVisibleEntries();
+        visibleEntries.forEach(entry => {
+            if (!entry?.id) {
+                return;
+            }
+            toggleEntrySelection(entry.id, shouldSelect, { silent: true, skipSelectAllUpdate: true });
+        });
+        updateSelectAllCheckbox(visibleEntries);
+        updateSelectedPrintButtonState();
     }
 
     function createPrintMetaItem(label, value) {
@@ -1822,6 +2112,49 @@
             cleanupPrintContainer();
         }
     }
+
+    function handlePrintSelectedButtonClick() {
+        if (!printContainer) {
+            return;
+        }
+
+        if (printHeadingInput) {
+            state.printHeadingText = printHeadingInput.value || '';
+        }
+
+        const entries = getSelectedEntries();
+        if (!entries.length) {
+            showPrintError(translate('Keine Positionen ausgewählt.', 'No positions selected.'));
+            return;
+        }
+
+        const columns = getVisibleColumns();
+        if (!columns.length) {
+            showPrintError(translate('Keine Spalten ausgewählt.', 'No columns selected.'));
+            return;
+        }
+
+        printContainer.innerHTML = '';
+        const content = buildPrintTable(entries, columns);
+        printContainer.appendChild(content);
+        printContainer.classList.add('is-active');
+        printContainer.setAttribute('aria-hidden', 'false');
+
+        const styleId = 'bvbs-print-page-style';
+        let printStyle = document.getElementById(styleId);
+        if (!printStyle) {
+            printStyle = document.createElement('style');
+            printStyle.id = styleId;
+            printStyle.textContent = '@page { size: A4 landscape; margin: 10mm; }';
+            document.head.appendChild(printStyle);
+        }
+
+        try {
+            window.print();
+        } finally {
+            cleanupPrintContainer();
+        }
+    }
     function handleFilterChange(event) {
         const value = event?.target?.value || '';
         state.filterText = value;
@@ -1884,6 +2217,7 @@
             state.filterText = '';
             state.sortKey = null;
             state.sortDirection = null;
+            state.selectedEntryIds = new Set();
             clearColumnFilters({ skipRender: true });
 
             if (filterInput) {
@@ -1899,6 +2233,7 @@
                 statusEl.dataset.baseMessage = msg;
             }
 
+            updateSelectedPrintButtonState();
             renderTable();
         } catch (error) {
             console.error('Failed to process BVBS file', error);
@@ -2007,8 +2342,10 @@
         uploadSection = document.getElementById('bvbsListUploadSection');
         uploadCard = document.getElementById('bvbsUploadCard');
         printButton = document.getElementById('bvbsPrintButton');
+        selectedPrintButton = document.getElementById('bvbsPrintSelectedButton');
         printContainer = document.getElementById('bvbsPrintContainer');
         printHeadingInput = document.getElementById('bvbsPrintHeadingInput');
+        selectAllCheckbox = document.getElementById('bvbsSelectAllCheckbox');
         previewModal = document.getElementById('bvbsPreviewModal');
         previewModalSvg = document.getElementById('bvbsPreviewModalSvg');
         previewModalCloseBtn = document.getElementById('bvbsPreviewModalClose');
@@ -2037,12 +2374,22 @@
         if (printButton) {
             printButton.addEventListener('click', handlePrintButtonClick);
         }
+        if (selectedPrintButton) {
+            selectedPrintButton.addEventListener('click', handlePrintSelectedButtonClick);
+            updateSelectedPrintButtonState();
+        }
         if (printHeadingInput) {
             state.printHeadingText = printHeadingInput.value || '';
             printHeadingInput.addEventListener('input', handlePrintHeadingChange);
         }
         if (printContainer) {
             printContainer.setAttribute('aria-hidden', 'true');
+        }
+        if (selectAllCheckbox) {
+            const selectAllLabel = translate('Alle sichtbaren Zeilen auswählen', 'Select all visible rows');
+            selectAllCheckbox.setAttribute('aria-label', selectAllLabel);
+            selectAllCheckbox.setAttribute('title', selectAllLabel);
+            selectAllCheckbox.addEventListener('change', handleSelectAllChange);
         }
         if (statusEl) {
             statusEl.dataset.baseMessage = statusEl.dataset?.baseMessage || '';
@@ -2094,6 +2441,12 @@
         buildColumnFilterMenu();
         updateColumnFilterToggleState();
         updateUploadToggleState();
+        if (selectAllCheckbox) {
+            const selectAllLabel = translate('Alle sichtbaren Zeilen auswählen', 'Select all visible rows');
+            selectAllCheckbox.setAttribute('aria-label', selectAllLabel);
+            selectAllCheckbox.setAttribute('title', selectAllLabel);
+        }
+        updateSelectedPrintButtonState();
         renderTable();
     };
 
