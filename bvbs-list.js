@@ -28,7 +28,7 @@
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
-    let printButton, selectedPrintButton, printContainer, printHeadingInput;
+    let printButton, selectedPrintButton, printHeadingInput;
     let selectAllCheckbox;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
@@ -119,6 +119,35 @@
             return target.toLocaleString();
         }
         return target.toString();
+    }
+
+    function escapeHtml(value) {
+        const stringValue = value === null || typeof value === 'undefined'
+            ? ''
+            : String(value);
+        return stringValue
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function getPrintableString(value) {
+        if (value instanceof Node) {
+            return value.textContent || '';
+        }
+        if (Array.isArray(value)) {
+            return value.map(item => getPrintableString(item)).join(', ');
+        }
+        if (value === null || typeof value === 'undefined') {
+            return '';
+        }
+        return String(value);
+    }
+
+    function formatPrintCellValue(value) {
+        return escapeHtml(getPrintableString(value));
     }
 
     function ensureSelectionSet() {
@@ -1930,157 +1959,185 @@
         updateSelectedPrintButtonState();
     }
 
-    function createPrintMetaItem(label, value) {
-        let textValue = value;
-        if (typeof textValue === 'string') {
-            textValue = textValue.trim();
-        }
-        if (textValue === '' || textValue === null || typeof textValue === 'undefined') {
-            return null;
-        }
-        const item = document.createElement('li');
-        item.className = 'bvbs-print-meta-item';
+    function buildPrintTableHtml(entries, columns) {
+        const headerCells = columns.map(column => {
+            const classAttr = NUMERIC_COLUMN_KEYS.has(column.key) ? ' class="is-numeric"' : '';
+            return `<th scope="col"${classAttr}>${escapeHtml(getColumnLabel(column.key))}</th>`;
+        }).join('');
 
-        const labelEl = document.createElement('span');
-        labelEl.className = 'bvbs-print-meta-label';
-        labelEl.textContent = label;
+        const bodyRows = entries.map(entry => {
+            const cells = columns.map(column => {
+                let value;
+                try {
+                    value = column.render(entry, { mode: 'print' });
+                } catch (error) {
+                    value = '';
+                }
+                const classAttr = NUMERIC_COLUMN_KEYS.has(column.key) ? ' class="is-numeric"' : '';
+                return `<td${classAttr}>${formatPrintCellValue(value)}</td>`;
+            }).join('');
+            return `<tr>${cells}</tr>`;
+        }).join('');
 
-        const valueEl = document.createElement('span');
-        valueEl.className = 'bvbs-print-meta-value';
-        valueEl.textContent = String(textValue);
-
-        item.appendChild(labelEl);
-        item.appendChild(valueEl);
-        return item;
+        return `<table class="bvbs-print-table">
+    <thead>
+        <tr>${headerCells}</tr>
+    </thead>
+    <tbody>
+        ${bodyRows}
+    </tbody>
+</table>`;
     }
 
-    function buildPrintTable(entries, columns) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bvbs-print-wrapper';
-
-        const header = document.createElement('div');
-        header.className = 'bvbs-print-header';
-
-        const headerMain = document.createElement('div');
-        headerMain.className = 'bvbs-print-header-main';
-
-        const title = document.createElement('h1');
-        title.className = 'bvbs-print-title';
-        title.textContent = translate('BVBS-Liste', 'BVBS list');
-        headerMain.appendChild(title);
-
-        const metaList = document.createElement('ul');
-        metaList.className = 'bvbs-print-meta';
-
-        const now = new Date();
-        const metaItems = [];
-        metaItems.push(createPrintMetaItem(translate('Druckdatum', 'Print date'), formatPrintDate(now)));
-        if (state.fileName) {
-            metaItems.push(createPrintMetaItem(translate('Datei', 'File'), state.fileName));
-        }
-        metaItems.push(createPrintMetaItem(translate('Einträge', 'Entries'), entries.length));
-        if (state.filterText && state.filterText.trim()) {
-            metaItems.push(createPrintMetaItem(translate('Filter', 'Filter'), state.filterText.trim()));
-        }
-
-        metaItems.filter(Boolean).forEach(item => metaList.appendChild(item));
-        if (metaList.children.length > 0) {
-            headerMain.appendChild(metaList);
-        }
-
-        header.appendChild(headerMain);
-
-        const logo = document.createElement('img');
-        logo.className = 'bvbs-print-logo';
-        logo.src = 'gb.png';
-        logo.alt = translate('Logo', 'Logo');
-        logo.addEventListener('error', () => {
-            logo.remove();
-        });
-        header.appendChild(logo);
-
-        wrapper.appendChild(header);
-
-        const printHeadingText = getPrintHeadingText();
-        if (printHeadingText) {
-            const customHeading = document.createElement('p');
-            customHeading.className = 'bvbs-print-custom-heading';
-            customHeading.textContent = printHeadingText;
-            wrapper.appendChild(customHeading);
-        }
-
-        const table = document.createElement('table');
-        table.className = 'bvbs-print-table';
-
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        columns.forEach(column => {
-            const th = document.createElement('th');
-            th.dataset.columnKey = column.key;
-            th.textContent = getColumnLabel(column.key);
-            if (column.isPreview) {
-                th.classList.add('bvbs-print-preview-cell');
-            }
-            if (NUMERIC_COLUMN_KEYS.has(column.key)) {
-                th.classList.add('is-numeric');
-            }
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        const tbody = document.createElement('tbody');
-        entries.forEach(entry => {
-            const row = document.createElement('tr');
-            columns.forEach(column => {
-                const cell = document.createElement('td');
-                cell.dataset.columnKey = column.key;
-                if (NUMERIC_COLUMN_KEYS.has(column.key)) {
-                    cell.classList.add('is-numeric');
-                }
-                if (column.isPreview) {
-                    cell.classList.add('bvbs-print-preview-cell');
-                    const svg = document.createElementNS(SVG_NS, 'svg');
-                    svg.setAttribute('class', 'bvbs-print-preview');
-                    renderEntryPreview(svg, entry);
-                    cell.appendChild(svg);
-                } else {
-                    let value;
-                    try {
-                        value = column.render(entry, { mode: 'print' });
-                    } catch (error) {
-                        value = '';
-                    }
-                    if (value instanceof Node) {
-                        cell.appendChild(value.cloneNode(true));
-                    } else if (value === null || typeof value === 'undefined') {
-                        cell.textContent = '—';
-                    } else {
-                        cell.textContent = String(value);
-                    }
-                }
-                row.appendChild(cell);
-            });
-            tbody.appendChild(row);
-        });
-        table.appendChild(tbody);
-
-        wrapper.appendChild(table);
-
-        return wrapper;
-    }
-
-    function cleanupPrintContainer() {
-        if (!printContainer) {
+    function openPrintPreviewWindow(entries, columns, options = {}) {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showPrintError(translate('Das Druckfenster konnte nicht geöffnet werden. Bitte deaktivieren Sie eventuelle Pop-up-Blocker.', 'Unable to open the print window. Please disable any pop-up blockers.'));
             return;
         }
-        printContainer.innerHTML = '';
-        printContainer.classList.remove('is-active');
-        printContainer.setAttribute('aria-hidden', 'true');
-        const printStyle = document.getElementById('bvbs-print-page-style');
-        if (printStyle && printStyle.parentNode) {
-            printStyle.parentNode.removeChild(printStyle);
+
+        const language = document?.documentElement?.lang || 'de';
+        const titleText = options.title || translate('BVBS-Liste', 'BVBS list');
+        const subtitleText = typeof options.subtitle === 'string' ? options.subtitle.trim() : '';
+        const metaItems = Array.isArray(options.metaItems) ? options.metaItems : [];
+        const tableMarkup = buildPrintTableHtml(entries, columns);
+
+        const subtitleMarkup = subtitleText
+            ? `<p class="bvbs-print-subtitle">${escapeHtml(subtitleText)}</p>`
+            : '';
+
+        const metaMarkup = metaItems
+            .map(item => {
+                if (!item) {
+                    return '';
+                }
+                const label = typeof item.label === 'string' ? item.label.trim() : '';
+                const valueText = getPrintableString(item.value);
+                const displayValue = typeof valueText === 'string' ? valueText.trim() : String(valueText);
+                if (!label || !displayValue) {
+                    return '';
+                }
+                return `<li class="bvbs-print-meta-item"><span class="bvbs-print-meta-label">${escapeHtml(label)}</span><span class="bvbs-print-meta-value">${escapeHtml(displayValue)}</span></li>`;
+            })
+            .filter(Boolean)
+            .join('');
+
+        const metaListMarkup = metaMarkup
+            ? `<ul class="bvbs-print-meta">${metaMarkup}</ul>`
+            : '';
+
+        const documentTitle = options.documentTitle || titleText;
+
+        const html = `<!DOCTYPE html>
+<html lang="${escapeHtml(language)}">
+<head>
+    <meta charset="utf-8">
+    <title>${escapeHtml(documentTitle)}</title>
+    <style>
+        @page { size: A4 landscape; margin: 12mm; }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #1f2933;
+            background: #ffffff;
         }
+        .bvbs-print-page {
+            max-width: 100%;
+            padding: 32px;
+        }
+        .bvbs-print-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .bvbs-print-title {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .bvbs-print-subtitle {
+            margin: 0;
+            font-size: 16px;
+            color: #4b5563;
+        }
+        .bvbs-print-meta {
+            display: flex;
+            flex-wrap: wrap;
+            list-style: none;
+            gap: 0.5rem 1.75rem;
+            padding: 0;
+            margin: 0;
+            font-size: 13px;
+            color: #374151;
+        }
+        .bvbs-print-meta-item {
+            display: flex;
+            gap: 0.35rem;
+        }
+        .bvbs-print-meta-label {
+            font-weight: 600;
+        }
+        .bvbs-print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+            font-size: 12px;
+        }
+        .bvbs-print-table thead th {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 2px solid #1f2933;
+            background: #f3f4f6;
+        }
+        .bvbs-print-table tbody td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #d1d5db;
+            vertical-align: top;
+            white-space: pre-line;
+        }
+        .bvbs-print-table tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .bvbs-print-table tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+        .bvbs-print-table tbody tr:hover {
+            background: #eef2f7;
+        }
+        .bvbs-print-table .is-numeric {
+            text-align: right;
+        }
+        @media print {
+            body { background: #ffffff; }
+            .bvbs-print-page { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bvbs-print-page">
+        <header class="bvbs-print-header">
+            <h1 class="bvbs-print-title">${escapeHtml(titleText)}</h1>
+            ${subtitleMarkup}
+            ${metaListMarkup}
+        </header>
+        ${tableMarkup}
+    </div>
+    <script>
+        window.addEventListener('load', function () {
+            window.focus();
+            window.print();
+        });
+    </script>
+</body>
+</html>`;
+
+        printWindow.document.open('text/html', 'replace');
+        printWindow.document.write(html);
+        printWindow.document.close();
     }
 
     function showPrintError(message) {
@@ -2110,10 +2167,6 @@
     }
 
     function handlePrintButtonClick() {
-        if (!printContainer) {
-            return;
-        }
-
         if (printHeadingInput) {
             state.printHeadingText = printHeadingInput.value || '';
         }
@@ -2130,33 +2183,29 @@
             return;
         }
 
-        printContainer.innerHTML = '';
-        const content = buildPrintTable(entries, columns);
-        printContainer.appendChild(content);
-        printContainer.classList.add('is-active');
-        printContainer.setAttribute('aria-hidden', 'false');
+        const metaItems = [
+            { label: translate('Druckdatum', 'Print date'), value: formatPrintDate(new Date()) }
+        ];
 
-        const styleId = 'bvbs-print-page-style';
-        let printStyle = document.getElementById(styleId);
-        if (!printStyle) {
-            printStyle = document.createElement('style');
-            printStyle.id = styleId;
-            printStyle.textContent = '@page { size: A4 landscape; margin: 10mm; }';
-            document.head.appendChild(printStyle);
+        if (state.fileName) {
+            metaItems.push({ label: translate('Datei', 'File'), value: state.fileName });
         }
 
-        try {
-            window.print();
-        } finally {
-            cleanupPrintContainer();
+        metaItems.push({ label: translate('Einträge', 'Entries'), value: entries.length });
+
+        if (state.filterText && state.filterText.trim()) {
+            metaItems.push({ label: translate('Filter', 'Filter'), value: state.filterText.trim() });
         }
+
+        openPrintPreviewWindow(entries, columns, {
+            title: translate('BVBS-Liste', 'BVBS list'),
+            subtitle: getPrintHeadingText(),
+            metaItems,
+            documentTitle: translate('BVBS-Liste', 'BVBS list')
+        });
     }
 
     function handlePrintSelectedButtonClick() {
-        if (!printContainer) {
-            return;
-        }
-
         if (printHeadingInput) {
             state.printHeadingText = printHeadingInput.value || '';
         }
@@ -2173,26 +2222,22 @@
             return;
         }
 
-        printContainer.innerHTML = '';
-        const content = buildPrintTable(entries, columns);
-        printContainer.appendChild(content);
-        printContainer.classList.add('is-active');
-        printContainer.setAttribute('aria-hidden', 'false');
+        const metaItems = [
+            { label: translate('Druckdatum', 'Print date'), value: formatPrintDate(new Date()) }
+        ];
 
-        const styleId = 'bvbs-print-page-style';
-        let printStyle = document.getElementById(styleId);
-        if (!printStyle) {
-            printStyle = document.createElement('style');
-            printStyle.id = styleId;
-            printStyle.textContent = '@page { size: A4 landscape; margin: 10mm; }';
-            document.head.appendChild(printStyle);
+        if (state.fileName) {
+            metaItems.push({ label: translate('Datei', 'File'), value: state.fileName });
         }
 
-        try {
-            window.print();
-        } finally {
-            cleanupPrintContainer();
-        }
+        metaItems.push({ label: translate('Ausgewählte Positionen', 'Selected positions'), value: entries.length });
+
+        openPrintPreviewWindow(entries, columns, {
+            title: translate('BVBS-Liste (Auswahl)', 'BVBS list (Selection)'),
+            subtitle: getPrintHeadingText(),
+            metaItems,
+            documentTitle: translate('BVBS-Liste (Auswahl)', 'BVBS list (Selection)')
+        });
     }
     function handleFilterChange(event) {
         const value = event?.target?.value || '';
@@ -2382,7 +2427,6 @@
         uploadCard = document.getElementById('bvbsUploadCard');
         printButton = document.getElementById('bvbsPrintButton');
         selectedPrintButton = document.getElementById('bvbsPrintSelectedButton');
-        printContainer = document.getElementById('bvbsPrintContainer');
         printHeadingInput = document.getElementById('bvbsPrintHeadingInput');
         selectAllCheckbox = document.getElementById('bvbsSelectAllCheckbox');
         previewModal = document.getElementById('bvbsPreviewModal');
@@ -2420,9 +2464,6 @@
         if (printHeadingInput) {
             state.printHeadingText = printHeadingInput.value || '';
             printHeadingInput.addEventListener('input', handlePrintHeadingChange);
-        }
-        if (printContainer) {
-            printContainer.setAttribute('aria-hidden', 'true');
         }
         if (selectAllCheckbox) {
             const selectAllLabel = translate('Alle sichtbaren Zeilen auswählen', 'Select all visible rows');
@@ -2489,7 +2530,6 @@
         renderTable();
     };
 
-    window.addEventListener('afterprint', cleanupPrintContainer);
 
     document.addEventListener('DOMContentLoaded', init);
 
