@@ -3521,6 +3521,49 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     z-index: 4;
 }
 
+#bvbsListTable thead th.bvbs-selection-header {
+    width: 3.5rem;
+    min-width: 3.5rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#bvbsListTable tbody td.bvbs-selection-cell {
+    text-align: center;
+    width: 3.5rem;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+#bvbsListTable thead th.bvbs-selection-header,
+#bvbsListTable tbody td.bvbs-selection-cell {
+    padding: 0.25rem;
+}
+
+#bvbsListTable .bvbs-selection-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+#bvbsListTable tbody tr.is-selected {
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+}
+
+body[data-theme="dark"] #bvbsListTable tbody tr.is-selected {
+    background-color: rgba(var(--primary-color-rgb), 0.18);
+}
+
+#bvbsListTable tbody tr.is-selected:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.14);
+}
+
+body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.24);
+}
+
 #bvbsListView #bvbsListImportStatus {
     padding: 0 0.5rem 0.5rem;
 }
