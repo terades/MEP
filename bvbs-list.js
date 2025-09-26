@@ -21,12 +21,13 @@
         sortKey: null,
         sortDirection: null,
         columnFilters: {},
-        columnVisibility: {}
+        columnVisibility: {},
+        printHeadingText: ''
     };
 
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
-    let printButton, printContainer;
+    let printButton, printContainer, printHeadingInput;
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
     let columnVisibilityList, columnVisibilityResetBtn;
@@ -71,6 +72,13 @@
             return i18n.t(key);
         }
         return typeof fallback === 'string' ? fallback : key;
+    }
+
+    function getPrintHeadingText() {
+        if (typeof state.printHeadingText !== 'string') {
+            return '';
+        }
+        return state.printHeadingText.trim();
     }
 
     function getStoredBoolean(key, defaultValue = false) {
@@ -1581,10 +1589,13 @@
         const header = document.createElement('div');
         header.className = 'bvbs-print-header';
 
+        const headerMain = document.createElement('div');
+        headerMain.className = 'bvbs-print-header-main';
+
         const title = document.createElement('h1');
         title.className = 'bvbs-print-title';
         title.textContent = translate('BVBS-Liste', 'BVBS list');
-        header.appendChild(title);
+        headerMain.appendChild(title);
 
         const metaList = document.createElement('ul');
         metaList.className = 'bvbs-print-meta';
@@ -1602,10 +1613,29 @@
 
         metaItems.filter(Boolean).forEach(item => metaList.appendChild(item));
         if (metaList.children.length > 0) {
-            header.appendChild(metaList);
+            headerMain.appendChild(metaList);
         }
 
+        header.appendChild(headerMain);
+
+        const logo = document.createElement('img');
+        logo.className = 'bvbs-print-logo';
+        logo.src = 'gb.png';
+        logo.alt = translate('Logo', 'Logo');
+        logo.addEventListener('error', () => {
+            logo.remove();
+        });
+        header.appendChild(logo);
+
         wrapper.appendChild(header);
+
+        const printHeadingText = getPrintHeadingText();
+        if (printHeadingText) {
+            const customHeading = document.createElement('p');
+            customHeading.className = 'bvbs-print-custom-heading';
+            customHeading.textContent = printHeadingText;
+            wrapper.appendChild(customHeading);
+        }
 
         const table = document.createElement('table');
         table.className = 'bvbs-print-table';
@@ -1691,9 +1721,18 @@
         }, 4000);
     }
 
+    function handlePrintHeadingChange(event) {
+        const value = event?.target?.value || '';
+        state.printHeadingText = value;
+    }
+
     function handlePrintButtonClick() {
         if (!printContainer) {
             return;
+        }
+
+        if (printHeadingInput) {
+            state.printHeadingText = printHeadingInput.value || '';
         }
 
         const entries = getVisibleEntries();
@@ -1915,6 +1954,7 @@
         uploadCard = document.getElementById('bvbsUploadCard');
         printButton = document.getElementById('bvbsPrintButton');
         printContainer = document.getElementById('bvbsPrintContainer');
+        printHeadingInput = document.getElementById('bvbsPrintHeadingInput');
         previewModal = document.getElementById('bvbsPreviewModal');
         previewModalSvg = document.getElementById('bvbsPreviewModalSvg');
         previewModalCloseBtn = document.getElementById('bvbsPreviewModalClose');
@@ -1942,6 +1982,10 @@
         }
         if (printButton) {
             printButton.addEventListener('click', handlePrintButtonClick);
+        }
+        if (printHeadingInput) {
+            state.printHeadingText = printHeadingInput.value || '';
+            printHeadingInput.addEventListener('input', handlePrintHeadingChange);
         }
         if (printContainer) {
             printContainer.setAttribute('aria-hidden', 'true');
