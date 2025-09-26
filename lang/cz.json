@@ -219,6 +219,7 @@
   "Gespeicherte Biegeform wählen": "Vybrat uložený třmínek",
   "Gespeicherte Biegeform: {name}": "Uložený třmínek: {name}",
   "Gespeicherte Biegeform auswählen, aktuell: {name}": "Vybrat uložený třmínek, aktuální: {name}",
+  "Biegeformen auswählen": "Vyberte tvary ohybu",
   "Gespeicherte Formen": "Uložené tvary ohybu",
   "Gespeicherte Formen Beschreibung": "Přehled všech uložených tvarů ohybu z nástrojů 2D, 3D a sítí.",
   "Gespeicherte Formen Ergebnis": "{count} z {total} tvarů zobrazeno",

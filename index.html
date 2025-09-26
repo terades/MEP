@@ -1317,20 +1317,28 @@
                                     </div>
                                 </div>
                                 <fieldset class="form-group resources-types-fieldset">
-                                    <legend data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</legend>
-                                    <div class="resource-checkbox-group">
-                                        <label class="resource-checkbox">
-                                            <input type="checkbox" name="resourceTypes" value="2d">
-                                            <span data-i18n="Biegeformen 2D">Biegeformen 2D</span>
-                                        </label>
-                                        <label class="resource-checkbox">
-                                            <input type="checkbox" name="resourceTypes" value="3d">
-                                            <span data-i18n="Biegeformen 3D">Biegeformen 3D</span>
-                                        </label>
-                                        <label class="resource-checkbox">
-                                            <input type="checkbox" name="resourceTypes" value="mesh">
-                                            <span data-i18n="Matten">Matten</span>
-                                        </label>
+                                    <legend id="resourceTypesLegend" data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</legend>
+                                    <div class="resources-types-dropdown" data-resource-types-dropdown data-default-label-key="Biegeformen auswählen">
+                                        <button type="button" class="resources-types-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="resourceTypesMenu">
+                                            <span class="resources-types-trigger-label" data-i18n="Biegeformen auswählen">Biegeformen auswählen</span>
+                                            <svg class="resources-types-trigger-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                                                <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.96l3.71-3.73a.75.75 0 0 1 1.08 1.04l-4.25 4.27a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"/>
+                                            </svg>
+                                        </button>
+                                        <div id="resourceTypesMenu" class="resources-types-menu" role="group" aria-labelledby="resourceTypesLegend" hidden tabindex="-1">
+                                            <label class="resources-types-option">
+                                                <input type="checkbox" name="resourceTypes" value="2d">
+                                                <span data-i18n="Biegeformen 2D">Biegeformen 2D</span>
+                                            </label>
+                                            <label class="resources-types-option">
+                                                <input type="checkbox" name="resourceTypes" value="3d">
+                                                <span data-i18n="Biegeformen 3D">Biegeformen 3D</span>
+                                            </label>
+                                            <label class="resources-types-option">
+                                                <input type="checkbox" name="resourceTypes" value="mesh">
+                                                <span data-i18n="Matten">Matten</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </fieldset>
                                 <p id="resourceFormFeedback" class="info-text" aria-live="polite" role="status"></p>

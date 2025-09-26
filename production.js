@@ -63,6 +63,150 @@ const RESOURCE_STORAGE_KEY = 'bvbsResources';
 let resources = [];
 let editingResourceId = null;
 let resourceFeedbackTimer = null;
+let resourceTypesDropdownInitialized = false;
+
+function getResourceTypesDropdownElements() {
+    const container = document.querySelector('[data-resource-types-dropdown]');
+    if (!container) {
+        return null;
+    }
+    const trigger = container.querySelector('.resources-types-trigger');
+    const label = container.querySelector('.resources-types-trigger-label');
+    const menu = container.querySelector('.resources-types-menu');
+    const checkboxes = container.querySelectorAll('input[name="resourceTypes"]');
+    return { container, trigger, label, menu, checkboxes };
+}
+
+function updateResourceTypesDropdownLabel() {
+    const elements = getResourceTypesDropdownElements();
+    if (!elements || !elements.label) {
+        return;
+    }
+    const { container, label, checkboxes } = elements;
+    const selectedLabels = Array.from(checkboxes)
+        .filter(input => input.checked)
+        .map(input => {
+            const textNode = input.nextElementSibling;
+            return textNode ? textNode.textContent.trim() : input.value;
+        })
+        .filter(Boolean);
+    if (selectedLabels.length === 0) {
+        const defaultKey = container?.dataset.defaultLabelKey || 'Biegeformen auswählen';
+        const fallback = container?.dataset.defaultLabel || defaultKey;
+        const defaultLabel = getTranslation(defaultKey, fallback);
+        label.textContent = defaultLabel;
+        container.dataset.defaultLabel = defaultLabel;
+    } else {
+        label.textContent = selectedLabels.join(', ');
+    }
+}
+
+function openResourceTypesMenu({ focusFirst = false } = {}) {
+    const elements = getResourceTypesDropdownElements();
+    if (!elements || !elements.trigger || !elements.menu) {
+        return;
+    }
+    const { container, trigger, menu, checkboxes } = elements;
+    container.dataset.open = 'true';
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+    if (focusFirst) {
+        const firstEnabled = Array.from(checkboxes).find(input => !input.disabled);
+        if (firstEnabled) {
+            firstEnabled.focus();
+        } else {
+            menu.focus();
+        }
+    }
+}
+
+function closeResourceTypesMenu() {
+    const elements = getResourceTypesDropdownElements();
+    if (!elements || !elements.trigger || !elements.menu) {
+        return;
+    }
+    const { container, trigger, menu } = elements;
+    container.dataset.open = 'false';
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+}
+
+function toggleResourceTypesMenu() {
+    const elements = getResourceTypesDropdownElements();
+    if (!elements || !elements.container) {
+        return;
+    }
+    const isOpen = elements.container.dataset.open === 'true';
+    if (isOpen) {
+        closeResourceTypesMenu();
+    } else {
+        openResourceTypesMenu({ focusFirst: true });
+    }
+}
+
+function setupResourceTypesDropdown() {
+    if (resourceTypesDropdownInitialized) {
+        updateResourceTypesDropdownLabel();
+        return;
+    }
+    const elements = getResourceTypesDropdownElements();
+    if (!elements || !elements.trigger || !elements.menu) {
+        return;
+    }
+    const { container, trigger, menu, label } = elements;
+    container.dataset.defaultLabel = label?.textContent?.trim() || 'Biegeformen auswählen';
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.addEventListener('click', event => {
+        event.preventDefault();
+        toggleResourceTypesMenu();
+    });
+    trigger.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleResourceTypesMenu();
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            openResourceTypesMenu({ focusFirst: true });
+        }
+    });
+    menu.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeResourceTypesMenu();
+            trigger.focus();
+        }
+    });
+    container.addEventListener('change', event => {
+        if (event.target && event.target.matches('input[name="resourceTypes"]')) {
+            updateResourceTypesDropdownLabel();
+        }
+    });
+    document.addEventListener('click', event => {
+        const elementsCurrent = getResourceTypesDropdownElements();
+        if (!elementsCurrent) {
+            return;
+        }
+        const { container: currentContainer } = elementsCurrent;
+        if (!currentContainer.contains(event.target)) {
+            closeResourceTypesMenu();
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            const elementsCurrent = getResourceTypesDropdownElements();
+            if (!elementsCurrent) {
+                return;
+            }
+            const isOpen = elementsCurrent.container.dataset.open === 'true';
+            if (isOpen) {
+                closeResourceTypesMenu();
+                elementsCurrent.trigger?.focus();
+            }
+        }
+    });
+    updateResourceTypesDropdownLabel();
+    resourceTypesDropdownInitialized = true;
+}
 
 const resourceSubscribers = new Set();
 
@@ -2155,6 +2299,8 @@ function resetResourceForm() {
     if (rollDiametersInput) {
         rollDiametersInput.value = '';
     }
+    updateResourceTypesDropdownLabel();
+    closeResourceTypesMenu();
 }
 
 function showResourceFeedback(message, type = 'info') {
@@ -2393,6 +2539,7 @@ function populateResourceForm(resourceId) {
     typeInputs.forEach(input => {
         input.checked = Array.isArray(resource.supportedTypes) ? resource.supportedTypes.includes(input.value) : false;
     });
+    updateResourceTypesDropdownLabel();
     setResourceFormMode('edit');
     showResourceFeedback('');
     if (nameInput) {
@@ -2537,6 +2684,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyAppSettings();
     loadResources();
     renderResourceList();
+    setupResourceTypesDropdown();
     resetResourceForm();
     notifyResourceSubscribers();
     setupMasterDataUI();
