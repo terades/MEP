@@ -229,31 +229,14 @@
     }
 
     function getSelectedEntries() {
-        ensureSelectionSet();
-        if (!Array.isArray(state.entries) || !state.entries.length) {
+        const selectedSet = ensureSelectionSet();
+        if (!selectedSet.size || !Array.isArray(state.entries) || !state.entries.length) {
             return [];
         }
 
-        let selectedIds = [];
-
-        if (tableBody instanceof HTMLElement) {
-            selectedIds = Array.from(
-                tableBody.querySelectorAll('.bvbs-selection-checkbox:checked')
-            )
-                .map(input => input?.dataset?.entryId || '')
-                .filter(id => typeof id === 'string' && id.trim().length > 0);
-        }
-
-        if (!selectedIds.length) {
-            selectedIds = Array.from(ensureSelectionSet());
-        }
-
-        if (!selectedIds.length) {
-            return [];
-        }
-
-        const seenIds = new Set();
+        const selectedIds = Array.from(selectedSet);
         const results = [];
+        const seenIds = new Set();
 
         selectedIds.forEach(rawId => {
             const entryId = typeof rawId === 'string' ? rawId.trim() : '';
