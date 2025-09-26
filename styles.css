@@ -3519,6 +3519,10 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     position: sticky;
     top: 0;
     z-index: 4;
+    border-top-color: transparent;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-bottom-color: var(--border-color);
 }
 
 #bvbsListTable thead th.bvbs-selection-header {

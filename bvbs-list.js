@@ -230,10 +230,29 @@
 
     function getSelectedEntries() {
         const selectedSet = ensureSelectionSet();
-        if (!Array.isArray(state.entries) || !selectedSet.size) {
+        if (!Array.isArray(state.entries) || !state.entries.length) {
             return [];
         }
-        return state.entries.filter(entry => entry?.id && selectedSet.has(entry.id));
+
+        let effectiveSelection = selectedSet;
+
+        if (tableBody instanceof HTMLElement) {
+            const domSelectedIds = Array.from(
+                tableBody.querySelectorAll('.bvbs-selection-checkbox:checked')
+            )
+                .map(input => input?.dataset?.entryId || '')
+                .filter(id => typeof id === 'string' && id.trim().length > 0);
+
+            if (domSelectedIds.length > 0) {
+                effectiveSelection = new Set(domSelectedIds);
+            }
+        }
+
+        if (!effectiveSelection.size) {
+            return [];
+        }
+
+        return state.entries.filter(entry => entry?.id && effectiveSelection.has(entry.id));
     }
 
     const TABLE_COLUMNS = [
