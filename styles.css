@@ -2901,9 +2901,18 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
     gap: 1rem;
     margin-bottom: 1.5rem;
+}
+
+#bvbsPrintContainer .bvbs-print-header-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 #bvbsPrintContainer .bvbs-print-title {
@@ -2911,6 +2920,12 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     font-weight: 700;
     margin: 0;
     letter-spacing: 0.015em;
+}
+
+#bvbsPrintContainer .bvbs-print-custom-heading {
+    font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+    font-weight: 700;
+    margin: 0;
 }
 
 #bvbsPrintContainer .bvbs-print-meta {
@@ -2941,6 +2956,14 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     font-weight: 600;
     color: #0f172a;
     font-variant-numeric: tabular-nums;
+}
+
+#bvbsPrintContainer .bvbs-print-logo {
+    height: clamp(1.2rem, 2.2vw, 1.6rem);
+    width: auto;
+    object-fit: contain;
+    flex: 0 0 auto;
+    align-self: flex-start;
 }
 
 #bvbsPrintContainer .bvbs-print-table {
@@ -3051,9 +3074,21 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
         font-size: 16pt;
     }
 
+    #bvbsPrintContainer .bvbs-print-header-main {
+        gap: 4mm;
+    }
+
+    #bvbsPrintContainer .bvbs-print-custom-heading {
+        font-size: 14pt;
+    }
+
     #bvbsPrintContainer .bvbs-print-meta {
         gap: 2mm 6mm;
         font-size: 10pt;
+    }
+
+    #bvbsPrintContainer .bvbs-print-logo {
+        height: 14pt;
     }
 
     #bvbsPrintContainer .bvbs-print-table {
@@ -3260,6 +3295,28 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 1rem;
+}
+
+#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: min(240px, 100%);
+}
+
+#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group input[type="text"] {
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.95rem;
+    color: inherit;
+    background-color: rgba(255, 255, 255, 0.85);
 }
 
 #bvbsListView .bvbs-table-card .card-header .bvbs-filter-group {
