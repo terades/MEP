@@ -226,6 +226,7 @@
   "Gespeicherte Biegeform wählen": "Choose saved stirrup",
   "Gespeicherte Biegeform: {name}": "Saved stirrup: {name}",
   "Gespeicherte Biegeform auswählen, aktuell: {name}": "Choose saved stirrup, current: {name}",
+  "Biegeformen auswählen": "Select bending shapes",
   "Gespeicherte Formen": "Saved bending shapes",
   "Gespeicherte Formen Beschreibung": "Overview of all saved bending shapes from the 2D, 3D and mesh tools.",
   "Gespeicherte Formen Ergebnis": "{count} of {total} shapes shown",

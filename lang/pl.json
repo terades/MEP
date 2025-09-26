@@ -219,6 +219,7 @@
   "Gespeicherte Biegeform wählen": "Wybierz zapisane strzemię",
   "Gespeicherte Biegeform: {name}": "Zapisane strzemię: {name}",
   "Gespeicherte Biegeform auswählen, aktuell: {name}": "Wybierz zapisane strzemię, obecne: {name}",
+  "Biegeformen auswählen": "Wybierz kształty gięcia",
   "Gespeicherte Formen": "Zapisane kształty gięcia",
   "Gespeicherte Formen Beschreibung": "Przegląd wszystkich zapisanych kształtów gięcia z modułów 2D, 3D i mat.",
   "Gespeicherte Formen Ergebnis": "{count} z {total} kształtów wyświetlonych",
