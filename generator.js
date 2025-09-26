@@ -3480,6 +3480,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 document.getElementById('viewer3dContainer').style.display = 'none';
                                 document.getElementById('view2dBtn').classList.add('active');
                                 document.getElementById('view3dBtn').classList.remove('active');
+                                if (typeof window.requestAnimationFrame === 'function') {
+                                    window.requestAnimationFrame(() => drawCagePreview());
+                                } else {
+                                    drawCagePreview();
+                                }
                             });
 
                             document.getElementById('view3dBtn')?.addEventListener('click', () => {
