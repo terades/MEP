@@ -3276,11 +3276,10 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    min-width: min(320px, 100%);
 }
 
 #bvbsListView .bvbs-filter-group input[type="search"] {
-    max-width: min(320px, 100%);
+    max-width: 100%;
 }
 
 #bvbsListView .bvbs-table-card {
@@ -3297,20 +3296,20 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     gap: 1rem;
 }
 
-#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group {
+#bvbsListView .bvbs-table-card .card-header .bvbs-header-field {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    min-width: min(240px, 100%);
+    min-width: min(260px, 100%);
 }
 
-#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group label {
+#bvbsListView .bvbs-table-card .card-header .bvbs-header-field label {
     font-size: 0.85rem;
     font-weight: 600;
     color: #475569;
 }
 
-#bvbsListView .bvbs-table-card .card-header .bvbs-print-heading-group input[type="text"] {
+#bvbsListView .bvbs-table-card .card-header .bvbs-header-field input {
     border: 1px solid rgba(148, 163, 184, 0.6);
     border-radius: 8px;
     padding: 0.45rem 0.75rem;
@@ -3320,7 +3319,7 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
 }
 
 #bvbsListView .bvbs-table-card .card-header .bvbs-filter-group {
-    margin-left: auto;
+    margin-left: 0;
 }
 
 #bvbsListView .bvbs-print-actions {
