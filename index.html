@@ -1471,10 +1471,16 @@
                 </div>
                 <div id="bvbsListView" class="app-container" style="display:none;">
                     <div class="bvbs-list-layout">
-                        <div class="card bvbs-toolbar-card">
+                        <div class="card bvbs-toolbar-card" id="bvbsUploadCard">
                             <div class="card-header">
                                 <h2 class="card-title" data-i18n="BVBS-Datei-Upload">BVBS-Datei-Upload</h2>
                                 <div class="button-group">
+                                    <button type="button" id="bvbsListToggleUploadBtn" class="btn-secondary" aria-expanded="true" aria-controls="bvbsListUploadSection" data-i18n-expanded="Upload-Bereich ausblenden" data-i18n-collapsed="Upload-Bereich einblenden" data-expanded-fallback="Upload-Bereich ausblenden" data-collapsed-fallback="Upload-Bereich einblenden">
+                                        <svg class="bvbs-upload-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M12 8l-6 6h12z" />
+                                        </svg>
+                                        <span class="bvbs-upload-toggle-label">Upload-Bereich ausblenden</span>
+                                    </button>
                                     <input type="file" id="bvbsListFileInput" accept=".bvbs,.abs,text/plain" style="display:none">
                                     <button type="button" id="bvbsListOpenUploadBtn" class="btn-primary">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1484,7 +1490,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="bvbs-toolbar-body">
+                            <div class="bvbs-toolbar-body" id="bvbsListUploadSection">
                                 <div id="bvbsListDropZone" class="bf2d-drop-zone">
                                     <div class="bf2d-drop-zone-content">
                                         <div class="bf2d-drop-zone-instructions">

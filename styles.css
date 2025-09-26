@@ -3200,6 +3200,30 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     justify-content: flex-end;
 }
 
+#bvbsListToggleUploadBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+#bvbsListToggleUploadBtn .bvbs-upload-toggle-icon {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+}
+
+#bvbsListToggleUploadBtn[aria-expanded="false"] .bvbs-upload-toggle-icon {
+    transform: rotate(-180deg);
+}
+
+#bvbsUploadCard.is-collapsed {
+    gap: 0.5rem;
+}
+
+#bvbsUploadCard.is-collapsed .bvbs-toolbar-body {
+    display: none;
+}
+
 #bvbsListView .bvbs-toolbar-body {
     display: flex;
     flex-direction: column;
@@ -3411,17 +3435,29 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
 #bvbsListView .production-table-wrapper {
     position: relative;
     overflow: auto;
-    max-height: calc(100vh - 280px);
+    max-height: var(--bvbs-table-max-height, calc(100vh - 280px));
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background-color: var(--card-bg-color);
 }
 
-#bvbsListView .production-table-wrapper thead th {
+#bvbsUploadCard.is-collapsed + .bvbs-table-card .production-table-wrapper {
+    --bvbs-table-max-height: calc(100vh - 200px);
+}
+
+#bvbsListTable thead {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 3;
     background-color: var(--secondary-color);
+    box-shadow: 0 2px 0 rgba(15, 23, 42, 0.08);
+}
+
+#bvbsListTable thead th {
+    background-color: inherit;
+    position: sticky;
+    top: 0;
+    z-index: 4;
 }
 
 #bvbsListView #bvbsListImportStatus {

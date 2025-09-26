@@ -30,6 +30,7 @@
     let previewModal, previewModalSvg, previewModalCloseBtn;
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
     let columnVisibilityList, columnVisibilityResetBtn;
+    let uploadToggleBtn, uploadSection, uploadCard;
     let lastPreviewTrigger = null;
     let tableHeaders = [];
 
@@ -46,6 +47,10 @@
         'totalWeight',
         'totalLengthMeters'
     ]);
+
+    const STORAGE_KEYS = {
+        uploadCollapsed: 'bvbsListUploadCollapsed'
+    };
 
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
@@ -66,6 +71,26 @@
             return i18n.t(key);
         }
         return typeof fallback === 'string' ? fallback : key;
+    }
+
+    function getStoredBoolean(key, defaultValue = false) {
+        try {
+            const value = localStorage.getItem(key);
+            if (value === null) {
+                return defaultValue;
+            }
+            return value === 'true';
+        } catch (error) {
+            return defaultValue;
+        }
+    }
+
+    function setStoredBoolean(key, value) {
+        try {
+            localStorage.setItem(key, value ? 'true' : 'false');
+        } catch (error) {
+            // Ignore storage errors (e.g. private mode)
+        }
     }
 
     function formatPrintDate(date = new Date()) {
@@ -1785,7 +1810,7 @@
         } catch (error) {
             console.error('Failed to process BVBS file', error);
             if (statusEl) {
-                 const msg = typeof i18n !== 'undefined'
+                const msg = typeof i18n !== 'undefined'
                     ? i18n.t('Fehler beim Verarbeiten der Datei.')
                     : 'Error processing file.';
                 statusEl.textContent = msg;
@@ -1824,6 +1849,59 @@
         }
     }
 
+    function updateUploadToggleState() {
+        if (!uploadToggleBtn || !uploadSection) {
+            return;
+        }
+        const isExpanded = !uploadSection.hasAttribute('hidden');
+        const labelKey = isExpanded
+            ? uploadToggleBtn.getAttribute('data-i18n-expanded')
+            : uploadToggleBtn.getAttribute('data-i18n-collapsed');
+        const fallback = isExpanded
+            ? uploadToggleBtn.getAttribute('data-expanded-fallback')
+            : uploadToggleBtn.getAttribute('data-collapsed-fallback');
+        const label = translate(labelKey, fallback);
+        const labelContainer = uploadToggleBtn.querySelector('.bvbs-upload-toggle-label');
+        if (labelContainer) {
+            labelContainer.textContent = label;
+        } else if (label) {
+            uploadToggleBtn.textContent = label;
+        }
+        uploadToggleBtn.setAttribute('aria-expanded', String(isExpanded));
+    }
+
+    function applyStoredUploadSectionState() {
+        if (!uploadSection) {
+            return;
+        }
+        const shouldCollapse = getStoredBoolean(STORAGE_KEYS.uploadCollapsed, false);
+        const card = uploadCard || uploadSection.closest('.bvbs-toolbar-card');
+        if (shouldCollapse) {
+            uploadSection.setAttribute('hidden', '');
+            card?.classList.add('is-collapsed');
+        } else {
+            uploadSection.removeAttribute('hidden');
+            card?.classList.remove('is-collapsed');
+        }
+    }
+
+    function toggleUploadSection() {
+        if (!uploadSection) {
+            return;
+        }
+        const card = uploadCard || uploadSection.closest('.bvbs-toolbar-card');
+        const willCollapse = !uploadSection.hasAttribute('hidden');
+        if (willCollapse) {
+            uploadSection.setAttribute('hidden', '');
+            card?.classList.add('is-collapsed');
+        } else {
+            uploadSection.removeAttribute('hidden');
+            card?.classList.remove('is-collapsed');
+        }
+        setStoredBoolean(STORAGE_KEYS.uploadCollapsed, willCollapse);
+        updateUploadToggleState();
+    }
+
     // --- MAIN MODULE LOGIC ---
     function init() {
         fileInput = document.getElementById('bvbsListFileInput');
@@ -1832,6 +1910,9 @@
         tableBody = document.getElementById('bvbsListTableBody');
         statusEl = document.getElementById('bvbsListImportStatus');
         filterInput = document.getElementById('bvbsListFilterInput');
+        uploadToggleBtn = document.getElementById('bvbsListToggleUploadBtn');
+        uploadSection = document.getElementById('bvbsListUploadSection');
+        uploadCard = document.getElementById('bvbsUploadCard');
         printButton = document.getElementById('bvbsPrintButton');
         printContainer = document.getElementById('bvbsPrintContainer');
         previewModal = document.getElementById('bvbsPreviewModal');
@@ -1878,6 +1959,13 @@
                 }
             });
         }
+        if (uploadToggleBtn && uploadSection) {
+            applyStoredUploadSectionState();
+            updateUploadToggleState();
+            uploadToggleBtn.addEventListener('click', toggleUploadSection);
+        } else if (uploadSection) {
+            uploadSection.removeAttribute('hidden');
+        }
 
         ensureColumnVisibilityState();
         buildColumnFilterMenu();
@@ -1907,6 +1995,7 @@
         ensureColumnVisibilityState();
         buildColumnFilterMenu();
         updateColumnFilterToggleState();
+        updateUploadToggleState();
         renderTable();
     };
 
