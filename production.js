@@ -64,6 +64,144 @@ let resources = [];
 let editingResourceId = null;
 let resourceFeedbackTimer = null;
 let resourceTypesDropdownInitialized = false;
+let rollDiametersDropdownInitialized = false;
+
+function getRollDiametersDropdownElements() {
+    const container = document.querySelector('[data-roll-diameters-dropdown]');
+    if (!container) return null;
+    return {
+        container,
+        trigger: container.querySelector('.resources-types-trigger'),
+        label: container.querySelector('.resources-types-trigger-label'),
+        menu: container.querySelector('.resources-types-menu'),
+        getCheckboxes: () => container.querySelectorAll('input[name="availableRollDiameters"]'),
+    };
+}
+
+function updateRollDiametersDropdownLabel() {
+    const elements = getRollDiametersDropdownElements();
+    if (!elements || !elements.label) return;
+
+    const { container, label } = elements;
+    const checkboxes = elements.getCheckboxes();
+
+    const selectedLabels = Array.from(checkboxes)
+        .filter(input => input.checked)
+        .map(input => {
+            const textNode = input.nextElementSibling;
+            return textNode ? textNode.textContent.trim() : input.value;
+        });
+
+    if (selectedLabels.length === 0) {
+        const defaultKey = container.dataset.defaultLabelKey || 'Biegerollen auswählen…';
+        const fallback = container.dataset.defaultLabel || defaultKey;
+        label.textContent = getTranslation(defaultKey, fallback);
+    } else {
+        label.textContent = selectedLabels.join(', ');
+    }
+}
+
+function populateRollDiametersDropdown() {
+    const elements = getRollDiametersDropdownElements();
+    if (!elements || !elements.menu) return;
+
+    const { menu } = elements;
+    const availableDiameters = masterData.rollDiameters || [];
+
+    menu.innerHTML = '';
+
+    if (availableDiameters.length === 0) {
+        const emptyLabel = document.createElement('span');
+        emptyLabel.className = 'resources-types-option';
+        emptyLabel.textContent = getTranslation('Keine Stammdaten vorhanden', 'Keine Stammdaten vorhanden');
+        menu.appendChild(emptyLabel);
+        return;
+    }
+
+    availableDiameters.forEach(diameter => {
+        const optionLabel = document.createElement('label');
+        optionLabel.className = 'resources-types-option';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'availableRollDiameters';
+        checkbox.value = diameter;
+
+        const text = document.createElement('span');
+        text.textContent = `${formatMasterDataNumberValue(diameter)} mm`;
+
+        optionLabel.appendChild(checkbox);
+        optionLabel.appendChild(text);
+        menu.appendChild(optionLabel);
+    });
+}
+
+function toggleRollDiametersMenu(forceOpen = null) {
+    const elements = getRollDiametersDropdownElements();
+    if (!elements || !elements.trigger || !elements.menu) return;
+
+    const { container, trigger, menu } = elements;
+    const isOpen = forceOpen !== null ? forceOpen : container.dataset.open !== 'true';
+
+    container.dataset.open = isOpen;
+    trigger.setAttribute('aria-expanded', isOpen);
+    menu.hidden = !isOpen;
+
+    if (isOpen) {
+        const firstEnabled = menu.querySelector('input:not(:disabled)');
+        if (firstEnabled) {
+            firstEnabled.focus();
+        } else {
+            menu.focus();
+        }
+    }
+}
+
+function setupRollDiametersDropdown() {
+    if (rollDiametersDropdownInitialized) {
+        populateRollDiametersDropdown();
+        updateRollDiametersDropdownLabel();
+        return;
+    }
+
+    const elements = getRollDiametersDropdownElements();
+    if (!elements || !elements.trigger) return;
+
+    const { container, trigger, menu } = elements;
+    container.dataset.defaultLabel = elements.label?.textContent?.trim() || 'Biegerollen auswählen…';
+
+    trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        toggleRollDiametersMenu();
+    });
+
+    container.addEventListener('change', event => {
+        if (event.target && event.target.matches('input[name="availableRollDiameters"]')) {
+            updateRollDiametersDropdownLabel();
+        }
+    });
+
+    // Global listeners to close the dropdown
+    document.addEventListener('click', event => {
+        const currentElements = getRollDiametersDropdownElements();
+        if (currentElements && !currentElements.container.contains(event.target)) {
+            toggleRollDiametersMenu(false);
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            const currentElements = getRollDiametersDropdownElements();
+            if (currentElements && currentElements.container.dataset.open === 'true') {
+                toggleRollDiametersMenu(false);
+                currentElements.trigger?.focus();
+            }
+        }
+    });
+
+    populateRollDiametersDropdown();
+    updateRollDiametersDropdownLabel();
+    rollDiametersDropdownInitialized = true;
+}
 
 function getResourceTypesDropdownElements() {
     const container = document.querySelector('[data-resource-types-dropdown]');
@@ -2181,29 +2319,11 @@ function parseResourceRollDiameterList(value) {
 
 function normalizeRollDiameterValues(value) {
     const parsed = parseResourceRollDiameterList(value);
-    const unique = [];
+    const unique = new Set();
     parsed.forEach(number => {
-        if (!unique.some(existing => Math.abs(existing - number) < 1e-6)) {
-            unique.push(number);
-        }
+        unique.add(parseFloat(number.toFixed(4)));
     });
-    return unique.sort((a, b) => a - b);
-}
-
-function formatRollDiameterInput(values) {
-    if (!Array.isArray(values) || values.length === 0) {
-        return '';
-    }
-    return values
-        .map(value => {
-            if (!Number.isFinite(value)) {
-                return '';
-            }
-            const decimals = Number.isInteger(value) ? 0 : 1;
-            return formatNumberLocalized(value, decimals);
-        })
-        .filter(Boolean)
-        .join(', ');
+    return Array.from(unique).sort((a, b) => a - b);
 }
 
 function loadResources() {
@@ -2295,10 +2415,16 @@ function resetResourceForm() {
     if (maxLegLengthInput) {
         maxLegLengthInput.setCustomValidity('');
     }
-    const rollDiametersInput = document.getElementById('resourceRollDiameters');
-    if (rollDiametersInput) {
-        rollDiametersInput.value = '';
+
+    const rollDiametersElements = getRollDiametersDropdownElements();
+    if (rollDiametersElements) {
+        rollDiametersElements.getCheckboxes().forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateRollDiametersDropdownLabel();
+        toggleRollDiametersMenu(false);
     }
+
     updateResourceTypesDropdownLabel();
     closeResourceTypesMenu();
 }
@@ -2519,7 +2645,7 @@ function populateResourceForm(resourceId) {
     const maxDiameterInput = form.querySelector('#resourceMaxDiameter');
     const minLegInput = form.querySelector('#resourceMinLegLength');
     const maxLegInput = form.querySelector('#resourceMaxLegLength');
-    const rollDiametersInput = form.querySelector('#resourceRollDiameters');
+
     if (nameInput) nameInput.value = resource.name || '';
     if (descriptionInput) descriptionInput.value = resource.description || '';
     if (minDiameterInput) minDiameterInput.value = resource.minDiameter ?? '';
@@ -2532,14 +2658,22 @@ function populateResourceForm(resourceId) {
         maxLegInput.value = resource.maxLegLength ?? '';
         maxLegInput.setCustomValidity('');
     }
-    if (rollDiametersInput) {
-        rollDiametersInput.value = formatRollDiameterInput(resource.availableRollDiameters);
-    }
+
     const typeInputs = form.querySelectorAll('input[name="resourceTypes"]');
     typeInputs.forEach(input => {
         input.checked = Array.isArray(resource.supportedTypes) ? resource.supportedTypes.includes(input.value) : false;
     });
     updateResourceTypesDropdownLabel();
+
+    const rollElements = getRollDiametersDropdownElements();
+    if (rollElements) {
+        const available = resource.availableRollDiameters || [];
+        rollElements.getCheckboxes().forEach(checkbox => {
+            checkbox.checked = available.includes(parseFloat(checkbox.value));
+        });
+        updateRollDiametersDropdownLabel();
+    }
+
     setResourceFormMode('edit');
     showResourceFeedback('');
     if (nameInput) {
@@ -2637,7 +2771,7 @@ function handleResourceFormSubmit(event) {
 
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const supportedTypes = Array.from(form.querySelectorAll('input[name="resourceTypes"]:checked')).map(input => input.value);
-    const availableRollDiameters = normalizeRollDiameterValues(rollDiametersInput ? rollDiametersInput.value : '');
+    const availableRollDiameters = Array.from(form.querySelectorAll('input[name="availableRollDiameters"]:checked')).map(input => parseFloat(input.value));
 
     if (editingResourceId) {
         const index = resources.findIndex(item => item.id === editingResourceId);
@@ -2685,6 +2819,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadResources();
     renderResourceList();
     setupResourceTypesDropdown();
+    setupRollDiametersDropdown();
     resetResourceForm();
     notifyResourceSubscribers();
     setupMasterDataUI();
