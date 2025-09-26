@@ -229,30 +229,45 @@
     }
 
     function getSelectedEntries() {
-        const selectedSet = ensureSelectionSet();
+        ensureSelectionSet();
         if (!Array.isArray(state.entries) || !state.entries.length) {
             return [];
         }
 
-        let effectiveSelection = selectedSet;
+        let selectedIds = [];
 
         if (tableBody instanceof HTMLElement) {
-            const domSelectedIds = Array.from(
+            selectedIds = Array.from(
                 tableBody.querySelectorAll('.bvbs-selection-checkbox:checked')
             )
                 .map(input => input?.dataset?.entryId || '')
                 .filter(id => typeof id === 'string' && id.trim().length > 0);
-
-            if (domSelectedIds.length > 0) {
-                effectiveSelection = new Set(domSelectedIds);
-            }
         }
 
-        if (!effectiveSelection.size) {
+        if (!selectedIds.length) {
+            selectedIds = Array.from(ensureSelectionSet());
+        }
+
+        if (!selectedIds.length) {
             return [];
         }
 
-        return state.entries.filter(entry => entry?.id && effectiveSelection.has(entry.id));
+        const seenIds = new Set();
+        const results = [];
+
+        selectedIds.forEach(rawId => {
+            const entryId = typeof rawId === 'string' ? rawId.trim() : '';
+            if (!entryId || seenIds.has(entryId)) {
+                return;
+            }
+            const entry = state.entries.find(item => item?.id === entryId);
+            if (entry) {
+                results.push(entry);
+                seenIds.add(entryId);
+            }
+        });
+
+        return results;
     }
 
     const TABLE_COLUMNS = [
