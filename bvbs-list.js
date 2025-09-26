@@ -217,6 +217,28 @@
             }
         },
         {
+            key: 'note',
+            className: 'bvbs-note-cell',
+            render(entry, options = {}) {
+                if (options?.mode === 'table') {
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'bvbs-note-input';
+                    textarea.rows = 2;
+                    textarea.placeholder = translate('Notiz hinzufügen', 'Add note');
+                    textarea.setAttribute('aria-label', translate('Notiz', 'Note'));
+                    textarea.value = entry?.note || '';
+                    textarea.dataset.entryId = entry?.id || '';
+                    textarea.addEventListener('input', event => {
+                        if (entry) {
+                            entry.note = event.target.value;
+                        }
+                    });
+                    return textarea;
+                }
+                return entry?.note || '';
+            }
+        },
+        {
             key: 'preview',
             className: 'bvbs-preview-cell',
             isPreview: true
@@ -318,6 +340,12 @@
             type: 'string',
             getValue(entry) {
                 return entry?.metadata?.rawLine || entry?.originalLine || entry?.rawLine || '';
+            }
+        },
+        note: {
+            type: 'string',
+            getValue(entry) {
+                return entry?.note || '';
             }
         }
     };
@@ -546,7 +574,8 @@
             hasGeometry: false,
             lengthFromGeometry: NaN,
             errorMessages: [],
-            warningMessages: []
+            warningMessages: [],
+            note: ''
         };
 
         if (!line) {
@@ -946,7 +975,8 @@
             metadata.steelGrade,
             metadata.rawLine,
             entry?.originalLine,
-            entry?.rawLine
+            entry?.rawLine,
+            entry?.note
         ];
 
         const numericKeys = [
@@ -1531,7 +1561,20 @@
                     return;
                 }
 
-                cell.textContent = column.render(entry);
+                let renderedValue;
+                try {
+                    renderedValue = column.render(entry, { mode: 'table' });
+                } catch (error) {
+                    renderedValue = '';
+                }
+
+                if (renderedValue instanceof Node) {
+                    cell.appendChild(renderedValue);
+                } else if (renderedValue === null || typeof renderedValue === 'undefined') {
+                    cell.textContent = '';
+                } else {
+                    cell.textContent = String(renderedValue);
+                }
             });
         });
 
@@ -1644,6 +1687,7 @@
         const headerRow = document.createElement('tr');
         columns.forEach(column => {
             const th = document.createElement('th');
+            th.dataset.columnKey = column.key;
             th.textContent = getColumnLabel(column.key);
             if (column.isPreview) {
                 th.classList.add('bvbs-print-preview-cell');
@@ -1661,6 +1705,7 @@
             const row = document.createElement('tr');
             columns.forEach(column => {
                 const cell = document.createElement('td');
+                cell.dataset.columnKey = column.key;
                 if (NUMERIC_COLUMN_KEYS.has(column.key)) {
                     cell.classList.add('is-numeric');
                 }
@@ -1671,10 +1716,19 @@
                     renderEntryPreview(svg, entry);
                     cell.appendChild(svg);
                 } else {
-                    const value = column.render(entry);
-                    cell.textContent = value === null || typeof value === 'undefined'
-                        ? '—'
-                        : String(value);
+                    let value;
+                    try {
+                        value = column.render(entry, { mode: 'print' });
+                    } catch (error) {
+                        value = '';
+                    }
+                    if (value instanceof Node) {
+                        cell.appendChild(value);
+                    } else if (value === null || typeof value === 'undefined') {
+                        cell.textContent = '—';
+                    } else {
+                        cell.textContent = String(value);
+                    }
                 }
                 row.appendChild(cell);
             });
