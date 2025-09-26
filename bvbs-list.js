@@ -147,6 +147,14 @@
     }
 
     function formatPrintCellValue(value) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            if (typeof Node !== 'undefined' && value instanceof Node) {
+                return escapeHtml(getPrintableString(value));
+            }
+            if (typeof value.__html === 'string') {
+                return value.__html;
+            }
+        }
         return escapeHtml(getPrintableString(value));
     }
 
@@ -450,7 +458,13 @@
         {
             key: 'preview',
             className: 'bvbs-preview-cell',
-            isPreview: true
+            isPreview: true,
+            render(entry, options = {}) {
+                if (options?.mode === 'print') {
+                    return createPrintPreviewMarkup(entry);
+                }
+                return createPreviewButton(entry);
+            }
         }
     ];
 
@@ -1118,6 +1132,46 @@
         });
     }
 
+    function createPreviewButton(entry) {
+        const previewButton = document.createElement('button');
+        previewButton.type = 'button';
+        previewButton.className = 'bvbs-preview-trigger';
+        const enlargeLabel = typeof i18n !== 'undefined' ? i18n.t('Vergrößern') : 'Enlarge';
+        previewButton.setAttribute('data-i18n-title', 'Vergrößern');
+        previewButton.setAttribute('data-i18n-aria-label', 'Vergrößern');
+        previewButton.setAttribute('title', enlargeLabel);
+        previewButton.setAttribute('aria-label', enlargeLabel);
+
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('class', 'bvbs-preview-svg');
+        previewButton.appendChild(svg);
+        renderEntryPreview(svg, entry);
+
+        previewButton.addEventListener('click', () => {
+            lastPreviewTrigger = previewButton;
+            openPreviewModal(entry);
+        });
+
+        return previewButton;
+    }
+
+    function createPrintPreviewMarkup(entry) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bvbs-print-preview-wrapper';
+
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('class', 'bvbs-print-preview');
+        svg.setAttribute('xmlns', SVG_NS);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+
+        wrapper.appendChild(svg);
+        renderEntryPreview(svg, entry);
+
+        return { __html: wrapper.outerHTML };
+    }
+
     function handlePreviewKeydown(event) {
         if (event.key === 'Escape') {
             closePreviewModal();
@@ -1772,36 +1826,16 @@
             TABLE_COLUMNS.forEach(column => {
                 const cell = row.insertCell();
                 cell.dataset.columnKey = column.key;
-                if (column.className) {
-                    cell.classList.add(column.className);
+                if (typeof column.className === 'string' && column.className.trim()) {
+                    column.className.split(/\s+/).forEach(className => {
+                        if (className) {
+                            cell.classList.add(className);
+                        }
+                    });
                 }
 
                 if (column.isSelection) {
                     cell.setAttribute('data-selection-cell', 'true');
-                }
-
-                if (column.isPreview) {
-                    const previewButton = document.createElement('button');
-                    previewButton.type = 'button';
-                    previewButton.className = 'bvbs-preview-trigger';
-                    const enlargeLabel = typeof i18n !== 'undefined' ? i18n.t('Vergrößern') : 'Enlarge';
-                    previewButton.setAttribute('data-i18n-title', 'Vergrößern');
-                    previewButton.setAttribute('data-i18n-aria-label', 'Vergrößern');
-                    previewButton.setAttribute('title', enlargeLabel);
-                    previewButton.setAttribute('aria-label', enlargeLabel);
-
-                    const svg = document.createElementNS(SVG_NS, 'svg');
-                    svg.setAttribute('class', 'bvbs-preview-svg');
-                    previewButton.appendChild(svg);
-                    cell.appendChild(previewButton);
-
-                    renderEntryPreview(svg, entry);
-
-                    previewButton.addEventListener('click', () => {
-                        lastPreviewTrigger = previewButton;
-                        openPreviewModal(entry);
-                    });
-                    return;
                 }
 
                 let renderedValue;
@@ -1813,6 +1847,8 @@
 
                 if (renderedValue instanceof Node) {
                     cell.appendChild(renderedValue);
+                } else if (renderedValue && typeof renderedValue === 'object' && typeof renderedValue.__html === 'string') {
+                    cell.innerHTML = renderedValue.__html;
                 } else if (renderedValue === null || typeof renderedValue === 'undefined') {
                     cell.textContent = '';
                 } else {
@@ -1959,9 +1995,20 @@
         updateSelectedPrintButtonState();
     }
 
+    function getPrintCellClassAttr(column) {
+        const classes = [];
+        if (typeof column.className === 'string' && column.className.trim()) {
+            classes.push(...column.className.split(/\s+/).filter(Boolean));
+        }
+        if (NUMERIC_COLUMN_KEYS.has(column.key)) {
+            classes.push('is-numeric');
+        }
+        return classes.length ? ` class="${classes.join(' ')}"` : '';
+    }
+
     function buildPrintTableHtml(entries, columns) {
         const headerCells = columns.map(column => {
-            const classAttr = NUMERIC_COLUMN_KEYS.has(column.key) ? ' class="is-numeric"' : '';
+            const classAttr = getPrintCellClassAttr(column);
             return `<th scope="col"${classAttr}>${escapeHtml(getColumnLabel(column.key))}</th>`;
         }).join('');
 
@@ -1973,7 +2020,7 @@
                 } catch (error) {
                     value = '';
                 }
-                const classAttr = NUMERIC_COLUMN_KEYS.has(column.key) ? ' class="is-numeric"' : '';
+                const classAttr = getPrintCellClassAttr(column);
                 return `<td${classAttr}>${formatPrintCellValue(value)}</td>`;
             }).join('');
             return `<tr>${cells}</tr>`;
@@ -2036,6 +2083,12 @@
     <style>
         @page { size: A4 landscape; margin: 12mm; }
         *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --primary-color: #1d4ed8;
+            --text-color: #1f2933;
+            --card-bg-color: #ffffff;
+            --border-color: #d1d5db;
+        }
         body {
             margin: 0;
             font-family: "Inter", "Segoe UI", Arial, sans-serif;
@@ -2087,6 +2140,10 @@
             margin-top: 24px;
             font-size: 12px;
         }
+        .bvbs-print-table .bvbs-preview-cell {
+            width: 180px;
+            text-align: center;
+        }
         .bvbs-print-table thead th {
             text-align: left;
             padding: 10px 12px;
@@ -2110,6 +2167,35 @@
         }
         .bvbs-print-table .is-numeric {
             text-align: right;
+        }
+        .bvbs-print-preview-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 0;
+        }
+        .bvbs-print-preview {
+            width: 140px;
+            max-width: 100%;
+            height: auto;
+        }
+        .bf2d-svg-path {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .bf2d-dimension-text,
+        .bf2d-angle-text {
+            fill: var(--text-color);
+            font-weight: 500;
+        }
+        .bf2d-angle-text {
+            opacity: 0.85;
+        }
+        .bf2d-preview-note {
+            fill: #6b7280;
+            font-size: 12px;
         }
         @media print {
             body { background: #ffffff; }
