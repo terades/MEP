@@ -3615,6 +3615,7 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 #bvbsListTable .bvbs-note-input {
     width: 100%;
     min-height: 2.25rem;
+    box-sizing: border-box;
     border: 1px solid rgba(148, 163, 184, 0.6);
     border-radius: 8px;
     padding: 0.45rem 0.6rem;
