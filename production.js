@@ -36,6 +36,22 @@ function updateBatchButtonsState() {
 }
 
 const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
+const ACTIVE_VIEW_STORAGE_KEY = 'bvbsActiveView';
+
+function getStoredActiveView() {
+    if (typeof localStorage === 'undefined') {
+        return 'generatorView';
+    }
+    try {
+        const storedView = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY);
+        if (storedView && APP_VIEW_IDS.includes(storedView)) {
+            return storedView;
+        }
+    } catch (error) {
+        console.error('Could not read active view from storage', error);
+    }
+    return 'generatorView';
+}
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
 const DEFAULT_APP_SETTINGS = {
@@ -2057,6 +2073,13 @@ function showView(view) {
         window.scrollTo({ top: 0, behavior: 'auto' });
     }
     setActiveNavigation(view);
+    if (typeof localStorage !== 'undefined') {
+        try {
+            localStorage.setItem(ACTIVE_VIEW_STORAGE_KEY, view);
+        } catch (error) {
+            console.error('Could not store active view', error);
+        }
+    }
     if (view === 'productionView') {
         renderProductionList();
     }
@@ -2895,6 +2918,8 @@ document.addEventListener('DOMContentLoaded', () => {
         openGeneratorAndClick('printLabelButton');
         closeSidebarOnSmallScreens();
     });
+    const initialView = getStoredActiveView();
+    showView(initialView);
     const darkModeToggle = document.getElementById('darkModeToggle');
     darkModeToggle?.addEventListener('change', (e) => {
         appSettings.theme = e.target.checked ? 'dark' : 'light';
