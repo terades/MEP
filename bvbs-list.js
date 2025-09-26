@@ -253,6 +253,28 @@
         return results;
     }
 
+    function getSelectedEntriesInVisibleOrder() {
+        const selectedSet = ensureSelectionSet();
+        if (!selectedSet.size) {
+            return [];
+        }
+
+        const visibleEntries = getVisibleEntries();
+        if (!visibleEntries.length) {
+            return [];
+        }
+
+        const seenIds = new Set();
+        return visibleEntries.filter(entry => {
+            const entryId = entry?.id;
+            if (!entryId || !selectedSet.has(entryId) || seenIds.has(entryId)) {
+                return false;
+            }
+            seenIds.add(entryId);
+            return true;
+        });
+    }
+
     const TABLE_COLUMNS = [
         {
             key: 'selection',
@@ -2030,7 +2052,7 @@
                         value = '';
                     }
                     if (value instanceof Node) {
-                        cell.appendChild(value);
+                        cell.appendChild(value.cloneNode(true));
                     } else if (value === null || typeof value === 'undefined') {
                         cell.textContent = '—';
                     } else {
@@ -2139,7 +2161,7 @@
             state.printHeadingText = printHeadingInput.value || '';
         }
 
-        const entries = getSelectedEntries();
+        const entries = getSelectedEntriesInVisibleOrder();
         if (!entries.length) {
             showPrintError(translate('Keine Positionen ausgewählt.', 'No positions selected.'));
             return;
