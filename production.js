@@ -36,11 +36,79 @@ function updateBatchButtonsState() {
 }
 
 const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
+const DEFAULT_VIEW_ID = 'generatorView';
 const ACTIVE_VIEW_STORAGE_KEY = 'bvbsActiveView';
+const VIEW_HASH_MAP = {
+    generatorView: 'generator',
+    bvbsListView: 'bvbs-list',
+    bf2dView: 'bf2d',
+    bfmaView: 'bfma',
+    bf3dView: 'bf3d',
+    savedShapesView: 'saved-shapes',
+    productionView: 'production',
+    resourcesView: 'resources',
+    settingsView: 'settings'
+};
+const HASH_VIEW_MAP = Object.entries(VIEW_HASH_MAP).reduce((acc, [viewId, slug]) => {
+    acc[slug.toLowerCase()] = viewId;
+    return acc;
+}, {});
+let isUpdatingHashFromCode = false;
+
+function getViewFromLocationHash() {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    const rawHash = window.location.hash || '';
+    if (!rawHash) {
+        return null;
+    }
+    let slug = rawHash.startsWith('#/') ? rawHash.slice(2) : rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
+    try {
+        slug = decodeURIComponent(slug.trim());
+    } catch (error) {
+        return null;
+    }
+    slug = slug.split(/[?#]/)[0];
+    slug = slug.split('/')[0];
+    slug = slug.toLowerCase();
+    if (!slug) {
+        return null;
+    }
+    return HASH_VIEW_MAP[slug] || null;
+}
+
+function updateLocationHashForView(view, { replace = false } = {}) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+    const slug = VIEW_HASH_MAP[view];
+    if (!slug) {
+        return;
+    }
+    const targetHash = `#/${slug}`;
+    if (window.location.hash === targetHash) {
+        return;
+    }
+
+    const url = `${window.location.pathname}${window.location.search}${targetHash}`;
+    isUpdatingHashFromCode = true;
+
+    if (replace && typeof window.history?.replaceState === 'function') {
+        window.history.replaceState(null, '', url);
+        isUpdatingHashFromCode = false;
+        return;
+    }
+
+    window.location.hash = targetHash;
+    setTimeout(() => {
+        isUpdatingHashFromCode = false;
+    }, 0);
+}
 
 function getStoredActiveView() {
     if (typeof localStorage === 'undefined') {
-        return 'generatorView';
+        return DEFAULT_VIEW_ID;
     }
     try {
         const storedView = localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY);
@@ -50,7 +118,7 @@ function getStoredActiveView() {
     } catch (error) {
         console.error('Could not read active view from storage', error);
     }
-    return 'generatorView';
+    return DEFAULT_VIEW_ID;
 }
 
 const SETTINGS_STORAGE_KEY = 'bvbsAppSettings';
@@ -2049,7 +2117,12 @@ function renderSavedShapesOverview() {
     }
 }
 
-function showView(view) {
+function showView(view, options = {}) {
+    if (!APP_VIEW_IDS.includes(view)) {
+        view = DEFAULT_VIEW_ID;
+    }
+    const { updateHash = true, replaceHash = false } = options;
+
     APP_VIEW_IDS.forEach(viewId => {
         const el = document.getElementById(viewId);
         if (el) {
@@ -2079,6 +2152,9 @@ function showView(view) {
         } catch (error) {
             console.error('Could not store active view', error);
         }
+    }
+    if (updateHash) {
+        updateLocationHashForView(view, { replace: replaceHash });
     }
     if (view === 'productionView') {
         renderProductionList();
@@ -2918,8 +2994,22 @@ document.addEventListener('DOMContentLoaded', () => {
         openGeneratorAndClick('printLabelButton');
         closeSidebarOnSmallScreens();
     });
-    const initialView = getStoredActiveView();
-    showView(initialView);
+    if (typeof window !== 'undefined') {
+        window.addEventListener('hashchange', () => {
+            if (isUpdatingHashFromCode) {
+                return;
+            }
+            const viewFromHash = getViewFromLocationHash();
+            if (viewFromHash && APP_VIEW_IDS.includes(viewFromHash)) {
+                showView(viewFromHash, { replaceHash: true });
+            } else {
+                showView(DEFAULT_VIEW_ID, { replaceHash: true });
+            }
+        });
+    }
+    const hashView = getViewFromLocationHash();
+    const initialView = hashView && APP_VIEW_IDS.includes(hashView) ? hashView : getStoredActiveView();
+    showView(initialView, { replaceHash: true });
     const darkModeToggle = document.getElementById('darkModeToggle');
     darkModeToggle?.addEventListener('change', (e) => {
         appSettings.theme = e.target.checked ? 'dark' : 'light';
