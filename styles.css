@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 :root {
     /* Modern Color Palette */
     --primary-color: #4A90E2; /* A modern, friendly blue */
@@ -344,6 +350,7 @@ textarea,
 select {
     display: block;
     width: 100%;
+    max-width: 100%;
     padding: .75rem 1rem; /* Increased padding */
     font-size: 1rem; /* Larger font size */
     font-weight: 400;
@@ -352,6 +359,7 @@ select {
     background-color: var(--input-bg-color);
     background-clip: padding-box;
     border: 1px solid var(--border-color);
+    box-sizing: border-box;
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
