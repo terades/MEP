@@ -12,6 +12,7 @@
     };
     const ABS_BLOCK_START_REGEX = /(?:(?<=@)|^)([HGMAPCXYE])/g;
     const ABS_FIELD_REGEX = /([a-z])([^@]*)@/g;
+    const MAX_PLAN_LENGTH = 5;
 
     // --- STATE ---
     const state = {
@@ -187,6 +188,17 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function normalizePlanValue(value) {
+        if (value === null || typeof value === 'undefined') {
+            return '';
+        }
+        const text = String(value).trim();
+        if (!text) {
+            return '';
+        }
+        return text.slice(0, MAX_PLAN_LENGTH);
     }
 
     function getPrintableString(value) {
@@ -950,7 +962,7 @@
                 position: getFirstFieldValue(headerBlock, 'p') || '',
                 type: getFirstFieldValue(headerBlock, 't') || '',
                 project: getFirstFieldValue(headerBlock, 'j') || '',
-                plan: getFirstFieldValue(headerBlock, 'r') || '',
+                plan: normalizePlanValue(getFirstFieldValue(headerBlock, 'r')),
                 steelGrade: getFirstFieldValue(headerBlock, 'g') || '',
                 diameter,
                 totalLength,
@@ -977,13 +989,7 @@
         const mappedType = START_TYPE_MAP[entry.type];
         entry.displayType = mappedType || entry.metadata.type || entry.type || '';
 
-        const itemIdParts = [];
-        if (entry.metadata.project) itemIdParts.push(entry.metadata.project);
-        if (entry.metadata.plan) itemIdParts.push(entry.metadata.plan);
-        const itemType = (entry.displayType || entry.metadata.type || '').toUpperCase();
-        if (itemType) itemIdParts.push(itemType);
-        if (entry.metadata.position) itemIdParts.push(entry.metadata.position);
-        entry.metadata.itemId = itemIdParts.join('-');
+        entry.metadata.itemId = buildItemIdFromMetadata(entry);
 
         const geometryBlocks = entry.blockMap.get('G') || [];
         let maxSegmentLength = Number.isFinite(entry.metadata.totalLength) ? entry.metadata.totalLength : NaN;
@@ -1521,19 +1527,31 @@
             return '';
         }
         const metadata = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
+        const position = (metadata.position ?? '').toString().trim();
+        if (position && /^[A-Za-z]/.test(position)) {
+            const steelGrade = (metadata.steelGrade ?? '').toString().trim();
+            if (steelGrade && position) {
+                return `${steelGrade}-${position}`;
+            }
+            return steelGrade || position;
+        }
         const parts = [];
         if (metadata.project) {
             parts.push(String(metadata.project));
         }
-        if (metadata.plan) {
-            parts.push(String(metadata.plan));
+        const plan = normalizePlanValue(metadata.plan);
+        if (metadata.plan !== plan) {
+            metadata.plan = plan;
+        }
+        if (plan) {
+            parts.push(plan);
         }
         const type = (entry.displayType || metadata.type || '').toString().trim().toUpperCase();
         if (type) {
             parts.push(type);
         }
-        if (metadata.position) {
-            parts.push(String(metadata.position));
+        if (position) {
+            parts.push(position);
         }
         return parts.join('-');
     }
@@ -1639,7 +1657,7 @@
 
         const metadata = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
         metadata.project = meta.project || '';
-        metadata.plan = meta.order || '';
+        metadata.plan = normalizePlanValue(meta.order || '');
         metadata.position = meta.position || '';
         metadata.type = meta.type || metadata.type || '';
         metadata.steelGrade = meta.steelGrade || metadata.steelGrade || '';
