@@ -2023,7 +2023,22 @@ div.zone-item-header {
 }
 .zone-table-wrapper .full-width-table tr.first-label-zone,
 #zoneSummaryTable td.first-label-zone {
-    background-color: rgba(var(--primary-color-rgb), .05);
+    background-color: rgba(var(--primary-color-rgb), .12);
+}
+.zone-table-wrapper .full-width-table tr.label-separator-row td,
+.zone-table-wrapper .full-width-table tr.label-separator-row th {
+    border-top: 2px solid rgba(var(--primary-color-rgb), .6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.zone-table-wrapper .full-width-table tr.label-separator-row td.zone-index-cell {
+    border-left-color: transparent;
+}
+#zoneSummaryTable th.second-label-start,
+#zoneSummaryTable td.second-label-start {
+    border-left: 2px solid rgba(var(--primary-color-rgb), .6);
+}
+#zoneSummaryTable td.second-label-start {
+    padding-left: calc(var(--spacing-xs, 0.4rem) + 0.15rem);
 }
 .stirrup-zone {
     cursor: pointer;
