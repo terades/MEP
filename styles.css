@@ -3270,6 +3270,92 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     gap: 1rem;
 }
 
+#bvbsListView .bvbs-servicebus-section {
+    margin-top: 1.5rem;
+}
+
+.bvbs-servicebus-section {
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius, 12px);
+    background-color: var(--card-bg-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+body[data-theme="dark"] .bvbs-servicebus-section {
+    border-color: rgba(255, 255, 255, 0.12);
+    background-color: rgba(17, 24, 39, 0.6);
+}
+
+.bvbs-servicebus-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.bvbs-servicebus-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.bvbs-servicebus-section .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0;
+}
+
+.bvbs-servicebus-section .form-group label {
+    font-weight: 600;
+}
+
+.bvbs-servicebus-section input,
+.bvbs-servicebus-section textarea {
+    width: 100%;
+}
+
+.bvbs-servicebus-section textarea {
+    min-height: 3.5rem;
+    resize: vertical;
+}
+
+.bvbs-servicebus-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.checkbox-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.bvbs-servicebus-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.bvbs-servicebus-actions .info-text {
+    min-height: 1.2em;
+}
+
+.input-hint {
+    font-size: 0.8rem;
+    color: var(--muted-text-color, #6b7280);
+}
+
+body[data-theme="dark"] .input-hint {
+    color: var(--muted-text-color, #94a3b8);
+}
+
 #bvbsListView .bvbs-toolbar-row {
     display: flex;
     flex-wrap: wrap;
