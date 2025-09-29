@@ -27,6 +27,16 @@
         selectedEntryIds: new Set()
     };
 
+    const serviceBusState = {
+        isLoading: false
+    };
+
+    const SERVICE_BUS_SETTINGS_KEY = 'bvbsServiceBusSettings';
+    const SERVICE_BUS_MAX_MESSAGES = 50;
+    const SERVICE_BUS_MIN_TIMEOUT = 5;
+    const SERVICE_BUS_MAX_TIMEOUT = 60;
+    const SERVICE_BUS_DEFAULT_TIMEOUT = 10;
+
     // --- DOM ELEMENTS ---
     let fileInput, dropZone, openUploadBtn, tableBody, statusEl, filterInput;
     let printButton, selectedPrintButton, printHeadingInput;
@@ -35,6 +45,9 @@
     let columnFilterToggle, columnFilterMenu, columnFilterList, columnFilterResetBtn, columnFilterCloseBtn;
     let columnVisibilityList, columnVisibilityResetBtn;
     let uploadToggleBtn, uploadSection, uploadCard;
+    let serviceBusNamespaceInput, serviceBusTopicInput, serviceBusSubscriptionInput;
+    let serviceBusMessageCountInput, serviceBusSasTokenInput, serviceBusPeekCheckbox, serviceBusReplaceCheckbox;
+    let serviceBusFetchBtn, serviceBusStatusEl;
     let lastPreviewTrigger = null;
     let statusResetTimeout = null;
     let tableHeaders = [];
@@ -155,6 +168,41 @@
     function setStoredBoolean(key, value) {
         try {
             localStorage.setItem(key, value ? 'true' : 'false');
+        } catch (error) {
+            // Ignore storage errors (e.g. private mode)
+        }
+    }
+
+    function loadServiceBusSettings() {
+        try {
+            const raw = localStorage.getItem(SERVICE_BUS_SETTINGS_KEY);
+            if (!raw) {
+                return null;
+            }
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                return parsed;
+            }
+        } catch (error) {
+            // Ignore parsing/storage errors
+        }
+        return null;
+    }
+
+    function saveServiceBusSettings(settings) {
+        if (!settings || typeof settings !== 'object') {
+            return;
+        }
+        const snapshot = {
+            namespace: typeof settings.namespace === 'string' ? settings.namespace : '',
+            topic: typeof settings.topic === 'string' ? settings.topic : '',
+            subscription: typeof settings.subscription === 'string' ? settings.subscription : '',
+            messageCount: Number.isFinite(settings.messageCount) ? settings.messageCount : 1,
+            peekOnly: settings.peekOnly === true,
+            replaceExisting: settings.replaceExisting === true
+        };
+        try {
+            localStorage.setItem(SERVICE_BUS_SETTINGS_KEY, JSON.stringify(snapshot));
         } catch (error) {
             // Ignore storage errors (e.g. private mode)
         }
@@ -698,6 +746,358 @@
         const trimmed = line.trim();
         if (!trimmed) return '';
         return trimmed.replace(/@\s+([HGMAPCXYE])/g, '@$1');
+    }
+
+    function sanitizeServiceBusNamespace(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return '';
+        }
+        const withoutProtocol = trimmed.replace(/^https?:\/\//i, '');
+        return withoutProtocol.replace(/\/+$/g, '');
+    }
+
+    function setServiceBusStatus(message, options = {}) {
+        if (!serviceBusStatusEl) {
+            return;
+        }
+        const text = typeof message === 'string' ? message : '';
+        serviceBusStatusEl.textContent = text;
+        serviceBusStatusEl.classList.remove('error-message', 'success-message', 'warning-message');
+        const type = options?.type;
+        if (type === 'error') {
+            serviceBusStatusEl.classList.add('error-message');
+        } else if (type === 'success') {
+            serviceBusStatusEl.classList.add('success-message');
+        } else if (type === 'warning') {
+            serviceBusStatusEl.classList.add('warning-message');
+        }
+    }
+
+    function setServiceBusLoading(isLoading) {
+        const active = Boolean(isLoading);
+        serviceBusState.isLoading = active;
+        if (serviceBusFetchBtn) {
+            serviceBusFetchBtn.disabled = active;
+            serviceBusFetchBtn.setAttribute('aria-busy', active ? 'true' : 'false');
+        }
+    }
+
+    function parseServiceBusMessageBody(rawBody, contentType) {
+        if (typeof rawBody !== 'string') {
+            return rawBody;
+        }
+        const trimmed = rawBody.trim();
+        if (!trimmed) {
+            return '';
+        }
+        const lowerType = typeof contentType === 'string' ? contentType.toLowerCase() : '';
+        if (lowerType.includes('application/json') || lowerType.includes('+json')) {
+            try {
+                return JSON.parse(trimmed);
+            } catch (error) {
+                return trimmed;
+            }
+        }
+        try {
+            return JSON.parse(trimmed);
+        } catch (error) {
+            // Ignore JSON parse errors
+        }
+        return trimmed;
+    }
+
+    function extractBvbsLineFromMessageBody(body) {
+        if (typeof body === 'string') {
+            return body.trim();
+        }
+        if (Array.isArray(body)) {
+            for (let i = 0; i < body.length; i++) {
+                const candidate = extractBvbsLineFromMessageBody(body[i]);
+                if (candidate) {
+                    return candidate;
+                }
+            }
+            return '';
+        }
+        if (!body || typeof body !== 'object') {
+            return '';
+        }
+        const keys = ['bvbsline', 'bvbsLine', 'BVBSLine', 'bvbs', 'line', 'rawLine', 'absLine', 'bvbs_code'];
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if (Object.prototype.hasOwnProperty.call(body, key)) {
+                const value = body[key];
+                if (typeof value === 'string' && value.trim()) {
+                    return value;
+                }
+            }
+        }
+        if (body.data && typeof body.data === 'object') {
+            const nested = extractBvbsLineFromMessageBody(body.data);
+            if (nested) {
+                return nested;
+            }
+        }
+        if (body.payload && typeof body.payload === 'object') {
+            const nested = extractBvbsLineFromMessageBody(body.payload);
+            if (nested) {
+                return nested;
+            }
+        }
+        if (typeof body.body === 'string' && body.body.trim()) {
+            return body.body.trim();
+        }
+        return '';
+    }
+
+    function buildServiceBusMetadata(message) {
+        if (!message || typeof message !== 'object') {
+            return null;
+        }
+        const brokerProps = message.brokerProperties && typeof message.brokerProperties === 'object'
+            ? message.brokerProperties
+            : {};
+        const candidateSources = [];
+        if (message.body && typeof message.body === 'object' && !Array.isArray(message.body)) {
+            candidateSources.push(message.body);
+        }
+        if (Array.isArray(message.body)) {
+            candidateSources.push(...message.body.filter(item => item && typeof item === 'object'));
+        }
+        candidateSources.push(brokerProps);
+
+        function pickValue(keys) {
+            for (let i = 0; i < candidateSources.length; i++) {
+                const source = candidateSources[i];
+                if (!source || typeof source !== 'object') {
+                    continue;
+                }
+                const value = pickFromSource(source, keys);
+                if (value !== undefined && value !== null && value !== '') {
+                    return value;
+                }
+            }
+            return '';
+        }
+
+        function pickFromSource(source, keys) {
+            if (!source || typeof source !== 'object') {
+                return undefined;
+            }
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (Object.prototype.hasOwnProperty.call(source, key)) {
+                    const value = source[key];
+                    if (typeof value === 'string' && value.trim()) {
+                        return value.trim();
+                    }
+                    if (typeof value === 'number' && Number.isFinite(value)) {
+                        return value;
+                    }
+                }
+            }
+            if (source.data && typeof source.data === 'object') {
+                const nested = pickFromSource(source.data, keys);
+                if (nested !== undefined && nested !== null && nested !== '') {
+                    return nested;
+                }
+            }
+            if (source.payload && typeof source.payload === 'object') {
+                const nested = pickFromSource(source.payload, keys);
+                if (nested !== undefined && nested !== null && nested !== '') {
+                    return nested;
+                }
+            }
+            return undefined;
+        }
+
+        const quantityValue = pickValue(['qty', 'quantity', 'count', 'n']);
+        const numericQuantity = Number(quantityValue);
+
+        return {
+            messageId: pickValue(['messageId', 'messageID', 'MessageId', 'MessageID', 'Id', 'ID', 'id']) || brokerProps.MessageId || brokerProps.MessageID || '',
+            sequenceNumber: brokerProps.SequenceNumber,
+            enqueuedTimeUtc: brokerProps.EnqueuedTimeUtc || brokerProps.EnqueuedTimeUtcIso || '',
+            partitionKey: brokerProps.PartitionKey || brokerProps.PartitionId || '',
+            projectId: pickValue(['projectid', 'projectId', 'project_id', 'project']),
+            planId: pickValue(['planid', 'planId', 'plan']),
+            position: pickValue(['positionno', 'positionNo', 'position', 'pos']),
+            fileName: pickValue(['filename', 'fileName', 'FileName']),
+            sourceSystem: pickValue(['sourcesystem', 'sourceSystem', 'source']),
+            messageType: pickValue(['messageType', 'messagetype', 'MessageType']),
+            quantity: Number.isFinite(numericQuantity) ? numericQuantity : quantityValue,
+            raw: message.body && typeof message.body === 'object' ? message.body : undefined
+        };
+    }
+
+    function buildEntriesFromServiceBusMessages(messages, options = {}) {
+        if (!Array.isArray(messages) || !messages.length) {
+            return [];
+        }
+        const baseIndex = Number.isFinite(options.baseIndex) ? Number(options.baseIndex) : 0;
+        const entries = [];
+        messages.forEach(message => {
+            const line = extractBvbsLineFromMessageBody(message?.body);
+            if (typeof line !== 'string' || !line.trim()) {
+                return;
+            }
+            const normalized = normalizeAbsLine(line);
+            if (!normalized) {
+                return;
+            }
+            const orderIndex = baseIndex + entries.length;
+            const entry = parseAbsLine(normalized, orderIndex, line, orderIndex);
+            if (!entry) {
+                return;
+            }
+            const metadata = buildServiceBusMetadata(message);
+            if (!entry.metadata || typeof entry.metadata !== 'object') {
+                entry.metadata = {};
+            }
+            if (metadata) {
+                entry.metadata.serviceBus = metadata;
+                if (!entry.metadata.project && typeof metadata.projectId === 'string' && metadata.projectId) {
+                    entry.metadata.project = metadata.projectId;
+                }
+                if (!entry.metadata.plan && typeof metadata.planId === 'string' && metadata.planId) {
+                    entry.metadata.plan = normalizePlanValue(metadata.planId);
+                }
+                if (!entry.metadata.position && typeof metadata.position === 'string' && metadata.position) {
+                    entry.metadata.position = metadata.position;
+                }
+                if ((!Number.isFinite(entry.metadata.quantity) || entry.metadata.quantity <= 0) && Number.isFinite(metadata.quantity)) {
+                    entry.metadata.quantity = metadata.quantity;
+                }
+            }
+            entries.push(entry);
+        });
+        return entries;
+    }
+
+    async function fetchServiceBusMessages(options = {}) {
+        const namespace = sanitizeServiceBusNamespace(options.namespace);
+        if (!namespace) {
+            throw new Error(translate('Namespace ist erforderlich.', 'Namespace is required.'));
+        }
+        const topic = typeof options.topic === 'string' ? options.topic.trim() : '';
+        const subscription = typeof options.subscription === 'string' ? options.subscription.trim() : '';
+        if (!topic || !subscription) {
+            throw new Error(translate('Topic und Subscription sind erforderlich.', 'Topic and subscription are required.'));
+        }
+        const sasToken = typeof options.sasToken === 'string' ? options.sasToken.trim() : '';
+        if (!sasToken) {
+            throw new Error(translate('SAS-Token ist erforderlich.', 'SAS token is required.'));
+        }
+        const host = namespace.includes('.') ? namespace : `${namespace}.servicebus.windows.net`;
+        const encodedTopic = encodeURIComponent(topic);
+        const encodedSubscription = encodeURIComponent(subscription);
+        const baseUrl = `https://${host}/${encodedTopic}/subscriptions/${encodedSubscription}/messages/head`;
+        const maxMessages = Math.max(1, Math.min(SERVICE_BUS_MAX_MESSAGES, Number.parseInt(options.maxMessages, 10) || 1));
+        const timeoutValue = Number.parseInt(options.timeoutSeconds, 10);
+        const timeoutSeconds = Math.max(
+            SERVICE_BUS_MIN_TIMEOUT,
+            Math.min(SERVICE_BUS_MAX_TIMEOUT, Number.isFinite(timeoutValue) ? timeoutValue : SERVICE_BUS_DEFAULT_TIMEOUT)
+        );
+        const peekOnly = options.peekOnly !== false;
+        const method = peekOnly ? 'GET' : 'POST';
+        const query = [`timeout=${timeoutSeconds}`];
+        if (peekOnly) {
+            query.push('peekonly=true');
+        }
+        const url = `${baseUrl}?${query.join('&')}`;
+        const headers = {
+            Authorization: sasToken,
+            'x-ms-version': '2017-04',
+            Accept: 'application/json, text/plain, */*'
+        };
+        if (!peekOnly) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const messages = [];
+        for (let i = 0; i < maxMessages; i++) {
+            const response = await fetch(url, { method, headers });
+            if (response.status === 204) {
+                break;
+            }
+            if (response.status === 401 || response.status === 403) {
+                throw new Error(translate('Nicht autorisiert. Bitte SAS-Token prüfen.', 'Unauthorized. Please verify the SAS token.'));
+            }
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                const baseMessage = translate('Service Bus Antwort', 'Service Bus response');
+                throw new Error(`${baseMessage} ${response.status} ${response.statusText || ''} ${errorText}`.trim());
+            }
+            const contentType = response.headers.get('content-type') || '';
+            const rawBody = await response.text();
+            if (!rawBody) {
+                continue;
+            }
+            const parsedBody = parseServiceBusMessageBody(rawBody, contentType);
+            const brokerHeader = response.headers.get('brokerproperties') || response.headers.get('BrokerProperties');
+            let brokerProperties = {};
+            if (brokerHeader) {
+                try {
+                    brokerProperties = JSON.parse(brokerHeader);
+                } catch (error) {
+                    brokerProperties = {};
+                }
+            }
+            const location = response.headers.get('location') || response.headers.get('Location') || '';
+            messages.push({
+                body: parsedBody,
+                rawBody,
+                contentType,
+                brokerProperties,
+                location
+            });
+
+            if (!peekOnly && location) {
+                try {
+                    const completionHeaders = {
+                        Authorization: sasToken,
+                        'x-ms-version': '2017-04'
+                    };
+                    const deleteResponse = await fetch(location, { method: 'DELETE', headers: completionHeaders });
+                    if (!deleteResponse.ok && deleteResponse.status !== 404 && deleteResponse.status !== 204) {
+                        console.warn('Failed to complete Service Bus message', deleteResponse.status, location);
+                    }
+                } catch (error) {
+                    console.warn('Failed to complete Service Bus message', error);
+                }
+            }
+        }
+        return messages;
+    }
+
+    function applyServiceBusSettings(settings) {
+        if (!settings || typeof settings !== 'object') {
+            return;
+        }
+        if (serviceBusNamespaceInput) {
+            serviceBusNamespaceInput.value = typeof settings.namespace === 'string' ? settings.namespace : '';
+        }
+        if (serviceBusTopicInput) {
+            serviceBusTopicInput.value = typeof settings.topic === 'string' ? settings.topic : '';
+        }
+        if (serviceBusSubscriptionInput) {
+            serviceBusSubscriptionInput.value = typeof settings.subscription === 'string' ? settings.subscription : '';
+        }
+        if (serviceBusMessageCountInput) {
+            const count = Number.isFinite(settings.messageCount) ? settings.messageCount : Number.parseInt(settings.messageCount, 10);
+            const sanitized = Math.max(1, Math.min(SERVICE_BUS_MAX_MESSAGES, Number.isFinite(count) ? count : 1));
+            serviceBusMessageCountInput.value = String(sanitized);
+        }
+        if (serviceBusPeekCheckbox) {
+            serviceBusPeekCheckbox.checked = settings.peekOnly !== false;
+        }
+        if (serviceBusReplaceCheckbox) {
+            serviceBusReplaceCheckbox.checked = settings.replaceExisting !== false;
+        }
     }
 
     function parseAbsBlock(rawBlock, blockId) {
@@ -2711,6 +3111,109 @@
         }
     }
 
+    async function handleServiceBusFetchClick() {
+        if (serviceBusState.isLoading) {
+            return;
+        }
+
+        const namespace = serviceBusNamespaceInput?.value?.trim() || '';
+        const topic = serviceBusTopicInput?.value?.trim() || '';
+        const subscription = serviceBusSubscriptionInput?.value?.trim() || '';
+        const sasToken = serviceBusSasTokenInput?.value?.trim() || '';
+
+        let messageCount = Number.parseInt(serviceBusMessageCountInput?.value, 10);
+        if (!Number.isFinite(messageCount) || messageCount <= 0) {
+            messageCount = 1;
+        }
+        messageCount = Math.max(1, Math.min(SERVICE_BUS_MAX_MESSAGES, messageCount));
+        if (serviceBusMessageCountInput) {
+            serviceBusMessageCountInput.value = String(messageCount);
+        }
+
+        const peekOnly = serviceBusPeekCheckbox ? serviceBusPeekCheckbox.checked : true;
+        const replaceExisting = serviceBusReplaceCheckbox ? serviceBusReplaceCheckbox.checked : false;
+
+        if (!namespace || !topic || !subscription || !sasToken) {
+            setServiceBusStatus(translate('Bitte füllen Sie alle Service-Bus-Felder aus.', 'Please fill in all Service Bus fields.'), { type: 'error' });
+            return;
+        }
+
+        setServiceBusLoading(true);
+        setServiceBusStatus(translate('Nachrichten werden abgerufen …', 'Fetching messages…'), { type: 'info' });
+
+        try {
+            const messages = await fetchServiceBusMessages({
+                namespace,
+                topic,
+                subscription,
+                sasToken,
+                maxMessages: messageCount,
+                peekOnly
+            });
+
+            if (!messages.length) {
+                setServiceBusStatus(translate('Keine Nachrichten verfügbar.', 'No messages available.'), { type: 'warning' });
+                return;
+            }
+
+            const baseIndex = replaceExisting ? 0 : state.entries.length;
+            const newEntries = buildEntriesFromServiceBusMessages(messages, { baseIndex });
+
+            if (!newEntries.length) {
+                setServiceBusStatus(translate('Keine gültigen BVBS-Daten in den Nachrichten gefunden.', 'No valid BVBS data found in the messages.'), { type: 'warning' });
+                return;
+            }
+
+            const sourceLabel = translate('Azure Service Bus', 'Azure Service Bus');
+            if (replaceExisting) {
+                state.entries = newEntries;
+                state.selectedEntryIds = new Set();
+                state.filterText = '';
+                state.sortKey = null;
+                state.sortDirection = null;
+                state.fileName = `${sourceLabel}: ${topic} / ${subscription}`;
+                clearColumnFilters({ skipRender: true });
+                if (filterInput) {
+                    filterInput.value = '';
+                }
+            } else {
+                state.entries = state.entries.concat(newEntries);
+                state.fileName = `${sourceLabel}: ${topic} / ${subscription}`;
+            }
+
+            updateSelectedPrintButtonState();
+            renderTable();
+
+            if (statusEl) {
+                const statusMessage = typeof i18n !== 'undefined' && typeof i18n.t === 'function'
+                    ? i18n.t('{count} Positionen geladen aus {fileName}', { count: state.entries.length, fileName: state.fileName })
+                    : `${state.entries.length} positions loaded from ${state.fileName}`;
+                statusEl.textContent = statusMessage;
+                statusEl.classList.remove('error-message');
+                statusEl.dataset.baseMessage = statusMessage;
+            }
+
+            saveServiceBusSettings({
+                namespace,
+                topic,
+                subscription,
+                messageCount,
+                peekOnly,
+                replaceExisting
+            });
+
+            const successMessage = `${newEntries.length} ${translate('Positionen vom Service Bus importiert.', 'positions imported from Service Bus.')}`;
+            setServiceBusStatus(successMessage, { type: 'success' });
+        } catch (error) {
+            console.error('Service Bus import failed', error);
+            const prefix = translate('Fehler beim Abrufen der Service-Bus-Nachrichten:', 'Failed to fetch Service Bus messages:');
+            const detail = typeof error?.message === 'string' && error.message ? ` ${error.message}` : '';
+            setServiceBusStatus(`${prefix}${detail}`, { type: 'error' });
+        } finally {
+            setServiceBusLoading(false);
+        }
+    }
+
     function handleDragOver(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -2818,6 +3321,19 @@
         columnFilterCloseBtn = document.getElementById('bvbsColumnFilterCloseBtn');
         columnVisibilityList = document.getElementById('bvbsColumnVisibilityList');
         columnVisibilityResetBtn = document.getElementById('bvbsColumnVisibilityResetBtn');
+        serviceBusNamespaceInput = document.getElementById('bvbsServiceBusNamespace');
+        serviceBusTopicInput = document.getElementById('bvbsServiceBusTopic');
+        serviceBusSubscriptionInput = document.getElementById('bvbsServiceBusSubscription');
+        serviceBusMessageCountInput = document.getElementById('bvbsServiceBusMessageCount');
+        serviceBusSasTokenInput = document.getElementById('bvbsServiceBusSasToken');
+        serviceBusPeekCheckbox = document.getElementById('bvbsServiceBusPeekOnly');
+        serviceBusReplaceCheckbox = document.getElementById('bvbsServiceBusReplace');
+        serviceBusFetchBtn = document.getElementById('bvbsServiceBusFetchBtn');
+        serviceBusStatusEl = document.getElementById('bvbsServiceBusStatus');
+
+        if (serviceBusStatusEl) {
+            setServiceBusStatus('');
+        }
 
         if (openUploadBtn && fileInput) {
             openUploadBtn.addEventListener('click', () => fileInput.click());
@@ -2886,6 +3402,33 @@
         }
         if (columnFilterCloseBtn) {
             columnFilterCloseBtn.addEventListener('click', () => closeColumnFilterMenu({ focusToggle: true }));
+        }
+
+        if (serviceBusFetchBtn) {
+            serviceBusFetchBtn.addEventListener('click', handleServiceBusFetchClick);
+        }
+
+        const serviceBusInputs = [
+            serviceBusNamespaceInput,
+            serviceBusTopicInput,
+            serviceBusSubscriptionInput,
+            serviceBusMessageCountInput,
+            serviceBusSasTokenInput
+        ].filter(input => input instanceof HTMLElement);
+
+        serviceBusInputs.forEach(input => {
+            input.addEventListener('input', () => setServiceBusStatus(''));
+        });
+
+        [serviceBusPeekCheckbox, serviceBusReplaceCheckbox]
+            .filter(control => control instanceof HTMLElement)
+            .forEach(control => {
+                control.addEventListener('change', () => setServiceBusStatus(''));
+            });
+
+        const storedServiceBusSettings = loadServiceBusSettings();
+        if (storedServiceBusSettings) {
+            applyServiceBusSettings(storedServiceBusSettings);
         }
 
         if (typeof window !== 'undefined') {

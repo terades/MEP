@@ -1520,6 +1520,49 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="bvbs-servicebus-section" id="bvbsServiceBusSection">
+                                    <div class="bvbs-servicebus-header">
+                                        <h3 class="card-subtitle">Azure Service Bus</h3>
+                                        <p class="info-text" data-i18n="ServiceBus.Hint">Nachrichten direkt aus einem Topic/Subscription abrufen und die BVBS-Liste befüllen.</p>
+                                    </div>
+                                    <div class="bvbs-servicebus-grid">
+                                        <div class="form-group">
+                                            <label for="bvbsServiceBusNamespace" data-i18n="ServiceBus.Namespace">Namespace</label>
+                                            <input type="text" id="bvbsServiceBusNamespace" placeholder="example.servicebus.windows.net" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bvbsServiceBusTopic" data-i18n="ServiceBus.Topic">Topic</label>
+                                            <input type="text" id="bvbsServiceBusTopic" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bvbsServiceBusSubscription" data-i18n="ServiceBus.Subscription">Subscription</label>
+                                            <input type="text" id="bvbsServiceBusSubscription" autocomplete="off">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="bvbsServiceBusMessageCount" data-i18n="ServiceBus.MessageCount">Max. Nachrichten</label>
+                                            <input type="number" id="bvbsServiceBusMessageCount" min="1" max="50" value="5">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="bvbsServiceBusSasToken" data-i18n="ServiceBus.SasToken">SAS-Token</label>
+                                        <textarea id="bvbsServiceBusSasToken" rows="2" spellcheck="false" autocomplete="off" placeholder="SharedAccessSignature sr=...&amp;sig=...&amp;se=...&amp;skn=..."></textarea>
+                                        <div class="input-hint" data-i18n="ServiceBus.SasHint">Das SAS-Token wird nicht gespeichert.</div>
+                                    </div>
+                                    <div class="bvbs-servicebus-options">
+                                        <label class="checkbox-inline">
+                                            <input type="checkbox" id="bvbsServiceBusPeekOnly" checked>
+                                            <span data-i18n="ServiceBus.PeekOnly">Nur lesen (Peek)</span>
+                                        </label>
+                                        <label class="checkbox-inline">
+                                            <input type="checkbox" id="bvbsServiceBusReplace" checked>
+                                            <span data-i18n="ServiceBus.ReplaceEntries">Bestehende Einträge ersetzen</span>
+                                        </label>
+                                    </div>
+                                    <div class="bvbs-servicebus-actions">
+                                        <button type="button" class="btn-secondary" id="bvbsServiceBusFetchBtn" data-i18n="ServiceBus.Fetch">Nachrichten abrufen</button>
+                                        <span id="bvbsServiceBusStatus" class="info-text" aria-live="polite"></span>
+                                    </div>
+                                </div>
                                 <div id="bvbsListImportStatus" class="info-text" aria-live="polite"></div>
                             </div>
                         </div>
