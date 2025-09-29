@@ -71,6 +71,8 @@
         uploadCollapsed: 'bvbsListUploadCollapsed'
     };
 
+    const SAVED_FORMS_STORAGE_KEY = 'bf2dSavedForms';
+
     // --- HELPER FUNCTIONS ---
     function formatDisplayNumber(value, decimals = 1) {
         if (!Number.isFinite(value)) {
@@ -90,6 +92,106 @@
             return i18n.t(key);
         }
         return typeof fallback === 'string' ? fallback : key;
+    }
+
+    function getLocalStorageSafe() {
+        try {
+            if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+                return null;
+            }
+            return window.localStorage;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function readSavedBf2dForms() {
+        const storage = getLocalStorageSafe();
+        if (!storage) {
+            return {};
+        }
+        try {
+            const raw = storage.getItem(SAVED_FORMS_STORAGE_KEY);
+            if (!raw) {
+                return {};
+            }
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (error) {
+            console.warn('Failed to read saved BF2D forms', error);
+        }
+        return {};
+    }
+
+    function sanitizeFormName(value) {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return value.toString().replace(/[\r\n\t]+/g, ' ').trim();
+    }
+
+    function notifySavedBf2dFormsUpdated(names) {
+        if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+            return;
+        }
+        try {
+            const detail = {
+                names: Array.isArray(names) ? [...names] : []
+            };
+            window.dispatchEvent(new CustomEvent('bf2dSavedFormsUpdated', { detail }));
+        } catch (error) {
+            console.warn('Failed to dispatch bf2dSavedFormsUpdated event', error);
+        }
+    }
+
+    async function persistSavedBf2dForms(forms) {
+        const storage = getLocalStorageSafe();
+        const entries = Object.keys(forms || {});
+        const hasEntries = entries.length > 0;
+
+        if (storage) {
+            try {
+                if (!hasEntries) {
+                    storage.removeItem(SAVED_FORMS_STORAGE_KEY);
+                } else {
+                    storage.setItem(SAVED_FORMS_STORAGE_KEY, JSON.stringify(forms));
+                }
+            } catch (error) {
+                console.error('Failed to persist BF2D forms', error);
+                return false;
+            }
+
+            if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+                window.bendingFormStorageSync.syncKey(
+                    SAVED_FORMS_STORAGE_KEY,
+                    hasEntries ? forms : null
+                ).catch(error => {
+                    console.warn('Failed to sync BF2D forms to backend', error);
+                });
+            }
+
+            notifySavedBf2dFormsUpdated(entries);
+            return true;
+        }
+
+        if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+            try {
+                await window.bendingFormStorageSync.syncKey(
+                    SAVED_FORMS_STORAGE_KEY,
+                    hasEntries ? forms : null
+                );
+                notifySavedBf2dFormsUpdated(entries);
+                return true;
+            } catch (error) {
+                console.warn('Failed to sync BF2D forms to backend', error);
+                return false;
+            }
+        }
+
+        notifySavedBf2dFormsUpdated(entries);
+        return false;
     }
 
     function isEntryEditable(entry) {
@@ -464,29 +566,57 @@
                 if (options?.mode === 'print') {
                     return '';
                 }
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'btn-secondary bvbs-edit-entry-btn';
-                const label = translate('Bearbeiten', 'Edit');
-                button.textContent = label;
-                const title = translate('Im Konfigurator öffnen', 'Open in configurator');
-                button.setAttribute('title', title);
-                button.setAttribute('aria-label', title);
+                const actionsContainer = document.createElement('div');
+                actionsContainer.className = 'bvbs-actions';
+
+                const editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'btn-secondary bvbs-action-button bvbs-edit-entry-btn';
+                const editLabel = translate('Bearbeiten', 'Edit');
+                editButton.textContent = editLabel;
+                const editTitle = translate('Im Konfigurator öffnen', 'Open in configurator');
+                editButton.setAttribute('title', editTitle);
+                editButton.setAttribute('aria-label', editTitle);
 
                 if (!isEntryEditable(entry)) {
-                    button.disabled = true;
+                    editButton.disabled = true;
                     const disabledLabel = translate('Dieser Eintrag kann nicht bearbeitet werden.', 'This entry cannot be edited.');
-                    button.setAttribute('title', disabledLabel);
-                    button.setAttribute('aria-label', disabledLabel);
+                    editButton.setAttribute('title', disabledLabel);
+                    editButton.setAttribute('aria-label', disabledLabel);
                 } else {
-                    button.addEventListener('click', event => {
+                    editButton.addEventListener('click', event => {
                         event.stopPropagation();
                         event.preventDefault();
                         openEntryInEditor(entry);
                     });
                 }
 
-                return button;
+                actionsContainer.appendChild(editButton);
+
+                const saveButton = document.createElement('button');
+                saveButton.type = 'button';
+                saveButton.className = 'btn-secondary bvbs-action-button bvbs-save-form-btn';
+                const saveLabel = translate('Als Biegeform speichern', 'Save as bending form');
+                saveButton.textContent = saveLabel;
+                saveButton.setAttribute('title', saveLabel);
+                saveButton.setAttribute('aria-label', saveLabel);
+
+                if (!canSaveEntryAsBendingForm(entry)) {
+                    saveButton.disabled = true;
+                    const disabledLabel = translate('Keine Geometrie verfügbar.', 'No geometry available.');
+                    saveButton.setAttribute('title', disabledLabel);
+                    saveButton.setAttribute('aria-label', disabledLabel);
+                } else {
+                    saveButton.addEventListener('click', event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        saveEntryAsBendingForm(entry, { button: saveButton });
+                    });
+                }
+
+                actionsContainer.appendChild(saveButton);
+
+                return actionsContainer;
             }
         },
         {
@@ -2052,6 +2182,135 @@
         return parts.join('-');
     }
 
+    function buildBendingFormSnapshotFromEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return null;
+        }
+
+        const segments = Array.isArray(entry.segmentDefinitions) ? entry.segmentDefinitions : [];
+        if (!segments.length) {
+            return null;
+        }
+
+        const metadata = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
+        const normalizedPlan = normalizePlanValue(metadata.plan || '');
+        const diameterValue = Number(metadata.diameter);
+        const quantityValue = Number(metadata.quantity);
+        const rollDiameterValue = Number(metadata.rollDiameter);
+        const hasRollDiameter = Number.isFinite(rollDiameterValue) && rollDiameterValue > 0;
+        const fallbackRollDiameter = Number.isFinite(diameterValue) && diameterValue > 0 ? diameterValue * 4 : 0;
+        const normalizedRollDiameter = hasRollDiameter ? rollDiameterValue : fallbackRollDiameter;
+        const typeValue = (entry.displayType || metadata.type || entry.type || 'BWS').toString().trim().toUpperCase();
+
+        const normalizedSegments = segments.map(segment => ({
+            length: Number(segment?.length) || 0,
+            bendAngle: Number(segment?.bendAngle) || 0,
+            bendDirection: segment?.bendDirection === 'R' ? 'R' : 'L',
+            radius: Number(segment?.radius) || 0
+        }));
+
+        return {
+            meta: {
+                project: metadata.project || '',
+                order: normalizedPlan,
+                position: metadata.position || '',
+                type: typeValue,
+                steelGrade: metadata.steelGrade || '',
+                remark: metadata.remark || '',
+                diameter: Number.isFinite(diameterValue) && diameterValue > 0 ? diameterValue : 0,
+                rollDiameter: normalizedRollDiameter,
+                quantity: Number.isFinite(quantityValue) && quantityValue > 0 ? Math.round(quantityValue) : 1
+            },
+            segments: normalizedSegments,
+            dimensionPreferences: {
+                showLengths: true,
+                showRadii: true
+            },
+            rollDiameterAuto: !hasRollDiameter
+        };
+    }
+
+    function canSaveEntryAsBendingForm(entry) {
+        if (!isEntryEditable(entry)) {
+            return false;
+        }
+        if (!Array.isArray(entry?.segmentDefinitions) || !entry.segmentDefinitions.length) {
+            return false;
+        }
+        return true;
+    }
+
+    async function saveEntryAsBendingForm(entry, options = {}) {
+        if (!entry) {
+            return;
+        }
+
+        const button = options?.button || null;
+
+        if (!canSaveEntryAsBendingForm(entry)) {
+            showTransientStatusMessage(
+                'Keine Geometrie verfügbar.',
+                'No geometry available.',
+                { error: true, timeout: 4000 }
+            );
+            return;
+        }
+
+        const nameSource = entry?.metadata?.itemId || entry?.metadata?.position || entry?.id || '';
+        const sanitizedName = sanitizeFormName(nameSource);
+
+        if (!sanitizedName) {
+            showTransientStatusMessage(
+                'Bitte einen Namen für die Biegeform angeben.',
+                'Please provide a name for the bending form.',
+                { error: true, timeout: 4000 }
+            );
+            return;
+        }
+
+        const snapshot = buildBendingFormSnapshotFromEntry(entry);
+        if (!snapshot) {
+            showTransientStatusMessage(
+                'Biegeform konnte nicht gespeichert werden.',
+                'Could not save bending form.',
+                { error: true, timeout: 4000 }
+            );
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+        }
+
+        try {
+            const forms = readSavedBf2dForms();
+            forms[sanitizedName] = snapshot;
+            const success = await persistSavedBf2dForms(forms);
+            if (success) {
+                showTransientStatusMessage('Biegeform gespeichert.', 'Bending form saved.');
+            } else {
+                showTransientStatusMessage(
+                    'Biegeform konnte nicht gespeichert werden.',
+                    'Could not save bending form.',
+                    { error: true, timeout: 4000 }
+                );
+            }
+        } catch (error) {
+            console.error('Failed to save BVBS entry as bending form', error);
+            showTransientStatusMessage(
+                'Biegeform konnte nicht gespeichert werden.',
+                'Could not save bending form.',
+                { error: true, timeout: 4000 }
+            );
+        } finally {
+            if (button) {
+                window.requestAnimationFrame(() => {
+                    button.disabled = false;
+                });
+            }
+        }
+    }
+
     function compareEntries(a, b, definition, direction) {
         const dirMultiplier = direction === 'desc' ? -1 : 1;
         const valueA = definition.getValue(a);
@@ -2132,6 +2391,34 @@
             ? `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen (Filter aktiv)`
             : `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen`;
         statusEl.textContent = baseMessage ? `${baseMessage} • ${suffix}` : suffix;
+    }
+
+    function showTransientStatusMessage(messageKey, fallback, options = {}) {
+        if (!statusEl) {
+            return;
+        }
+
+        const message = translate(messageKey, fallback);
+        statusEl.textContent = message;
+
+        if (options?.error) {
+            statusEl.classList.add('error-message');
+        } else {
+            statusEl.classList.remove('error-message');
+        }
+
+        if (statusResetTimeout) {
+            window.clearTimeout(statusResetTimeout);
+        }
+
+        const timeout = Number.isFinite(options?.timeout)
+            ? Number(options.timeout)
+            : (options?.error ? 4000 : 2500);
+
+        statusResetTimeout = window.setTimeout(() => {
+            statusResetTimeout = null;
+            updateStatusMessage(getVisibleEntries().length);
+        }, timeout);
     }
 
     function applySnapshotToEntry(entry, detail) {
