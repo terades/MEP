@@ -16,11 +16,14 @@ Druck von Etiketten mit Barcodes.
 
 ## Anwendung starten
 ```bash
-npm install -g serve   # optional
+npm install            # installiert die Abhängigkeiten (Express & Azure Service Bus Client)
 npm start              # startet die Anwendung unter http://localhost:3000
-# oder
-npx serve .            # ohne globale Installation
 ```
+
+Der integrierte Node.js-Server stellt neben den statischen Dateien auch eine Proxy-Route
+(`/api/service-bus/messages`) bereit. Darüber können in GitHub Codespaces Service-Bus-
+Nachrichten mithilfe einer Verbindungszeichenfolge abgerufen werden, ohne an CORS zu
+scheitern.
 
 ## Projektstruktur
 - `index.html` – Einstiegspunkt der Anwendung

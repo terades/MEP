@@ -1538,16 +1538,21 @@
                                             <label for="bvbsServiceBusSubscription" data-i18n="ServiceBus.Subscription">Subscription</label>
                                             <input type="text" id="bvbsServiceBusSubscription" autocomplete="off">
                                         </div>
-                                        <div class="form-group">
-                                            <label for="bvbsServiceBusMessageCount" data-i18n="ServiceBus.MessageCount">Max. Nachrichten</label>
-                                            <input type="number" id="bvbsServiceBusMessageCount" min="1" max="50" value="5">
-                                        </div>
-                                    </div>
                                     <div class="form-group">
-                                        <label for="bvbsServiceBusSasToken" data-i18n="ServiceBus.SasToken">SAS-Token</label>
-                                        <textarea id="bvbsServiceBusSasToken" rows="2" spellcheck="false" autocomplete="off" placeholder="SharedAccessSignature sr=...&amp;sig=...&amp;se=...&amp;skn=..."></textarea>
-                                        <div class="input-hint" data-i18n="ServiceBus.SasHint">Das SAS-Token wird nicht gespeichert.</div>
+                                        <label for="bvbsServiceBusMessageCount" data-i18n="ServiceBus.MessageCount">Max. Nachrichten</label>
+                                        <input type="number" id="bvbsServiceBusMessageCount" min="1" max="50" value="5">
                                     </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bvbsServiceBusConnectionString" data-i18n="ServiceBus.ConnectionString">Verbindungszeichenfolge</label>
+                                    <textarea id="bvbsServiceBusConnectionString" rows="2" spellcheck="false" autocomplete="off" placeholder="Endpoint=sb://example.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=..."></textarea>
+                                    <div class="input-hint" data-i18n="ServiceBus.ConnectionStringHint">Wird nur für diese Sitzung verwendet und nicht gespeichert.</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bvbsServiceBusSasToken" data-i18n="ServiceBus.SasToken">SAS-Token</label>
+                                    <textarea id="bvbsServiceBusSasToken" rows="2" spellcheck="false" autocomplete="off" placeholder="SharedAccessSignature sr=...&amp;sig=...&amp;se=...&amp;skn=..."></textarea>
+                                    <div class="input-hint" data-i18n="ServiceBus.SasHint">Das SAS-Token wird nicht gespeichert.</div>
+                                </div>
                                     <div class="bvbs-servicebus-options">
                                         <label class="checkbox-inline">
                                             <input type="checkbox" id="bvbsServiceBusPeekOnly" checked>

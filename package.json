@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "Static website for MEP project",
   "scripts": {
-    "start": "serve ."
+    "start": "node server.js"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@azure/service-bus": "^7.9.4",
+    "express": "^4.19.2"
+  }
 }
