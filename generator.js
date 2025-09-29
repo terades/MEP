@@ -2561,29 +2561,39 @@ function generateZoneSummary(zones) {
                                 const actionsCell = row.insertCell();
                                 actionsCell.setAttribute('data-label', 'Aktion');
 			        actionsCell.style.textAlign = 'center';
-			        actionsCell.innerHTML = `
-			            <button type="button" class="btn-delete-zone" onclick="removeSpecificZoneById(${zone.id})" title="Diese Zone löschen">
-			                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12l1.41 1.41L13.41 14l2.12 2.12l-1.41 1.41L12 15.41l-2.12 2.12l-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-			            </button>
-			        `;
+                                actionsCell.innerHTML = `
+                                    <div class="zone-actions">
+                                        <button type="button" class="btn-insert-zone" onclick="insertZoneAfter(${zone.id})" title="Zone unterhalb einfügen">
+                                            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                                        </button>
+                                        <button type="button" class="btn-delete-zone" onclick="removeSpecificZoneById(${zone.id})" title="Diese Zone löschen">
+                                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12l1.41 1.41L13.41 14l2.12 2.12l-1.41 1.41L12 15.41l-2.12 2.12l-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                        </button>
+                                    </div>
+                                `;
 			    });
 			    renderZoneSummaryTable();
 			    triggerPreviewUpdateDebounced();
 			}
 			
 			// Add a new zone to the list
-                        function addZone(dia = 8, num = 3, pitch = 150, focusNum = false) {
+                        function addZone(dia = 8, num = 3, pitch = 150, focusNum = false, insertIndex = null) {
                             if (zonesData.length >= maxZones) {
                                 showFeedback('templateFeedback', 'Maximale Zonenanzahl erreicht.', 'warning', 3000);
                                 return;
                             }
                             const newId = nextZoneId++;
-                            zonesData.push({
+                            const newZone = {
                                 id: newId,
                                 dia: dia,
                                 num: num,
                                 pitch: pitch
-                            });
+                            };
+                            if (insertIndex === null || insertIndex < 0 || insertIndex > zonesData.length) {
+                                zonesData.push(newZone);
+                            } else {
+                                zonesData.splice(insertIndex, 0, newZone);
+                            }
                             renderAllZones();
                             updateAddZoneButtonState();
                             if (focusNum) {
@@ -2621,9 +2631,23 @@ function generateZoneSummary(zones) {
 			                newRow.style.backgroundColor = '';
 			            }, 1500);
 			        }
-			    }, 100);
-			}
-			
+                            }, 100);
+                        }
+
+                        function insertZoneAfter(zoneId) {
+                            if (zonesData.length >= maxZones) {
+                                showFeedback('templateFeedback', 'Maximale Zonenanzahl erreicht.', 'warning', 3000);
+                                return;
+                            }
+                            const referenceIndex = zonesData.findIndex(zone => zone.id == zoneId);
+                            const insertIndex = referenceIndex >= 0 ? referenceIndex + 1 : zonesData.length;
+                            const referenceZone = referenceIndex >= 0 ? zonesData[referenceIndex] : null;
+                            const dia = referenceZone ? referenceZone.dia : 8;
+                            const num = referenceZone ? referenceZone.num : 3;
+                            const pitch = referenceZone ? referenceZone.pitch : 150;
+                            addZone(dia, num, pitch, true, insertIndex);
+                        }
+
 			// Remove a specific zone by ID
                         function removeSpecificZoneById(zoneId) {
                             zonesData = zonesData.filter(zone => zone.id != zoneId);

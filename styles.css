@@ -1952,7 +1952,13 @@ div.zone-item-header {
     justify-content: center;
 }
 
-.zone-table-wrapper .full-width-table td .btn-delete-zone svg {
+.zone-table-wrapper .full-width-table td .zone-actions {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.zone-table-wrapper .full-width-table td .btn-delete-zone svg,
+.zone-table-wrapper .full-width-table td .btn-insert-zone svg {
     margin: 0;
 }
 .zone-table-wrapper .full-width-table tr.focused-zone-form,
