@@ -2210,7 +2210,7 @@ function generateZoneSummary(zones) {
 			}
 			
 			
-			// Set the currently highlighted zone
+                        // Set the currently highlighted zone
                         function setHighlightedZone(displayIndex, isHighlighted) {
                             const activeElement = document.activeElement;
                             let activeIndex = null;
@@ -2253,6 +2253,89 @@ function generateZoneSummary(zones) {
                                 });
                             }
                             triggerPreviewUpdateDebounced();
+                        }
+
+                        function shouldAutoSelectElement(element) {
+                            if (!element || typeof element !== 'object') {
+                                return false;
+                            }
+                            if (element.matches?.('[data-auto-select="false"]')) {
+                                return false;
+                            }
+                            if (element.disabled || element.readOnly) {
+                                return false;
+                            }
+
+                            const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+                            if (tagName === 'TEXTAREA') {
+                                return true;
+                            }
+                            if (tagName === 'INPUT') {
+                                const type = (element.type || '').toLowerCase();
+                                const selectableTypes = ['text', 'number', 'search', 'tel', 'url', 'email'];
+                                return selectableTypes.includes(type);
+                            }
+                            return false;
+                        }
+
+                        function autoSelectElementContents(element) {
+                            if (!element) {
+                                return;
+                            }
+                            if (typeof element.select === 'function') {
+                                try {
+                                    element.select();
+                                    return;
+                                } catch (error) {
+                                    // ignore selection errors
+                                }
+                            }
+                            if (typeof element.setSelectionRange === 'function') {
+                                const value = typeof element.value === 'string' ? element.value : String(element.value ?? '');
+                                try {
+                                    element.setSelectionRange(0, value.length);
+                                } catch (error) {
+                                    // ignore selection errors
+                                }
+                            }
+                        }
+
+                        function scheduleAutoSelect(element) {
+                            if (!shouldAutoSelectElement(element)) {
+                                return;
+                            }
+                            const run = () => {
+                                if (document.activeElement === element) {
+                                    autoSelectElementContents(element);
+                                }
+                            };
+                            if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                                window.requestAnimationFrame(run);
+                            } else {
+                                setTimeout(run, 0);
+                            }
+                        }
+
+                        function handleZoneFieldFocus(displayIndex, element) {
+                            setHighlightedZone(displayIndex, true);
+                            scheduleAutoSelect(element);
+                        }
+
+                        function handleZoneFieldBlur(displayIndex) {
+                            setHighlightedZone(displayIndex, false);
+                        }
+
+                        window.handleZoneFieldFocus = handleZoneFieldFocus;
+                        window.handleZoneFieldBlur = handleZoneFieldBlur;
+
+                        function initAutoSelectForGeneratorView() {
+                            const generatorView = document.getElementById('generatorView');
+                            if (!generatorView) {
+                                return;
+                            }
+                            generatorView.addEventListener('focusin', (event) => {
+                                scheduleAutoSelect(event.target);
+                            });
                         }
 
                         function focusZoneFromPreview(displayIndex) {
@@ -2327,13 +2410,13 @@ function generateZoneSummary(zones) {
 			
 			        const diaCell = row.insertCell();
 			        diaCell.setAttribute('data-label', 'Ø (d)');
-			        diaCell.innerHTML = `
-			            <div class="form-group">
-			                <label for="durchmesser-${zone.id}">Ø (d):</label>
-			                <select id="durchmesser-${zone.id}" oninput="updateZoneData(${zone.id}, 'dia', this.value); validateNumberInput(this, 6, 'int', 'Mind. 6mm');" onfocus="setHighlightedZone(${displayIndex},true)" onblur="setHighlightedZone(${displayIndex},false)">
-			                    <option value="6" ${zone.dia == 6 ? 'selected' : ''}>6 mm</option>
-			                    <option value="8" ${zone.dia == 8 ? 'selected' : ''}>8 mm</option>
-			                    <option value="10" ${zone.dia == 10 ? 'selected' : ''}>10 mm</option>
+                                diaCell.innerHTML = `
+                                    <div class="form-group">
+                                        <label for="durchmesser-${zone.id}">Ø (d):</label>
+                                        <select id="durchmesser-${zone.id}" oninput="updateZoneData(${zone.id}, 'dia', this.value); validateNumberInput(this, 6, 'int', 'Mind. 6mm');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
+                                            <option value="6" ${zone.dia == 6 ? 'selected' : ''}>6 mm</option>
+                                            <option value="8" ${zone.dia == 8 ? 'selected' : ''}>8 mm</option>
+                                            <option value="10" ${zone.dia == 10 ? 'selected' : ''}>10 mm</option>
 			                    <option value="12" ${zone.dia == 12 ? 'selected' : ''}>12 mm</option>
 			                    <option value="14" ${zone.dia == 14 ? 'selected' : ''}>14 mm</option>
 			                    <option value="16" ${zone.dia == 16 ? 'selected' : ''}>16 mm</option>
@@ -2344,20 +2427,20 @@ function generateZoneSummary(zones) {
 			
 			        const numCell = row.insertCell();
 			        numCell.setAttribute('data-label', 'Anzahl (n)');
-			        numCell.innerHTML = `
-			            <div class="form-group">
-			                <label for="anzahlBUEGEL-${zone.id}">Anzahl (n):</label>
-			                <input type="number" id="anzahlBUEGEL-${zone.id}" value="${zone.num}" min="0" oninput="updateZoneData(${zone.id}, 'num', this.value); validateNumberInput(this, 0, 'int', 'Anzahl >= 0');" onfocus="setHighlightedZone(${displayIndex},true)" onblur="setHighlightedZone(${displayIndex},false)">
-			                <span class="input-feedback"></span>
-			            </div>
-			        `;
+                                numCell.innerHTML = `
+                                    <div class="form-group">
+                                        <label for="anzahlBUEGEL-${zone.id}">Anzahl (n):</label>
+                                        <input type="number" id="anzahlBUEGEL-${zone.id}" value="${zone.num}" min="0" oninput="updateZoneData(${zone.id}, 'num', this.value); validateNumberInput(this, 0, 'int', 'Anzahl >= 0');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
+                                        <span class="input-feedback"></span>
+                                    </div>
+                                `;
 			
 			        const pitchCell = row.insertCell();
                                 pitchCell.setAttribute('data-label', 'Pitch (p)');
                                 pitchCell.innerHTML = `
                                     <div class="form-group">
                                         <label for="pitch-${zone.id}">Pitch (p):</label>
-                                        <input type="number" id="pitch-${zone.id}" value="${zone.pitch}" min="1" oninput="updateZoneData(${zone.id}, 'pitch', this.value); validateNumberInput(this, 1, 'int', 'Pitch >= 1mm');" onfocus="setHighlightedZone(${displayIndex},true)" onblur="setHighlightedZone(${displayIndex},false)">
+                                        <input type="number" id="pitch-${zone.id}" value="${zone.pitch}" min="1" oninput="updateZoneData(${zone.id}, 'pitch', this.value); validateNumberInput(this, 1, 'int', 'Pitch >= 1mm');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
                                         <span class="input-feedback"></span>
                                     </div>
                                 `;
@@ -3261,6 +3344,7 @@ function updateLabelPreview(barcodeSvg) {
 			// Initial setup on page load
 document.addEventListener('DOMContentLoaded', () => {
     initCollapsibleHeaders();
+    initAutoSelectForGeneratorView();
     loadTemplatesFromFile();
     loadLabelLayout();
     if(window.viewer3d) {
