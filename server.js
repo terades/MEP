@@ -48,7 +48,8 @@ const BENDING_FORM_STORAGE_KEYS = new Set([
     'bf2dSavedForms',
     'bf3dSavedForms',
     'bf3dSavedShapes',
-    'bfmaSavedMeshes'
+    'bfmaSavedMeshes',
+    'bvbsResources'
 ]);
 
 const databaseInitPromise = new Promise((resolve, reject) => {

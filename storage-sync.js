@@ -9,6 +9,20 @@
         bfmaSavedMeshes: {
             event: 'bfmaSavedMeshesUpdated',
             getNames: value => Object.keys(value || {})
+        },
+        bvbsResources: {
+            event: 'bvbsResourcesUpdated',
+            buildDetail: value => ({
+                resources: Array.isArray(value) ? value : []
+            }),
+            getNames: value => {
+                if (!Array.isArray(value)) {
+                    return [];
+                }
+                return value
+                    .map(item => (item && typeof item.name === 'string') ? item.name : null)
+                    .filter(name => Boolean(name));
+            }
         }
     };
 
@@ -26,7 +40,23 @@
             return;
         }
         try {
-            const detail = { key };
+            let detail = { key };
+            if (typeof config.buildDetail === 'function') {
+                try {
+                    const customDetail = config.buildDetail(value);
+                    if (customDetail && typeof customDetail === 'object') {
+                        detail = { ...customDetail };
+                        if (!Object.prototype.hasOwnProperty.call(detail, 'key')) {
+                            detail.key = key;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to build storage sync event detail', error);
+                }
+            }
+            if (typeof detail !== 'object' || detail === null) {
+                detail = { key };
+            }
             if (typeof config.getNames === 'function') {
                 try {
                     detail.names = config.getNames(value);
