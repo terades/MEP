@@ -1293,12 +1293,104 @@
                 </div>
                 <div id="resourcesView" class="app-container" style="display:none;">
                     <div class="resources-layout">
-                        <section class="card resources-form-card" aria-labelledby="resourceFormTitle">
-                            <div class="card-header">
-                                <h2 class="card-title" id="resourceFormTitle" data-i18n="Neue Ressource anlegen">Neue Ressource anlegen</h2>
-                                <p class="card-subtitle" id="resourceFormDescription" data-i18n="Ressourcenverwaltung Beschreibung">Pflegen Sie Maschinen und Anlagen mit ihren Fertigungsmöglichkeiten.</p>
+                        <section class="card resources-list-card" aria-labelledby="resourcesListTitle">
+                            <div class="card-header resources-header">
+                                <div class="resources-header-text">
+                                    <h2 class="card-title" id="resourcesListTitle" data-i18n="Ressourcen">Ressourcen</h2>
+                                    <p class="card-subtitle" data-i18n="Ressourcen Liste Beschreibung">Übersicht aller angelegten Ressourcen und deren Einsatzgrenzen.</p>
+                                </div>
+                                <div class="resources-header-actions">
+                                    <button type="button" id="openResourceModalButton" class="btn-primary" data-i18n="Neue Ressource anlegen">Neue Ressource anlegen</button>
+                                </div>
                             </div>
-                            <form id="resourceForm" class="resources-form" novalidate aria-labelledby="resourceFormTitle" aria-describedby="resourceFormDescription resourceFormFeedback">
+                            <p id="resourceFeedback" class="info-text" aria-live="polite" role="status"></p>
+                            <div class="resources-table-container">
+                                <table id="resourceTable" class="resources-table full-width-table">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col" data-i18n="Ressourcename">Ressourcename</th>
+                                            <th scope="col" data-i18n="Beschreibung">Beschreibung</th>
+                                            <th scope="col" data-i18n="Stabdurchmesser">Stabdurchmesser</th>
+                                            <th scope="col" data-i18n="Schenkellänge">Schenkellänge</th>
+                                            <th scope="col" data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</th>
+                                            <th scope="col" data-i18n="Verfügbare Biegerollen">Verfügbare Biegerollen</th>
+                                            <th scope="col" data-i18n="Angelegt am">Angelegt am</th>
+                                            <th scope="col" data-i18n="Aktionen">Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="resourceTableBody"></tbody>
+                                </table>
+                            </div>
+                            <p id="resourceEmptyState" class="info-text" data-i18n="Keine Ressourcen vorhanden" hidden>Keine Ressourcen vorhanden.</p>
+                        </section>
+                        <section class="card masterdata-card" aria-labelledby="masterDataTitle">
+                            <div class="card-header">
+                                <h2 class="card-title" id="masterDataTitle" data-i18n="Stammdaten verwalten">Stammdaten verwalten</h2>
+                                <p class="card-subtitle" data-i18n="Stammdaten Beschreibung">Verwalten Sie zentrale Werte für Materialien und Parameter.</p>
+                            </div>
+                            <div class="masterdata-grid">
+                                <div class="masterdata-group" data-masterdata-type="steelGrades">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" id="masterDataSteelTitle" data-i18n="Stahlsorten">Stahlsorten</h3>
+                                        <p class="masterdata-group-description" id="masterDataSteelDescription" data-i18n="Stahlsorten Beschreibung">Vordefinierte Stahlgüten für alle Konfiguratoren.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="steelGrades" novalidate aria-labelledby="masterDataSteelTitle" aria-describedby="masterDataSteelDescription masterDataSteelFeedback">
+                                        <div class="masterdata-input-row">
+                                            <input type="text" id="masterDataSteelInput" data-masterdata-input data-i18n-placeholder="Neue Stahlsorte hinzufügen" placeholder="Neue Stahlsorte hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataSteelFeedback" aria-live="polite" role="status"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataSteelList" data-masterdata-list="steelGrades" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataSteelEmpty" data-i18n="Keine Stahlsorten vorhanden" hidden>Keine Stahlsorten vorhanden.</p>
+                                </div>
+                                <div class="masterdata-group" data-masterdata-type="rollDiameters">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" id="masterDataRollTitle" data-i18n="Biegerollendurchmesser">Biegerollendurchmesser</h3>
+                                        <p class="masterdata-group-description" id="masterDataRollDescription" data-i18n="Biegerollendurchmesser Beschreibung">Legt verfügbare Rollendurchmesser in Millimetern fest.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="rollDiameters" novalidate aria-labelledby="masterDataRollTitle" aria-describedby="masterDataRollDescription masterDataRollFeedback">
+                                        <div class="masterdata-input-row">
+                                            <input type="number" id="masterDataRollInput" data-masterdata-input step="0.1" min="0" data-i18n-placeholder="Neuen Durchmesser hinzufügen" placeholder="Neuen Durchmesser hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataRollFeedback" aria-live="polite" role="status"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataRollList" data-masterdata-list="rollDiameters" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataRollEmpty" data-i18n="Keine Rollendurchmesser vorhanden" hidden>Keine Rollendurchmesser vorhanden.</p>
+                                </div>
+                                <div class="masterdata-group" data-masterdata-type="meshTypes">
+                                    <div class="masterdata-group-header">
+                                        <h3 class="masterdata-group-title" id="masterDataMeshTitle" data-i18n="Mattentypen">Mattentypen</h3>
+                                        <p class="masterdata-group-description" id="masterDataMeshDescription" data-i18n="Mattentypen Beschreibung">Standardisierte Mattentypen für den Mattenkonfigurator.</p>
+                                    </div>
+                                    <form class="masterdata-form" data-masterdata-form="meshTypes" novalidate aria-labelledby="masterDataMeshTitle" aria-describedby="masterDataMeshDescription masterDataMeshFeedback">
+                                        <div class="masterdata-input-row">
+                                            <input type="text" id="masterDataMeshInput" data-masterdata-input data-i18n-placeholder="Neuen Mattentyp hinzufügen" placeholder="Neuen Mattentyp hinzufügen" autocomplete="off">
+                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
+                                        </div>
+                                        <p class="info-text masterdata-feedback" id="masterDataMeshFeedback" aria-live="polite" role="status"></p>
+                                    </form>
+                                    <ul class="masterdata-list" id="masterDataMeshList" data-masterdata-list="meshTypes" role="list"></ul>
+                                    <p class="info-text masterdata-empty" id="masterDataMeshEmpty" data-i18n="Keine Mattentypen vorhanden" hidden>Keine Mattentypen vorhanden.</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                <div id="resourceModal" class="modal-overlay" aria-hidden="true">
+                    <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="resourceFormTitle">
+                        <div class="modal-header card-header">
+                            <h2 class="modal-title card-title" id="resourceFormTitle" data-i18n="Neue Ressource anlegen">Neue Ressource anlegen</h2>
+                            <button type="button" class="close-modal-btn" id="resourceModalClose" data-i18n-title="Schließen" title="Schließen">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body resources-modal-body">
+                            <p class="modal-description" id="resourceFormDescription" data-i18n="Ressourcenverwaltung Beschreibung">Pflegen Sie Maschinen und Anlagen mit ihren Fertigungsmöglichkeiten.</p>
+                            <form id="resourceForm" class="resources-form" novalidate aria-labelledby="resourceFormTitle" aria-describedby="resourceFormDescription">
                                 <div class="form-group">
                                     <label for="resourceName" data-i18n="Ressourcename">Ressourcename</label>
                                     <input type="text" id="resourceName" name="resourceName" required data-i18n-placeholder="Ressourcenname eingeben" placeholder="Ressourcenname eingeben" autocomplete="off">
@@ -1366,77 +1458,13 @@
                                         </div>
                                     </div>
                                 </fieldset>
-                                <p id="resourceFormFeedback" class="info-text" aria-live="polite" role="status"></p>
                                 <div class="button-group resources-form-buttons">
                                     <button type="submit" id="resourceFormSubmit" class="btn-primary" data-i18n="Ressource speichern">Ressource speichern</button>
                                     <button type="button" id="resourceFormReset" class="btn-secondary" data-i18n="Formular zurücksetzen">Formular zurücksetzen</button>
-                                    <button type="button" id="resourceFormCancel" class="btn-secondary" data-i18n="Bearbeitung abbrechen" hidden>Bearbeitung abbrechen</button>
+                                    <button type="button" id="resourceFormCancel" class="btn-secondary" data-i18n="Bearbeitung abbrechen">Bearbeitung abbrechen</button>
                                 </div>
                             </form>
-                        </section>
-                        <section class="card resources-list-card" aria-labelledby="resourcesListTitle">
-                            <div class="card-header">
-                                <h2 class="card-title" id="resourcesListTitle" data-i18n="Ressourcen">Ressourcen</h2>
-                                <p class="card-subtitle" data-i18n="Ressourcen Liste Beschreibung">Übersicht aller angelegten Ressourcen und deren Einsatzgrenzen.</p>
-                            </div>
-                            <div class="resources-list-body">
-                                <div id="resourceList" class="resource-list" role="list"></div>
-                                <p id="resourceEmptyState" class="info-text" data-i18n="Keine Ressourcen vorhanden" hidden>Keine Ressourcen vorhanden.</p>
-                            </div>
-                        </section>
-                        <section class="card masterdata-card" aria-labelledby="masterDataTitle">
-                            <div class="card-header">
-                                <h2 class="card-title" id="masterDataTitle" data-i18n="Stammdaten verwalten">Stammdaten verwalten</h2>
-                                <p class="card-subtitle" data-i18n="Stammdaten Beschreibung">Verwalten Sie zentrale Werte für Materialien und Parameter.</p>
-                            </div>
-                            <div class="masterdata-grid">
-                                <div class="masterdata-group" data-masterdata-type="steelGrades">
-                                    <div class="masterdata-group-header">
-                                        <h3 class="masterdata-group-title" id="masterDataSteelTitle" data-i18n="Stahlsorten">Stahlsorten</h3>
-                                        <p class="masterdata-group-description" id="masterDataSteelDescription" data-i18n="Stahlsorten Beschreibung">Vordefinierte Stahlgüten für alle Konfiguratoren.</p>
-                                    </div>
-                                    <form class="masterdata-form" data-masterdata-form="steelGrades" novalidate aria-labelledby="masterDataSteelTitle" aria-describedby="masterDataSteelDescription masterDataSteelFeedback">
-                                        <div class="masterdata-input-row">
-                                            <input type="text" id="masterDataSteelInput" data-masterdata-input data-i18n-placeholder="Neue Stahlsorte hinzufügen" placeholder="Neue Stahlsorte hinzufügen" autocomplete="off">
-                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
-                                        </div>
-                                        <p class="info-text masterdata-feedback" id="masterDataSteelFeedback" aria-live="polite" role="status"></p>
-                                    </form>
-                                    <ul class="masterdata-list" id="masterDataSteelList" data-masterdata-list="steelGrades" role="list"></ul>
-                                    <p class="info-text masterdata-empty" id="masterDataSteelEmpty" data-i18n="Keine Stahlsorten vorhanden" hidden>Keine Stahlsorten vorhanden.</p>
-                                </div>
-                                <div class="masterdata-group" data-masterdata-type="rollDiameters">
-                                    <div class="masterdata-group-header">
-                                        <h3 class="masterdata-group-title" id="masterDataRollTitle" data-i18n="Biegerollendurchmesser">Biegerollendurchmesser</h3>
-                                        <p class="masterdata-group-description" id="masterDataRollDescription" data-i18n="Biegerollendurchmesser Beschreibung">Legt verfügbare Rollendurchmesser in Millimetern fest.</p>
-                                    </div>
-                                    <form class="masterdata-form" data-masterdata-form="rollDiameters" novalidate aria-labelledby="masterDataRollTitle" aria-describedby="masterDataRollDescription masterDataRollFeedback">
-                                        <div class="masterdata-input-row">
-                                            <input type="number" id="masterDataRollInput" data-masterdata-input step="0.1" min="0" data-i18n-placeholder="Neuen Durchmesser hinzufügen" placeholder="Neuen Durchmesser hinzufügen" autocomplete="off">
-                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
-                                        </div>
-                                        <p class="info-text masterdata-feedback" id="masterDataRollFeedback" aria-live="polite" role="status"></p>
-                                    </form>
-                                    <ul class="masterdata-list" id="masterDataRollList" data-masterdata-list="rollDiameters" role="list"></ul>
-                                    <p class="info-text masterdata-empty" id="masterDataRollEmpty" data-i18n="Keine Rollendurchmesser vorhanden" hidden>Keine Rollendurchmesser vorhanden.</p>
-                                </div>
-                                <div class="masterdata-group" data-masterdata-type="meshTypes">
-                                    <div class="masterdata-group-header">
-                                        <h3 class="masterdata-group-title" id="masterDataMeshTitle" data-i18n="Mattentypen">Mattentypen</h3>
-                                        <p class="masterdata-group-description" id="masterDataMeshDescription" data-i18n="Mattentypen Beschreibung">Standardisierte Mattentypen für den Mattenkonfigurator.</p>
-                                    </div>
-                                    <form class="masterdata-form" data-masterdata-form="meshTypes" novalidate aria-labelledby="masterDataMeshTitle" aria-describedby="masterDataMeshDescription masterDataMeshFeedback">
-                                        <div class="masterdata-input-row">
-                                            <input type="text" id="masterDataMeshInput" data-masterdata-input data-i18n-placeholder="Neuen Mattentyp hinzufügen" placeholder="Neuen Mattentyp hinzufügen" autocomplete="off">
-                                            <button type="submit" class="btn-secondary" data-i18n="Hinzufügen">Hinzufügen</button>
-                                        </div>
-                                        <p class="info-text masterdata-feedback" id="masterDataMeshFeedback" aria-live="polite" role="status"></p>
-                                    </form>
-                                    <ul class="masterdata-list" id="masterDataMeshList" data-masterdata-list="meshTypes" role="list"></ul>
-                                    <p class="info-text masterdata-empty" id="masterDataMeshEmpty" data-i18n="Keine Mattentypen vorhanden" hidden>Keine Mattentypen vorhanden.</p>
-                                </div>
-                            </div>
-                        </section>
+                        </div>
                     </div>
                 </div>
                 <div id="settingsView" class="app-container" style="display:none;">
