@@ -1895,14 +1895,16 @@ h3.section-title.collapsed::after {
 			padding: .4rem .6rem;
 			position: relative;
 			}
-			.zone-table-wrapper .full-width-table input[type="number"],
-			.zone-table-wrapper .full-width-table select {
-			width: 100%;
-			padding: .3rem .5rem;
-			box-sizing: border-box;
-			font-size: .85rem;
-			margin-bottom: 0;
-			}
+.zone-table-wrapper .full-width-table input[type="number"],
+.zone-table-wrapper .full-width-table select {
+    width: 70%;
+    padding: .3rem .5rem;
+    box-sizing: border-box;
+    font-size: .85rem;
+    margin-bottom: 0;
+    margin-left: auto;
+    margin-right: auto;
+}
 			.zone-table-wrapper .full-width-table .form-group label {
 			display: none;
 			}
