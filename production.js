@@ -2540,12 +2540,59 @@ function loadResources() {
 }
 
 function persistResources() {
+    const snapshot = getResourceSnapshot();
     try {
-        localStorage.setItem(RESOURCE_STORAGE_KEY, JSON.stringify(resources));
-        notifyResourceSubscribers();
+        localStorage.setItem(RESOURCE_STORAGE_KEY, JSON.stringify(snapshot));
     } catch (error) {
         console.error('Could not store resources', error);
     }
+    notifyResourceSubscribers();
+    try {
+        if (window.bendingFormStorageSync && typeof window.bendingFormStorageSync.syncKey === 'function') {
+            const syncResult = window.bendingFormStorageSync.syncKey(RESOURCE_STORAGE_KEY, snapshot);
+            if (syncResult && typeof syncResult.catch === 'function') {
+                syncResult.catch(syncError => {
+                    console.error('Failed to sync resources to persistent storage', syncError);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to trigger resource storage sync', error);
+    }
+}
+
+async function ensurePersistentStorageSnapshotLoaded() {
+    if (typeof window === 'undefined') {
+        return;
+    }
+    try {
+        if (window.bendingFormStorageSync && typeof window.bendingFormStorageSync.ensureSnapshotLoaded === 'function') {
+            await window.bendingFormStorageSync.ensureSnapshotLoaded();
+        }
+    } catch (error) {
+        console.warn('Could not ensure persistent storage snapshot', error);
+    }
+}
+
+function updateResourcesFromExternalSnapshot(snapshot) {
+    if (snapshot === undefined) {
+        return;
+    }
+    const normalized = Array.isArray(snapshot)
+        ? snapshot.map(normalizeResourceItem)
+        : [];
+    resources = normalized;
+    renderResourceList();
+    notifyResourceSubscribers();
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('bvbsResourcesUpdated', event => {
+        if (!event || typeof event !== 'object') {
+            return;
+        }
+        updateResourcesFromExternalSnapshot(event.detail?.resources);
+    });
 }
 
 function openResourceModal(mode = 'create') {
@@ -2986,112 +3033,117 @@ function handleResourceFormSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadAppSettings();
-    applyAppSettings();
-    loadResources();
-    renderResourceList();
-    setupResourceTypesDropdown();
-    setupRollDiametersDropdown();
-    resetResourceForm();
-    notifyResourceSubscribers();
-    setupMasterDataUI();
-    loadProductionList();
-    const sidebarElement = document.getElementById('appSidebar');
-    if (sidebarElement) {
-        sidebarElement.setAttribute('aria-expanded', 'true');
-        sidebarElement.dataset.state = 'expanded';
-    }
-    document.body.classList.add('sidebar-open');
-
-    document.querySelectorAll('[data-submenu-toggle]').forEach(toggle => {
-        const submenu = toggle.closest('[data-submenu]');
-        if (!submenu) return;
-        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-        setSubmenuExpanded(submenu, isExpanded);
-        toggle.addEventListener('click', () => {
-            const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
-            setSubmenuExpanded(submenu, !currentlyExpanded);
-        });
-    });
-
-    document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
-        showGeneratorView();
-    });
-    document.getElementById('showBvbsListBtn')?.addEventListener('click', () => {
-        showView('bvbsListView');
-    });
-    document.getElementById('showServiceBusHistoryBtn')?.addEventListener('click', () => {
-        showServiceBusHistoryView();
-    });
-    document.getElementById('showDatabaseViewerBtn')?.addEventListener('click', () => {
-        showDatabaseViewerView();
-    });
-    document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
-        showBf2dView();
-    });
-    document.getElementById('showBfmaBtn')?.addEventListener('click', () => {
-        showBfmaView();
-    });
-    document.getElementById('showBf3dBtn')?.addEventListener('click', () => {
-        showBf3dView();
-    });
-    document.getElementById('showSavedShapesBtn')?.addEventListener('click', () => {
-        showSavedShapesView();
-    });
-    document.getElementById('showProductionBtn')?.addEventListener('click', () => {
-        showProductionView();
-    });
-    document.getElementById('showResourcesBtn')?.addEventListener('click', () => {
-        showResourcesView();
-    });
-    document.getElementById('showSettingsBtn')?.addEventListener('click', () => {
-        showSettingsView();
-    });
-    document.getElementById('resourceForm')?.addEventListener('submit', handleResourceFormSubmit);
-    document.getElementById('resourceFormReset')?.addEventListener('click', () => {
+    const initialize = async () => {
+        await ensurePersistentStorageSnapshotLoaded();
+        loadAppSettings();
+        applyAppSettings();
+        loadResources();
+        renderResourceList();
+        setupResourceTypesDropdown();
+        setupRollDiametersDropdown();
         resetResourceForm();
-        showResourceFeedback('');
-    });
-    document.getElementById('resourceFormCancel')?.addEventListener('click', () => {
-        closeResourceModal();
-    });
-    document.getElementById('resourceTableBody')?.addEventListener('click', handleResourceListClick);
-    document.getElementById('openResourceModalButton')?.addEventListener('click', () => {
-        resetResourceForm();
-        openResourceModal('create');
-    });
-    document.getElementById('resourceModalClose')?.addEventListener('click', () => {
-        closeResourceModal();
-    });
-    document.getElementById('resourceModal')?.addEventListener('click', event => {
-        if (event.target === event.currentTarget) {
-            closeResourceModal();
+        notifyResourceSubscribers();
+        setupMasterDataUI();
+        loadProductionList();
+        const sidebarElement = document.getElementById('appSidebar');
+        if (sidebarElement) {
+            sidebarElement.setAttribute('aria-expanded', 'true');
+            sidebarElement.dataset.state = 'expanded';
         }
-    });
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-            const modal = document.getElementById('resourceModal');
-            if (modal && modal.classList.contains('visible')) {
+        document.body.classList.add('sidebar-open');
+
+        document.querySelectorAll('[data-submenu-toggle]').forEach(toggle => {
+            const submenu = toggle.closest('[data-submenu]');
+            if (!submenu) return;
+            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            setSubmenuExpanded(submenu, isExpanded);
+            toggle.addEventListener('click', () => {
+                const currentlyExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                setSubmenuExpanded(submenu, !currentlyExpanded);
+            });
+        });
+
+        document.getElementById('showGeneratorBtn')?.addEventListener('click', () => {
+            showGeneratorView();
+        });
+        document.getElementById('showBvbsListBtn')?.addEventListener('click', () => {
+            showView('bvbsListView');
+        });
+        document.getElementById('showServiceBusHistoryBtn')?.addEventListener('click', () => {
+            showServiceBusHistoryView();
+        });
+        document.getElementById('showDatabaseViewerBtn')?.addEventListener('click', () => {
+            showDatabaseViewerView();
+        });
+        document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
+            showBf2dView();
+        });
+        document.getElementById('showBfmaBtn')?.addEventListener('click', () => {
+            showBfmaView();
+        });
+        document.getElementById('showBf3dBtn')?.addEventListener('click', () => {
+            showBf3dView();
+        });
+        document.getElementById('showSavedShapesBtn')?.addEventListener('click', () => {
+            showSavedShapesView();
+        });
+        document.getElementById('showProductionBtn')?.addEventListener('click', () => {
+            showProductionView();
+        });
+        document.getElementById('showResourcesBtn')?.addEventListener('click', () => {
+            showResourcesView();
+        });
+        document.getElementById('showSettingsBtn')?.addEventListener('click', () => {
+            showSettingsView();
+        });
+        document.getElementById('resourceForm')?.addEventListener('submit', handleResourceFormSubmit);
+        document.getElementById('resourceFormReset')?.addEventListener('click', () => {
+            resetResourceForm();
+            showResourceFeedback('');
+        });
+        document.getElementById('resourceFormCancel')?.addEventListener('click', () => {
+            closeResourceModal();
+        });
+        document.getElementById('resourceTableBody')?.addEventListener('click', handleResourceListClick);
+        document.getElementById('openResourceModalButton')?.addEventListener('click', () => {
+            resetResourceForm();
+            openResourceModal('create');
+        });
+        document.getElementById('resourceModalClose')?.addEventListener('click', () => {
+            closeResourceModal();
+        });
+        document.getElementById('resourceModal')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) {
                 closeResourceModal();
             }
-        }
-    });
-    document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
-        openGeneratorAndClick('releaseButton');
-        closeSidebarOnSmallScreens();
-    });
-    document.getElementById('quickSavedOrdersButton')?.addEventListener('click', () => {
-        openGeneratorAndClick('openSavedOrdersButton');
-        closeSidebarOnSmallScreens();
-    });
-    document.getElementById('quickSvgButton')?.addEventListener('click', () => {
-        openGeneratorAndClick('downloadSvgButton');
-        closeSidebarOnSmallScreens();
-    });
-    document.getElementById('quickPrintLabelButton')?.addEventListener('click', () => {
-        openGeneratorAndClick('printLabelButton');
-        closeSidebarOnSmallScreens();
-    });
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('resourceModal');
+                if (modal && modal.classList.contains('visible')) {
+                    closeResourceModal();
+                }
+            }
+        });
+        document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
+            openGeneratorAndClick('releaseButton');
+            closeSidebarOnSmallScreens();
+        });
+        document.getElementById('quickSavedOrdersButton')?.addEventListener('click', () => {
+            openGeneratorAndClick('openSavedOrdersButton');
+            closeSidebarOnSmallScreens();
+        });
+        document.getElementById('quickSvgButton')?.addEventListener('click', () => {
+            openGeneratorAndClick('downloadSvgButton');
+            closeSidebarOnSmallScreens();
+        });
+        document.getElementById('quickPrintLabelButton')?.addEventListener('click', () => {
+            openGeneratorAndClick('printLabelButton');
+            closeSidebarOnSmallScreens();
+        });
+    };
+
+    initialize();
     const handleSavedShapesUpdate = () => {
         savedShapesNeedsRefresh = true;
         const view = document.getElementById('savedShapesView');
