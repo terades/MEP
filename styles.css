@@ -966,7 +966,7 @@ body:not(.is-generator-view) .app-main {
 
 .main-grid {
     display: grid;
-    grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+    grid-template-columns: minmax(420px, 520px) minmax(0, 1fr);
     gap: 1.5rem;
     align-items: start;
     width: 100%;
@@ -975,8 +975,8 @@ body:not(.is-generator-view) .app-main {
 .input-column {
     display: flex;
     flex-direction: column;
-    min-width: 360px;
-    max-width: 440px;
+    min-width: 420px;
+    max-width: 520px;
 }
 
 .input-column .input-scroll-container {
