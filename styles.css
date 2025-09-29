@@ -3541,6 +3541,26 @@ body[data-theme="dark"] .stirrup-form-preview__canvas {
     cursor: pointer;
 }
 
+#bvbsListTable .bvbs-actions-cell {
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.5rem;
+}
+
+#bvbsListTable .bvbs-actions-cell .bvbs-edit-entry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+#bvbsListTable .bvbs-actions-cell .bvbs-edit-entry-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 #bvbsListTable thead th.bvbs-selection-header,
 #bvbsListTable tbody td.bvbs-selection-cell {
     padding: 0.25rem;

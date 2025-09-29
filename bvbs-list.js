@@ -35,6 +35,7 @@
     let columnVisibilityList, columnVisibilityResetBtn;
     let uploadToggleBtn, uploadSection, uploadCard;
     let lastPreviewTrigger = null;
+    let statusResetTimeout = null;
     let tableHeaders = [];
 
     const columnFilterInputs = new Map();
@@ -74,6 +75,61 @@
             return i18n.t(key);
         }
         return typeof fallback === 'string' ? fallback : key;
+    }
+
+    function isEntryEditable(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return false;
+        }
+        const type = (entry.type || '').toString().toUpperCase();
+        if (type === 'BF2D') {
+            return true;
+        }
+        if (!type && Array.isArray(entry.segmentDefinitions) && entry.segmentDefinitions.length) {
+            return true;
+        }
+        return false;
+    }
+
+    function openEntryInEditor(entry) {
+        if (!isEntryEditable(entry)) {
+            const message = translate('Dieser Eintrag kann nicht bearbeitet werden.', 'This entry cannot be edited.');
+            if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                window.alert(message);
+            }
+            return;
+        }
+
+        const configurator = typeof window !== 'undefined' ? window.bf2dConfigurator : null;
+        if (!configurator) {
+            console.warn('bf2dConfigurator is not available');
+            return;
+        }
+
+        try {
+            if (typeof showView === 'function') {
+                showView('bf2dView');
+            } else if (typeof window !== 'undefined') {
+                window.location.hash = '#bf2d';
+            }
+        } catch (error) {
+            console.error('Could not switch to BF2D view', error);
+        }
+
+        window.requestAnimationFrame(() => {
+            try {
+                if (typeof configurator.init === 'function') {
+                    configurator.init();
+                }
+                if (typeof configurator.loadBvbsEntry === 'function') {
+                    configurator.loadBvbsEntry(entry);
+                } else {
+                    console.warn('bf2dConfigurator.loadBvbsEntry is not available');
+                }
+            } catch (error) {
+                console.error('Failed to open entry in configurator', error);
+            }
+        });
     }
 
     function getPrintHeadingText() {
@@ -335,6 +391,41 @@
                     toggleEntrySelection(entry?.id, event.target.checked);
                 });
                 return checkbox;
+            }
+        },
+        {
+            key: 'actions',
+            className: 'bvbs-actions-cell',
+            excludeFromFilters: true,
+            excludeFromVisibility: true,
+            includeInPrint: false,
+            render(entry, options = {}) {
+                if (options?.mode === 'print') {
+                    return '';
+                }
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn-secondary bvbs-edit-entry-btn';
+                const label = translate('Bearbeiten', 'Edit');
+                button.textContent = label;
+                const title = translate('Im Konfigurator öffnen', 'Open in configurator');
+                button.setAttribute('title', title);
+                button.setAttribute('aria-label', title);
+
+                if (!isEntryEditable(entry)) {
+                    button.disabled = true;
+                    const disabledLabel = translate('Dieser Eintrag kann nicht bearbeitet werden.', 'This entry cannot be edited.');
+                    button.setAttribute('title', disabledLabel);
+                    button.setAttribute('aria-label', disabledLabel);
+                } else {
+                    button.addEventListener('click', event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        openEntryInEditor(entry);
+                    });
+                }
+
+                return button;
             }
         },
         {
@@ -1425,6 +1516,28 @@
         return columnKey;
     }
 
+    function buildItemIdFromMetadata(entry) {
+        if (!entry || typeof entry !== 'object') {
+            return '';
+        }
+        const metadata = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
+        const parts = [];
+        if (metadata.project) {
+            parts.push(String(metadata.project));
+        }
+        if (metadata.plan) {
+            parts.push(String(metadata.plan));
+        }
+        const type = (entry.displayType || metadata.type || '').toString().trim().toUpperCase();
+        if (type) {
+            parts.push(type);
+        }
+        if (metadata.position) {
+            parts.push(String(metadata.position));
+        }
+        return parts.join('-');
+    }
+
     function compareEntries(a, b, definition, direction) {
         const dirMultiplier = direction === 'desc' ? -1 : 1;
         const valueA = definition.getValue(a);
@@ -1505,6 +1618,168 @@
             ? `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen (Filter aktiv)`
             : `Angezeigt: ${visibleCount} von ${state.entries.length} Positionen`;
         statusEl.textContent = baseMessage ? `${baseMessage} • ${suffix}` : suffix;
+    }
+
+    function applySnapshotToEntry(entry, detail) {
+        if (!entry || !detail || typeof detail !== 'object') {
+            return false;
+        }
+
+        const summary = detail.summary;
+        if (summary && Array.isArray(summary.errors) && summary.errors.length) {
+            return false;
+        }
+
+        const snapshot = detail.snapshot || {};
+        const meta = snapshot.meta || {};
+
+        entry.type = (detail.type || entry.type || 'BF2D').toString().toUpperCase();
+        entry.displayType = meta.type || entry.displayType || entry.type || '';
+        entry.startValid = true;
+
+        const metadata = typeof entry.metadata === 'object' && entry.metadata !== null ? entry.metadata : {};
+        metadata.project = meta.project || '';
+        metadata.plan = meta.order || '';
+        metadata.position = meta.position || '';
+        metadata.type = meta.type || metadata.type || '';
+        metadata.steelGrade = meta.steelGrade || metadata.steelGrade || '';
+
+        const quantity = Number(meta.quantity);
+        if (Number.isFinite(quantity) && quantity > 0) {
+            metadata.quantity = Math.round(quantity);
+        } else if (!Number.isFinite(metadata.quantity) || metadata.quantity <= 0) {
+            metadata.quantity = 1;
+        }
+
+        const diameter = Number(meta.diameter);
+        if (Number.isFinite(diameter) && diameter > 0) {
+            metadata.diameter = diameter;
+        }
+
+        const rollDiameter = Number(meta.rollDiameter);
+        if (Number.isFinite(rollDiameter) && rollDiameter > 0) {
+            metadata.rollDiameter = rollDiameter;
+        }
+
+        const normalizedSegments = Array.isArray(snapshot.segments)
+            ? snapshot.segments.map(segment => ({
+                length: Number(segment?.length) || 0,
+                bendAngle: Number(segment?.bendAngle) || 0,
+                bendDirection: segment?.bendDirection === 'R' ? 'R' : 'L',
+                radius: Number(segment?.radius) || 0
+            }))
+            : [];
+
+        entry.segmentDefinitions = normalizedSegments;
+        entry.hasGeometry = normalizedSegments.length > 0;
+
+        metadata.maxSegmentLength = normalizedSegments.reduce((max, segment) => {
+            const length = Number(segment.length);
+            if (Number.isFinite(length) && length > max) {
+                return length;
+            }
+            return max;
+        }, 0);
+
+        metadata.bendCount = normalizedSegments.slice(0, -1).reduce((count, segment) => {
+            const angle = Number(segment.bendAngle);
+            if (Number.isFinite(angle) && angle > 0) {
+                return count + 1;
+            }
+            return count;
+        }, 0);
+
+        if (summary && typeof summary === 'object') {
+            if (Number.isFinite(summary.totalLength)) {
+                metadata.totalLength = summary.totalLength;
+                entry.lengthFromGeometry = summary.totalLength;
+            }
+            if (Number.isFinite(summary.weightPerBar)) {
+                metadata.weight = summary.weightPerBar;
+            }
+            if (Number.isFinite(summary.totalWeight)) {
+                metadata.totalWeight = summary.totalWeight;
+            }
+            if (Number.isFinite(summary.quantity) && summary.quantity > 0) {
+                metadata.quantity = Math.round(summary.quantity);
+            }
+            if (summary.geometry) {
+                entry.hasGeometry = true;
+            }
+        }
+
+        const totalLength = Number(metadata.totalLength);
+        const qty = Number(metadata.quantity);
+        if (Number.isFinite(totalLength) && Number.isFinite(qty) && qty > 0) {
+            metadata.totalLengthMeters = (totalLength * qty) / 1000;
+        } else {
+            metadata.totalLengthMeters = Number.NaN;
+        }
+
+        if (!Number.isFinite(metadata.weight)) {
+            metadata.weight = Number.NaN;
+        }
+
+        if (!Number.isFinite(metadata.totalWeight) && Number.isFinite(metadata.weight) && Number.isFinite(qty)) {
+            metadata.totalWeight = metadata.weight * qty;
+        }
+
+        entry.metadata = metadata;
+        metadata.itemId = buildItemIdFromMetadata(entry);
+        entry.errorMessages = [];
+        entry.warningMessages = [];
+        return true;
+    }
+
+    function showEntryUpdatedMessage(entry) {
+        if (!statusEl) {
+            return;
+        }
+        const label = (entry?.metadata?.itemId || entry?.metadata?.position || entry?.id || '').toString();
+        const message = typeof i18n !== 'undefined' && typeof i18n.t === 'function'
+            ? i18n.t('Position {item} aktualisiert.', { item: label })
+            : (label ? `Position ${label} updated.` : 'Entry updated.');
+        statusEl.textContent = message;
+        statusEl.classList.remove('error-message');
+        if (statusResetTimeout) {
+            window.clearTimeout(statusResetTimeout);
+        }
+        statusResetTimeout = window.setTimeout(() => {
+            statusResetTimeout = null;
+            updateStatusMessage(getVisibleEntries().length);
+        }, 3500);
+    }
+
+    function handleExternalEntryUpdate(event) {
+        const detail = event?.detail;
+        if (!detail || !detail.entryId) {
+            return;
+        }
+
+        const entry = state.entries.find(item => item.id === detail.entryId);
+        if (!entry) {
+            return;
+        }
+
+        const updated = applySnapshotToEntry(entry, detail);
+        if (!updated) {
+            if (statusEl) {
+                const message = translate('Eintrag konnte nicht aktualisiert werden. Bitte Eingaben prüfen.', 'Entry could not be updated. Please check the form.');
+                statusEl.textContent = message;
+                statusEl.classList.add('error-message');
+                if (statusResetTimeout) {
+                    window.clearTimeout(statusResetTimeout);
+                }
+                statusResetTimeout = window.setTimeout(() => {
+                    statusResetTimeout = null;
+                    updateStatusMessage(getVisibleEntries().length);
+                }, 4000);
+            }
+            return;
+        }
+
+        renderTable();
+        showEntryUpdatedMessage(entry);
     }
 
     function updateHeaderSortState() {
@@ -2593,6 +2868,10 @@
         }
         if (columnFilterCloseBtn) {
             columnFilterCloseBtn.addEventListener('click', () => closeColumnFilterMenu({ focusToggle: true }));
+        }
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('bvbs:entry-updated', handleExternalEntryUpdate);
         }
 
         document.addEventListener('click', handleDocumentClick);

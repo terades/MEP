@@ -66,6 +66,12 @@
         lastError: null
     };
 
+    let activeBvbsContext = null;
+
+    function clearActiveBvbsContext() {
+        activeBvbsContext = null;
+    }
+
     function createSvgElement(tagName, attributes = {}) {
         const element = document.createElementNS(SVG_NS, tagName);
         Object.entries(attributes).forEach(([key, value]) => {
@@ -879,10 +885,52 @@
         };
     }
 
+    function notifyBvbsListAboutUpdate(snapshot) {
+        if (!activeBvbsContext || !activeBvbsContext.entryId) {
+            return;
+        }
+        if (!snapshot || typeof snapshot !== 'object') {
+            return;
+        }
+
+        const summary = computeSummary();
+        if (Array.isArray(summary?.errors) && summary.errors.length) {
+            if (typeof showFeedback === 'function') {
+                const message = typeof i18n?.t === 'function'
+                    ? i18n.t('BVBS-Liste nicht aktualisiert. Bitte Fehler beheben.')
+                    : 'BVBS list not updated. Please resolve the errors.';
+                showFeedback('bf2dStatus', message, 'warning', 4000);
+            }
+            return;
+        }
+
+        const detail = {
+            entryId: activeBvbsContext.entryId,
+            type: activeBvbsContext.type || 'BF2D',
+            snapshot,
+            summary,
+            datasetText: state.datasetText || ''
+        };
+
+        if (typeof activeBvbsContext.onSave === 'function') {
+            try {
+                activeBvbsContext.onSave(detail);
+            } catch (error) {
+                console.error('BVBS callback failed', error);
+            }
+        }
+
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('bvbs:entry-updated', { detail }));
+        }
+    }
+
     function saveCurrentShape() {
         const storage = getLocalStorageSafe();
+        const snapshot = buildCurrentShapeSnapshot();
         if (!storage) {
             showStorageUnavailableFeedback();
+            notifyBvbsListAboutUpdate(snapshot);
             return;
         }
         const name = readShapeNameInput();
@@ -891,16 +939,18 @@
                 const message = typeof i18n?.t === 'function' ? i18n.t('Bitte einen Namen für die Biegeform angeben.') : 'Bitte einen Namen für die Biegeform angeben.';
                 showFeedback('bf2dStatus', message, 'warning', 3000);
             }
+            notifyBvbsListAboutUpdate(snapshot);
             return;
         }
         setShapeNameInputValue(name);
         const forms = readSavedForms();
-        forms[name] = buildCurrentShapeSnapshot();
+        forms[name] = snapshot;
         if (!persistSavedForms(forms)) {
             if (typeof showFeedback === 'function') {
                 const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform konnte nicht gespeichert werden.') : 'Biegeform konnte nicht gespeichert werden.';
                 showFeedback('bf2dStatus', message, 'error', 4000);
             }
+            notifyBvbsListAboutUpdate(snapshot);
             return;
         }
         populateSavedFormsSelect(name);
@@ -908,6 +958,7 @@
             const message = typeof i18n?.t === 'function' ? i18n.t('Biegeform gespeichert.') : 'Biegeform gespeichert.';
             showFeedback('bf2dStatus', message, 'success', 2000);
         }
+        notifyBvbsListAboutUpdate(snapshot);
     }
 
     function applySavedShapeData(data) {
@@ -2910,6 +2961,7 @@
                 if (event.target.closest('.bf2d-import-select')) {
                     return;
                 }
+                clearActiveBvbsContext();
                 loadImportEntry(entry);
             });
 
@@ -2919,6 +2971,7 @@
                 }
                 if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
+                    clearActiveBvbsContext();
                     loadImportEntry(entry);
                 }
             });
@@ -2960,6 +3013,7 @@
         importState.selectedIds.clear();
         importState.activeId = null;
         importState.fileName = '';
+        clearActiveBvbsContext();
         const importInput = document.getElementById('bf2dImportFileInput');
         if (importInput) {
             importInput.value = '';
@@ -3101,6 +3155,33 @@
         renderImportTable();
     }
 
+    function loadBvbsEntry(entry, options = {}) {
+        if (!entry || typeof entry !== 'object') {
+            clearActiveBvbsContext();
+            return false;
+        }
+        if (!initialized) {
+            init();
+        }
+        try {
+            loadImportEntry(entry);
+            const entryId = entry.id !== undefined && entry.id !== null ? String(entry.id) : '';
+            if (!entryId) {
+                clearActiveBvbsContext();
+                return false;
+            }
+            activeBvbsContext = {
+                entryId,
+                type: (entry.type || 'BF2D').toString().toUpperCase(),
+                onSave: typeof options.onSave === 'function' ? options.onSave : null
+            };
+            return true;
+        } catch (error) {
+            console.error('Failed to load BVBS entry', error);
+            return false;
+        }
+    }
+
     function init() {
         if (initialized) return;
         const view = document.getElementById('bf2dView');
@@ -3153,7 +3234,9 @@
             updateOutputs();
         },
         loadSavedShapeByName,
-        loadShapeSnapshot
+        loadShapeSnapshot,
+        loadBvbsEntry,
+        clearBvbsContext: clearActiveBvbsContext
     };
 
     window.bf2dConfigurator = configurator;
