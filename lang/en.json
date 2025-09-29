@@ -249,6 +249,7 @@
   "Biegeform-Name eingeben…": "Enter stirrup name…",
   "Gespeicherte Biegeformen": "Saved stirrups",
   "Gespeicherte Biegeform auswählen…": "Select saved stirrup…",
+  "Als Biegeform speichern": "Save as bending form",
   "Gespeicherte Biegeform wählen": "Choose saved stirrup",
   "Gespeicherte Biegeform: {name}": "Saved stirrup: {name}",
   "Gespeicherte Biegeform auswählen, aktuell: {name}": "Choose saved stirrup, current: {name}",

@@ -3648,7 +3648,14 @@ body[data-theme="dark"] .input-hint {
     padding: 0.5rem;
 }
 
-#bvbsListTable .bvbs-actions-cell .bvbs-edit-entry-btn {
+#bvbsListTable .bvbs-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#bvbsListTable .bvbs-actions-cell .bvbs-action-button {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -3657,7 +3664,7 @@ body[data-theme="dark"] .input-hint {
     border-radius: 0.5rem;
 }
 
-#bvbsListTable .bvbs-actions-cell .bvbs-edit-entry-btn:disabled {
+#bvbsListTable .bvbs-actions-cell .bvbs-action-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }

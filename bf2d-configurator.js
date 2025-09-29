@@ -3159,6 +3159,16 @@
                 : META_DEFAULTS.rollDiameter;
         meta.rollDiameter = rollDiameter;
         Object.assign(state.meta, meta);
+
+        const itemId = typeof header.itemId === 'string'
+            ? header.itemId.trim()
+            : typeof entry?.metadata?.itemId === 'string'
+                ? entry.metadata.itemId.trim()
+                : '';
+        if (itemId) {
+            setShapeNameInputValue(itemId);
+        }
+
         writeMetaToInputs();
 
         let segments = [];
