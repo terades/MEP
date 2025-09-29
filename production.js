@@ -35,7 +35,7 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'serviceBusHistoryView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
 const DEFAULT_VIEW_ID = 'generatorView';
 const ACTIVE_VIEW_STORAGE_KEY = 'bvbsActiveView';
 const VIEW_HASH_MAP = {
@@ -2165,6 +2165,9 @@ function showView(view, options = {}) {
     if (view === 'resourcesView') {
         renderResourceList();
     }
+    if (view === 'serviceBusHistoryView' && window.serviceBusHistory && typeof window.serviceBusHistory.onShow === 'function') {
+        window.serviceBusHistory.onShow();
+    }
     if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
         window.bf2dConfigurator.onShow();
     }
@@ -2186,6 +2189,10 @@ function showProductionView() {
 
 function showResourcesView() {
     showView('resourcesView');
+}
+
+function showServiceBusHistoryView() {
+    showView('serviceBusHistoryView');
 }
 
 function showBf2dView() {
@@ -2946,6 +2953,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('showBvbsListBtn')?.addEventListener('click', () => {
         showView('bvbsListView');
+    });
+    document.getElementById('showServiceBusHistoryBtn')?.addEventListener('click', () => {
+        showServiceBusHistoryView();
     });
     document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
         showBf2dView();

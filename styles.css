@@ -6081,3 +6081,98 @@ body[data-theme="dark"] .resource-badge--muted {
     }
 }
 
+
+.servicebus-history-filters {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .servicebus-history-filters {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+.servicebus-history-status {
+    margin-top: 0.5rem;
+}
+
+.servicebus-history-status.is-error {
+    color: #b00020;
+}
+
+.servicebus-history-status.is-loading {
+    font-style: italic;
+}
+
+.servicebus-history-table td,
+.servicebus-history-table th {
+    vertical-align: top;
+}
+
+.servicebus-history-preview-cell {
+    max-width: 360px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.servicebus-history-details {
+    display: block;
+}
+
+.servicebus-history-details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.servicebus-history-details-section {
+    margin-top: 0.75rem;
+}
+
+.servicebus-history-details-section:first-of-type {
+    margin-top: 0.5rem;
+}
+
+.servicebus-history-details-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.servicebus-history-details-pre {
+    background-color: var(--card-border-color, rgba(0, 0, 0, 0.05));
+    border-radius: 4px;
+    padding: 0.5rem;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem;
+}
+
+.servicebus-history-empty-cell {
+    text-align: center;
+    color: var(--text-muted, #6b7280);
+    padding: 2rem 1rem;
+}
+
+.servicebus-history-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.servicebus-history-pagination-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.servicebus-history-pagination-info {
+    flex: 1 1 auto;
+    min-width: 200px;
+    color: var(--text-muted, #6b7280);
+}

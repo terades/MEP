@@ -24,6 +24,7 @@
         <script type="module" src="bf3d-viewer3d.js" defer></script>
         <script src="bfma-configurator.js" defer></script>
         <script src="bf3d-configurator.js" defer></script>
+        <script src="service-bus-history.js" defer></script>
         <script src="production.js" defer></script>
         <script src="bvbs-list.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
@@ -44,6 +45,12 @@
                                 <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zm0-12v2h14V7H7z"/>
                             </svg>
                             <span class="sidebar-text" data-i18n="BVBS-Liste">BVBS-Liste</span>
+                        </button>
+                        <button id="showServiceBusHistoryBtn" class="sidebar-link" data-view-target="serviceBusHistoryView" data-i18n-title="ServiceBusHistory.Nav" title="Service-Bus-Archiv">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 6l8 3 8-3V4l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2z" />
+                            </svg>
+                            <span class="sidebar-text" data-i18n="ServiceBusHistory.Nav">Service-Bus-Archiv</span>
                         </button>
                         <div class="sidebar-submenu" data-submenu data-submenu-views="bf2dView,bf3dView,bfmaView">
                             <button type="button" class="sidebar-link sidebar-submenu-toggle" data-submenu-toggle aria-expanded="false" data-i18n-title="Biegeformen" title="Biegeformen">
@@ -1485,6 +1492,72 @@
                                 </div>
                             </div>
                         </section>
+                    </div>
+                </div>
+                <div id="serviceBusHistoryView" class="app-container" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title" data-i18n="ServiceBusHistory.Heading">Service-Bus-Verlauf</h2>
+                            <div class="button-group">
+                                <button type="button" class="btn-secondary" id="serviceBusHistoryRefreshBtn" data-i18n="ServiceBusHistory.Actions.Refresh">Aktualisieren</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="servicebus-history-filters">
+                                <div class="form-group">
+                                    <label for="serviceBusHistoryTopicSelect" data-i18n="ServiceBusHistory.Filters.Topic">Topic</label>
+                                    <select id="serviceBusHistoryTopicSelect"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceBusHistorySubscriptionSelect" data-i18n="ServiceBusHistory.Filters.Subscription">Subscription</label>
+                                    <select id="serviceBusHistorySubscriptionSelect" disabled></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceBusHistorySearchInput" data-i18n="ServiceBusHistory.Filters.Search">Suche</label>
+                                    <input type="search" id="serviceBusHistorySearchInput" data-i18n-placeholder="ServiceBusHistory.Filters.SearchPlaceholder" placeholder="Nachrichteninhalt durchsuchen" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceBusHistoryPageSizeSelect" data-i18n="ServiceBusHistory.Filters.Limit">Einträge pro Seite</label>
+                                    <select id="serviceBusHistoryPageSizeSelect">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="serviceBusHistoryStatus" class="info-text servicebus-history-status" aria-live="polite"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title" data-i18n="ServiceBusHistory.TableHeading">Nachrichten</h3>
+                        </div>
+                        <div class="production-table-wrapper">
+                            <table id="serviceBusHistoryTable" class="full-width-table servicebus-history-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="ServiceBusHistory.Table.ReceivedAt">Empfangen</th>
+                                        <th data-i18n="ServiceBusHistory.Table.Topic">Topic</th>
+                                        <th data-i18n="ServiceBusHistory.Table.Subscription">Subscription</th>
+                                        <th data-i18n="ServiceBusHistory.Table.MessageId">Message-ID</th>
+                                        <th data-i18n="ServiceBusHistory.Table.Subject">Betreff</th>
+                                        <th data-i18n="ServiceBusHistory.Table.ContentType">Content-Type</th>
+                                        <th data-i18n="ServiceBusHistory.Table.DeliveryCount">Lieferungen</th>
+                                        <th data-i18n="ServiceBusHistory.Table.RawPreview">Inhalt (Auszug)</th>
+                                        <th data-i18n="ServiceBusHistory.Table.Details">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceBusHistoryTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="servicebus-history-pagination">
+                            <div class="button-group servicebus-history-pagination-buttons">
+                                <button type="button" class="btn-secondary" id="serviceBusHistoryPrevBtn" data-i18n="ServiceBusHistory.Pagination.Previous">Zurück</button>
+                                <button type="button" class="btn-secondary" id="serviceBusHistoryNextBtn" data-i18n="ServiceBusHistory.Pagination.Next">Weiter</button>
+                            </div>
+                            <div class="servicebus-history-pagination-info" id="serviceBusHistoryPaginationInfo"></div>
+                        </div>
                     </div>
                 </div>
                 <div id="bvbsListView" class="app-container" style="display:none;">
