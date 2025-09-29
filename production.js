@@ -153,6 +153,45 @@ let resourceFeedbackTimer = null;
 let resourceTypesDropdownInitialized = false;
 let rollDiametersDropdownInitialized = false;
 
+const DEFAULT_RESOURCES = [
+    {
+        id: 'resource-default-pro-42',
+        name: 'Biegemaschine Pro 42',
+        description: 'Automatische Doppelbiegeanlage für Stäbe bis Ø 42 mm.',
+        minDiameter: 6,
+        maxDiameter: 42,
+        minLegLength: 120,
+        maxLegLength: 1200,
+        supportedTypes: ['2d', '3d'],
+        availableRollDiameters: [40, 48, 56],
+        createdAt: '2024-01-15T08:00:00.000Z'
+    },
+    {
+        id: 'resource-default-matten-compact',
+        name: 'Mattenbieger Compact',
+        description: 'Spezialisiert auf Matten und leichte 2D-Formen.',
+        minDiameter: 6,
+        maxDiameter: 12,
+        minLegLength: 200,
+        maxLegLength: 800,
+        supportedTypes: ['2d', 'mesh'],
+        availableRollDiameters: [40, 48],
+        createdAt: '2024-03-04T06:30:00.000Z'
+    },
+    {
+        id: 'resource-default-flex-xl',
+        name: 'Universelle Biegeanlage XL',
+        description: 'Flexible Anlage für Großserien mit 3D-Fertigung.',
+        minDiameter: 8,
+        maxDiameter: 50,
+        minLegLength: 150,
+        maxLegLength: 1600,
+        supportedTypes: ['2d', '3d'],
+        availableRollDiameters: [48, 56, 70],
+        createdAt: '2024-04-22T14:15:00.000Z'
+    }
+];
+
 function getRollDiametersDropdownElements() {
     const container = document.querySelector('[data-roll-diameters-dropdown]');
     if (!container) return null;
@@ -2448,46 +2487,55 @@ function normalizeRollDiameterValues(value) {
     return Array.from(unique).sort((a, b) => a - b);
 }
 
+function normalizeResourceItem(item) {
+    const normalizedItem = (item && typeof item === 'object') ? item : {};
+    const supportedTypes = Array.isArray(normalizedItem.supportedTypes)
+        ? normalizedItem.supportedTypes.filter(type => typeof type === 'string')
+        : [];
+
+    let createdAt = new Date().toISOString();
+    if (typeof normalizedItem.createdAt === 'string' && normalizedItem.createdAt) {
+        const createdDate = new Date(normalizedItem.createdAt);
+        createdAt = Number.isNaN(createdDate.getTime()) ? createdAt : createdDate.toISOString();
+    } else if (typeof normalizedItem.createdAt === 'number' && Number.isFinite(normalizedItem.createdAt)) {
+        const createdDate = new Date(normalizedItem.createdAt);
+        createdAt = Number.isNaN(createdDate.getTime()) ? createdAt : createdDate.toISOString();
+    }
+
+    return {
+        id: typeof normalizedItem.id === 'string' && normalizedItem.id ? normalizedItem.id : generateResourceId(),
+        name: typeof normalizedItem.name === 'string' ? normalizedItem.name : '',
+        description: typeof normalizedItem.description === 'string' ? normalizedItem.description : '',
+        minDiameter: normalizeResourceNumericValue(normalizedItem.minDiameter),
+        maxDiameter: normalizeResourceNumericValue(normalizedItem.maxDiameter),
+        minLegLength: normalizeResourceNumericValue(normalizedItem.minLegLength),
+        maxLegLength: normalizeResourceNumericValue(normalizedItem.maxLegLength),
+        supportedTypes,
+        availableRollDiameters: normalizeRollDiameterValues(normalizedItem.availableRollDiameters),
+        createdAt
+    };
+}
+
+function getDefaultResources() {
+    return DEFAULT_RESOURCES.map(resource => normalizeResourceItem(resource));
+}
+
 function loadResources() {
     try {
         const stored = localStorage.getItem(RESOURCE_STORAGE_KEY);
         if (!stored) {
-            resources = [];
+            resources = getDefaultResources();
             return;
         }
         const parsed = JSON.parse(stored);
         if (!Array.isArray(parsed)) {
-            resources = [];
+            resources = getDefaultResources();
             return;
         }
-        resources = parsed.map(item => {
-            const normalizedItem = (item && typeof item === 'object') ? item : {};
-            const supportedTypes = Array.isArray(normalizedItem.supportedTypes)
-                ? normalizedItem.supportedTypes.filter(type => typeof type === 'string')
-                : [];
-            let createdAt = new Date().toISOString();
-            if (typeof normalizedItem.createdAt === 'string' && normalizedItem.createdAt) {
-                createdAt = normalizedItem.createdAt;
-            } else if (typeof normalizedItem.createdAt === 'number' && Number.isFinite(normalizedItem.createdAt)) {
-                const createdDate = new Date(normalizedItem.createdAt);
-                createdAt = Number.isNaN(createdDate.getTime()) ? createdAt : createdDate.toISOString();
-            }
-            return {
-                id: typeof normalizedItem.id === 'string' && normalizedItem.id ? normalizedItem.id : generateResourceId(),
-                name: typeof normalizedItem.name === 'string' ? normalizedItem.name : '',
-                description: typeof normalizedItem.description === 'string' ? normalizedItem.description : '',
-                minDiameter: normalizeResourceNumericValue(normalizedItem.minDiameter),
-                maxDiameter: normalizeResourceNumericValue(normalizedItem.maxDiameter),
-                minLegLength: normalizeResourceNumericValue(normalizedItem.minLegLength),
-                maxLegLength: normalizeResourceNumericValue(normalizedItem.maxLegLength),
-                supportedTypes,
-                availableRollDiameters: normalizeRollDiameterValues(normalizedItem.availableRollDiameters),
-                createdAt
-            };
-        });
+        resources = parsed.map(normalizeResourceItem);
     } catch (error) {
         console.error('Could not load resources', error);
-        resources = [];
+        resources = getDefaultResources();
     }
 }
 

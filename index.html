@@ -1391,77 +1391,112 @@
                         <div class="modal-body resources-modal-body">
                             <p class="modal-description" id="resourceFormDescription" data-i18n="Ressourcenverwaltung Beschreibung">Pflegen Sie Maschinen und Anlagen mit ihren Fertigungsmöglichkeiten.</p>
                             <form id="resourceForm" class="resources-form" novalidate aria-labelledby="resourceFormTitle" aria-describedby="resourceFormDescription">
-                                <div class="form-group">
-                                    <label for="resourceName" data-i18n="Ressourcename">Ressourcename</label>
-                                    <input type="text" id="resourceName" name="resourceName" required data-i18n-placeholder="Ressourcenname eingeben" placeholder="Ressourcenname eingeben" autocomplete="off">
-                                </div>
-                                <div class="form-group">
-                                    <label for="resourceDescription" data-i18n="Beschreibung">Beschreibung</label>
-                                    <textarea id="resourceDescription" name="resourceDescription" rows="3" data-i18n-placeholder="Optionale Beschreibung" placeholder="Optionale Beschreibung"></textarea>
-                                </div>
-                                <div class="form-columns">
-                                    <div class="form-group">
-                                        <label for="resourceMinDiameter" data-i18n="Min. Stabdurchmesser (mm)">Min. Stabdurchmesser (mm)</label>
-                                        <input type="number" id="resourceMinDiameter" name="resourceMinDiameter" min="0" step="0.1" inputmode="decimal">
+                                <section class="resources-form-section" aria-labelledby="resourceBasicsTitle">
+                                    <div class="resources-form-section-header">
+                                        <h3 id="resourceBasicsTitle" class="resources-form-section-title" data-i18n="Ressource Stammdaten">Stammdaten</h3>
+                                        <p class="resources-form-section-description" data-i18n="Ressource Stammdaten Beschreibung">Basisinformationen zur Maschine oder Anlage.</p>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="resourceMaxDiameter" data-i18n="Max. Stabdurchmesser (mm)">Max. Stabdurchmesser (mm)</label>
-                                        <input type="number" id="resourceMaxDiameter" name="resourceMaxDiameter" min="0" step="0.1" inputmode="decimal">
-                                    </div>
-                                </div>
-                                <div class="form-columns">
-                                    <div class="form-group">
-                                        <label for="resourceMinLegLength" data-i18n="Min. Schenkellänge (mm)">Min. Schenkellänge (mm)</label>
-                                        <input type="number" id="resourceMinLegLength" name="resourceMinLegLength" min="0" step="1" inputmode="decimal">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="resourceMaxLegLength" data-i18n="Max. Schenkellänge (mm)">Max. Schenkellänge (mm)</label>
-                                        <input type="number" id="resourceMaxLegLength" name="resourceMaxLegLength" min="0" step="1" inputmode="decimal">
-                                    </div>
-                                </div>
-                                <fieldset class="form-group resources-types-fieldset">
-                                    <legend id="resourceTypesLegend" data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</legend>
-                                    <div class="resources-types-dropdown" data-resource-types-dropdown data-default-label-key="Biegeformen auswählen">
-                                        <button type="button" class="resources-types-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="resourceTypesMenu">
-                                            <span class="resources-types-trigger-label" data-i18n="Biegeformen auswählen">Biegeformen auswählen</span>
-                                            <svg class="resources-types-trigger-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                                                <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.96l3.71-3.73a.75.75 0 0 1 1.08 1.04l-4.25 4.27a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"/>
-                                            </svg>
-                                        </button>
-                                        <div id="resourceTypesMenu" class="resources-types-menu" role="group" aria-labelledby="resourceTypesLegend" hidden tabindex="-1">
-                                            <label class="resources-types-option">
-                                                <input type="checkbox" name="resourceTypes" value="2d">
-                                                <span data-i18n="Biegeformen 2D">Biegeformen 2D</span>
-                                            </label>
-                                            <label class="resources-types-option">
-                                                <input type="checkbox" name="resourceTypes" value="3d">
-                                                <span data-i18n="Biegeformen 3D">Biegeformen 3D</span>
-                                            </label>
-                                            <label class="resources-types-option">
-                                                <input type="checkbox" name="resourceTypes" value="mesh">
-                                                <span data-i18n="Matten">Matten</span>
-                                            </label>
+                                    <div class="resources-form-grid">
+                                        <div class="form-group">
+                                            <label for="resourceName" data-i18n="Ressourcename">Ressourcename</label>
+                                            <input type="text" id="resourceName" name="resourceName" required data-i18n-placeholder="Ressourcenname eingeben" placeholder="Ressourcenname eingeben" autocomplete="off">
+                                            <p class="form-hint" data-i18n="Ressource Name Hinweis">Vergeben Sie einen eindeutigen Namen, z. B. Maschinentyp oder Standort.</p>
+                                        </div>
+                                        <div class="form-group form-group--full">
+                                            <label for="resourceDescription" data-i18n="Beschreibung">Beschreibung</label>
+                                            <textarea id="resourceDescription" name="resourceDescription" rows="3" data-i18n-placeholder="Optionale Beschreibung" placeholder="Optionale Beschreibung"></textarea>
+                                            <p class="form-hint" data-i18n="Ressource Beschreibung Hinweis">Ergänzende Angaben wie Besonderheiten, Ansprechpartner oder Einsatzbereich.</p>
                                         </div>
                                     </div>
-                                </fieldset>
-                                <fieldset class="form-group resources-types-fieldset">
-                                    <legend id="resourceRollsLegend" data-i18n="Verfügbare Biegerollen (mm)">Verfügbare Biegerollen (mm)</legend>
-                                    <div class="resources-types-dropdown" data-roll-diameters-dropdown data-default-label-key="Biegerollen auswählen…">
-                                        <button type="button" class="resources-types-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="resourceRollsMenu">
-                                            <span class="resources-types-trigger-label" data-i18n="Biegerollen auswählen…">Biegerollen auswählen…</span>
-                                            <svg class="resources-types-trigger-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                                                <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.96l3.71-3.73a.75.75 0 0 1 1.08 1.04l-4.25 4.27a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"/>
-                                            </svg>
-                                        </button>
-                                        <div id="resourceRollsMenu" class="resources-types-menu" role="group" aria-labelledby="resourceRollsLegend" hidden tabindex="-1">
-                                            <!-- Options will be populated by JavaScript -->
-                                        </div>
+                                </section>
+                                <section class="resources-form-section" aria-labelledby="resourceDimensionsTitle">
+                                    <div class="resources-form-section-header">
+                                        <h3 id="resourceDimensionsTitle" class="resources-form-section-title" data-i18n="Ressource Maße">Fertigungsgrenzen</h3>
+                                        <p class="resources-form-section-description" data-i18n="Ressource Maße Beschreibung">Definieren Sie, welche Durchmesser und Schenkellängen verarbeitet werden können.</p>
                                     </div>
-                                </fieldset>
-                                <div class="button-group resources-form-buttons">
-                                    <button type="submit" id="resourceFormSubmit" class="btn-primary" data-i18n="Ressource speichern">Ressource speichern</button>
-                                    <button type="button" id="resourceFormReset" class="btn-secondary" data-i18n="Formular zurücksetzen">Formular zurücksetzen</button>
-                                    <button type="button" id="resourceFormCancel" class="btn-secondary" data-i18n="Bearbeitung abbrechen">Bearbeitung abbrechen</button>
+                                    <div class="resources-form-subsection">
+                                        <div class="resources-form-grid resources-form-grid--compact" role="group" aria-label="Stabdurchmesser">
+                                            <div class="form-group">
+                                                <label for="resourceMinDiameter" data-i18n="Min. Stabdurchmesser (mm)">Min. Stabdurchmesser (mm)</label>
+                                                <input type="number" id="resourceMinDiameter" name="resourceMinDiameter" min="0" step="0.1" inputmode="decimal">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="resourceMaxDiameter" data-i18n="Max. Stabdurchmesser (mm)">Max. Stabdurchmesser (mm)</label>
+                                                <input type="number" id="resourceMaxDiameter" name="resourceMaxDiameter" min="0" step="0.1" inputmode="decimal">
+                                            </div>
+                                        </div>
+                                        <p class="form-hint" data-i18n="Ressource Durchmesser Hinweis">Optional: Dezimalwerte sind mit Punkt oder Komma möglich. Freilassen, wenn keine Grenze existiert.</p>
+                                    </div>
+                                    <div class="resources-form-subsection">
+                                        <div class="resources-form-grid resources-form-grid--compact" role="group" aria-label="Schenkellängen">
+                                            <div class="form-group">
+                                                <label for="resourceMinLegLength" data-i18n="Min. Schenkellänge (mm)">Min. Schenkellänge (mm)</label>
+                                                <input type="number" id="resourceMinLegLength" name="resourceMinLegLength" min="0" step="1" inputmode="decimal">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="resourceMaxLegLength" data-i18n="Max. Schenkellänge (mm)">Max. Schenkellänge (mm)</label>
+                                                <input type="number" id="resourceMaxLegLength" name="resourceMaxLegLength" min="0" step="1" inputmode="decimal">
+                                            </div>
+                                        </div>
+                                        <p class="form-hint" data-i18n="Ressource Schenkel Hinweis">Optional: Schenkellängen werden in Millimetern angegeben. Freilassen, wenn keine Grenze existiert.</p>
+                                    </div>
+                                </section>
+                                <section class="resources-form-section" aria-labelledby="resourceCapabilitiesTitle">
+                                    <div class="resources-form-section-header">
+                                        <h3 id="resourceCapabilitiesTitle" class="resources-form-section-title" data-i18n="Ressource Biegeoptionen">Biegeoptionen</h3>
+                                        <p class="resources-form-section-description" data-i18n="Ressource Biegeoptionen Beschreibung">Wählen Sie unterstützte Biegeformen sowie verfügbare Biegerollen.</p>
+                                    </div>
+                                    <div class="resources-picker-grid">
+                                        <fieldset class="form-group resources-types-fieldset">
+                                            <legend id="resourceTypesLegend" data-i18n="Unterstützte Biegeformen">Unterstützte Biegeformen</legend>
+                                            <p class="resources-types-helper" data-i18n="Ressource Biegeformen Hinweis">Mehrfachauswahl möglich.</p>
+                                            <div class="resources-types-dropdown" data-resource-types-dropdown data-default-label-key="Biegeformen auswählen">
+                                                <button type="button" class="resources-types-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="resourceTypesMenu">
+                                                    <span class="resources-types-trigger-label" data-i18n="Biegeformen auswählen">Biegeformen auswählen</span>
+                                                    <svg class="resources-types-trigger-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                                                        <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.96l3.71-3.73a.75.75 0 0 1 1.08 1.04l-4.25 4.27a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"/>
+                                                    </svg>
+                                                </button>
+                                                <div id="resourceTypesMenu" class="resources-types-menu" role="group" aria-labelledby="resourceTypesLegend" hidden tabindex="-1">
+                                                    <label class="resources-types-option">
+                                                        <input type="checkbox" name="resourceTypes" value="2d">
+                                                        <span data-i18n="Biegeformen 2D">Biegeformen 2D</span>
+                                                    </label>
+                                                    <label class="resources-types-option">
+                                                        <input type="checkbox" name="resourceTypes" value="3d">
+                                                        <span data-i18n="Biegeformen 3D">Biegeformen 3D</span>
+                                                    </label>
+                                                    <label class="resources-types-option">
+                                                        <input type="checkbox" name="resourceTypes" value="mesh">
+                                                        <span data-i18n="Matten">Matten</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                        <fieldset class="form-group resources-types-fieldset">
+                                            <legend id="resourceRollsLegend" data-i18n="Verfügbare Biegerollen (mm)">Verfügbare Biegerollen (mm)</legend>
+                                            <p class="resources-types-helper" data-i18n="Ressource Biegerollen Hinweis">Die verfügbaren Rollen stammen aus den Stammdaten.</p>
+                                            <div class="resources-types-dropdown" data-roll-diameters-dropdown data-default-label-key="Biegerollen auswählen…">
+                                                <button type="button" class="resources-types-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="resourceRollsMenu">
+                                                    <span class="resources-types-trigger-label" data-i18n="Biegerollen auswählen…">Biegerollen auswählen…</span>
+                                                    <svg class="resources-types-trigger-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                                                        <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.96l3.71-3.73a.75.75 0 0 1 1.08 1.04l-4.25 4.27a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"/>
+                                                    </svg>
+                                                </button>
+                                                <div id="resourceRollsMenu" class="resources-types-menu" role="group" aria-labelledby="resourceRollsLegend" hidden tabindex="-1">
+                                                    <!-- Options will be populated by JavaScript -->
+                                                </div>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                </section>
+                                <div class="resources-form-footer">
+                                    <div class="resources-form-footer-spacer"></div>
+                                    <div class="button-group resources-form-buttons">
+                                        <button type="submit" id="resourceFormSubmit" class="btn-primary" data-i18n="Ressource speichern">Ressource speichern</button>
+                                        <button type="button" id="resourceFormReset" class="btn-secondary" data-i18n="Formular zurücksetzen">Formular zurücksetzen</button>
+                                        <button type="button" id="resourceFormCancel" class="btn-secondary" data-i18n="Bearbeitung abbrechen">Bearbeitung abbrechen</button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
