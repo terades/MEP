@@ -46,7 +46,8 @@
     let columnVisibilityList, columnVisibilityResetBtn;
     let uploadToggleBtn, uploadSection, uploadCard;
     let serviceBusNamespaceInput, serviceBusTopicInput, serviceBusSubscriptionInput;
-    let serviceBusMessageCountInput, serviceBusSasTokenInput, serviceBusPeekCheckbox, serviceBusReplaceCheckbox;
+    let serviceBusMessageCountInput, serviceBusSasTokenInput, serviceBusConnectionStringInput;
+    let serviceBusPeekCheckbox, serviceBusReplaceCheckbox;
     let serviceBusFetchBtn, serviceBusStatusEl;
     let lastPreviewTrigger = null;
     let statusResetTimeout = null;
@@ -760,6 +761,18 @@
         return withoutProtocol.replace(/\/+$/g, '');
     }
 
+    function extractNamespaceFromConnectionString(connectionString) {
+        if (typeof connectionString !== 'string') {
+            return '';
+        }
+        const match = connectionString.match(/Endpoint=sb:\/\/(.+?)\/?;/i);
+        if (!match || !match[1]) {
+            return '';
+        }
+        const host = match[1].replace(/\/+$/g, '');
+        return host;
+    }
+
     function setServiceBusStatus(message, options = {}) {
         if (!serviceBusStatusEl) {
             return;
@@ -867,6 +880,9 @@
         }
         if (Array.isArray(message.body)) {
             candidateSources.push(...message.body.filter(item => item && typeof item === 'object'));
+        }
+        if (message.applicationProperties && typeof message.applicationProperties === 'object') {
+            candidateSources.push(message.applicationProperties);
         }
         candidateSources.push(brokerProps);
 
@@ -979,23 +995,12 @@
     }
 
     async function fetchServiceBusMessages(options = {}) {
-        const namespace = sanitizeServiceBusNamespace(options.namespace);
-        if (!namespace) {
-            throw new Error(translate('Namespace ist erforderlich.', 'Namespace is required.'));
-        }
         const topic = typeof options.topic === 'string' ? options.topic.trim() : '';
         const subscription = typeof options.subscription === 'string' ? options.subscription.trim() : '';
         if (!topic || !subscription) {
             throw new Error(translate('Topic und Subscription sind erforderlich.', 'Topic and subscription are required.'));
         }
-        const sasToken = typeof options.sasToken === 'string' ? options.sasToken.trim() : '';
-        if (!sasToken) {
-            throw new Error(translate('SAS-Token ist erforderlich.', 'SAS token is required.'));
-        }
-        const host = namespace.includes('.') ? namespace : `${namespace}.servicebus.windows.net`;
-        const encodedTopic = encodeURIComponent(topic);
-        const encodedSubscription = encodeURIComponent(subscription);
-        const baseUrl = `https://${host}/${encodedTopic}/subscriptions/${encodedSubscription}/messages/head`;
+
         const maxMessages = Math.max(1, Math.min(SERVICE_BUS_MAX_MESSAGES, Number.parseInt(options.maxMessages, 10) || 1));
         const timeoutValue = Number.parseInt(options.timeoutSeconds, 10);
         const timeoutSeconds = Math.max(
@@ -1003,6 +1008,35 @@
             Math.min(SERVICE_BUS_MAX_TIMEOUT, Number.isFinite(timeoutValue) ? timeoutValue : SERVICE_BUS_DEFAULT_TIMEOUT)
         );
         const peekOnly = options.peekOnly !== false;
+
+        const connectionString = typeof options.connectionString === 'string'
+            ? options.connectionString.trim()
+            : '';
+        const sasToken = typeof options.sasToken === 'string' ? options.sasToken.trim() : '';
+        const namespace = sanitizeServiceBusNamespace(options.namespace);
+
+        if (connectionString) {
+            return fetchServiceBusMessagesViaProxy({
+                connectionString,
+                topic,
+                subscription,
+                maxMessages,
+                timeoutSeconds,
+                peekOnly
+            });
+        }
+
+        if (!namespace) {
+            throw new Error(translate('Namespace ist erforderlich.', 'Namespace is required.'));
+        }
+
+        if (!sasToken) {
+            throw new Error(translate('SAS-Token ist erforderlich.', 'SAS token is required.'));
+        }
+        const host = namespace.includes('.') ? namespace : `${namespace}.servicebus.windows.net`;
+        const encodedTopic = encodeURIComponent(topic);
+        const encodedSubscription = encodeURIComponent(subscription);
+        const baseUrl = `https://${host}/${encodedTopic}/subscriptions/${encodedSubscription}/messages/head`;
         const method = peekOnly ? 'GET' : 'POST';
         const query = [`timeout=${timeoutSeconds}`];
         if (peekOnly) {
@@ -1072,6 +1106,68 @@
             }
         }
         return messages;
+    }
+
+    async function fetchServiceBusMessagesViaProxy(options = {}) {
+        const payload = {
+            connectionString: typeof options.connectionString === 'string' ? options.connectionString : '',
+            topic: options.topic,
+            subscription: options.subscription,
+            maxMessages: Math.max(1, Math.min(SERVICE_BUS_MAX_MESSAGES, Number.parseInt(options.maxMessages, 10) || 1)),
+            timeoutSeconds: Math.max(
+                SERVICE_BUS_MIN_TIMEOUT,
+                Math.min(
+                    SERVICE_BUS_MAX_TIMEOUT,
+                    Number.isFinite(Number.parseInt(options.timeoutSeconds, 10))
+                        ? Number.parseInt(options.timeoutSeconds, 10)
+                        : SERVICE_BUS_DEFAULT_TIMEOUT
+                )
+            ),
+            peekOnly: options.peekOnly !== false
+        };
+
+        const response = await fetch('/api/service-bus/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const rawResponse = await response.text().catch(() => '');
+
+        if (!response.ok) {
+            let detail = '';
+            if (rawResponse) {
+                try {
+                    const parsedError = JSON.parse(rawResponse);
+                    if (parsedError && typeof parsedError.error === 'string') {
+                        detail = parsedError.error;
+                    } else {
+                        detail = rawResponse;
+                    }
+                } catch (error) {
+                    detail = rawResponse;
+                }
+            }
+            const statusText = response.statusText || '';
+            const base = `${response.status} ${statusText}`.trim();
+            const message = detail ? `${base} ${detail}`.trim() : base;
+            throw new Error(message);
+        }
+
+        let data = null;
+        if (rawResponse) {
+            try {
+                data = JSON.parse(rawResponse);
+            } catch (error) {
+                data = null;
+            }
+        }
+        if (!data || !Array.isArray(data.messages)) {
+            return [];
+        }
+        return data.messages;
     }
 
     function applyServiceBusSettings(settings) {
@@ -3116,10 +3212,21 @@
             return;
         }
 
-        const namespace = serviceBusNamespaceInput?.value?.trim() || '';
+        let namespace = serviceBusNamespaceInput?.value?.trim() || '';
         const topic = serviceBusTopicInput?.value?.trim() || '';
         const subscription = serviceBusSubscriptionInput?.value?.trim() || '';
         const sasToken = serviceBusSasTokenInput?.value?.trim() || '';
+        const connectionString = serviceBusConnectionStringInput?.value?.trim() || '';
+
+        if (!namespace && connectionString) {
+            const parsedNamespace = extractNamespaceFromConnectionString(connectionString);
+            if (parsedNamespace) {
+                namespace = parsedNamespace;
+                if (serviceBusNamespaceInput) {
+                    serviceBusNamespaceInput.value = parsedNamespace;
+                }
+            }
+        }
 
         let messageCount = Number.parseInt(serviceBusMessageCountInput?.value, 10);
         if (!Number.isFinite(messageCount) || messageCount <= 0) {
@@ -3133,8 +3240,18 @@
         const peekOnly = serviceBusPeekCheckbox ? serviceBusPeekCheckbox.checked : true;
         const replaceExisting = serviceBusReplaceCheckbox ? serviceBusReplaceCheckbox.checked : false;
 
-        if (!namespace || !topic || !subscription || !sasToken) {
-            setServiceBusStatus(translate('Bitte füllen Sie alle Service-Bus-Felder aus.', 'Please fill in all Service Bus fields.'), { type: 'error' });
+        if (!topic || !subscription) {
+            setServiceBusStatus(translate('ServiceBus.ErrorMissingTopic', 'Please provide topic and subscription.'), { type: 'error' });
+            return;
+        }
+
+        if (!namespace && !connectionString) {
+            setServiceBusStatus(translate('ServiceBus.ErrorMissingNamespaceOrConnection', 'Please provide either a namespace or a connection string.'), { type: 'error' });
+            return;
+        }
+
+        if (!sasToken && !connectionString) {
+            setServiceBusStatus(translate('ServiceBus.ErrorMissingCredential', 'Please provide either a SAS token or a connection string.'), { type: 'error' });
             return;
         }
 
@@ -3147,6 +3264,7 @@
                 topic,
                 subscription,
                 sasToken,
+                connectionString,
                 maxMessages: messageCount,
                 peekOnly
             });
@@ -3326,6 +3444,7 @@
         serviceBusSubscriptionInput = document.getElementById('bvbsServiceBusSubscription');
         serviceBusMessageCountInput = document.getElementById('bvbsServiceBusMessageCount');
         serviceBusSasTokenInput = document.getElementById('bvbsServiceBusSasToken');
+        serviceBusConnectionStringInput = document.getElementById('bvbsServiceBusConnectionString');
         serviceBusPeekCheckbox = document.getElementById('bvbsServiceBusPeekOnly');
         serviceBusReplaceCheckbox = document.getElementById('bvbsServiceBusReplace');
         serviceBusFetchBtn = document.getElementById('bvbsServiceBusFetchBtn');
@@ -3413,7 +3532,8 @@
             serviceBusTopicInput,
             serviceBusSubscriptionInput,
             serviceBusMessageCountInput,
-            serviceBusSasTokenInput
+            serviceBusSasTokenInput,
+            serviceBusConnectionStringInput
         ].filter(input => input instanceof HTMLElement);
 
         serviceBusInputs.forEach(input => {
