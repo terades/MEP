@@ -424,6 +424,61 @@ select {
     }
 }
 
+.generator-inputs {
+    gap: 1.5rem;
+}
+
+.generator-inputs .collapsible-content.section-content-bg {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.generator-inputs .collapsible-content.section-content-bg .form-group {
+    margin: 0;
+}
+
+.generator-inputs .collapsible-content.section-content-bg .form-group + .form-group {
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.generator-inputs .collapsible-content.section-content-bg .form-group:not(:last-of-type) {
+    padding-bottom: 0.5rem;
+}
+
+.generator-inputs .collapsible-content.section-content-bg .form-group:last-of-type {
+    padding-bottom: 0;
+}
+
+@media (min-width: 768px) {
+    .generator-inputs .form-group {
+        grid-template-columns: 180px minmax(0, 1fr);
+        column-gap: 1.25rem;
+    }
+
+    .generator-inputs .form-group label {
+        text-align: left;
+        padding-right: 0;
+    }
+
+    .generator-inputs .input-with-dropdown {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .generator-inputs .input-with-dropdown > button {
+        width: auto;
+        white-space: nowrap;
+    }
+}
+
+.generator-inputs .input-with-dropdown {
+    gap: 0.75rem;
+}
+
 .saved-form-button {
     display: inline-flex;
     align-items: center;
