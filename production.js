@@ -2500,6 +2500,33 @@ function persistResources() {
     }
 }
 
+function openResourceModal(mode = 'create') {
+    const modal = document.getElementById('resourceModal');
+    if (!modal) {
+        return;
+    }
+    modal.classList.add('visible');
+    modal.setAttribute('aria-hidden', 'false');
+    setResourceFormMode(mode);
+    requestAnimationFrame(() => {
+        const nameInput = document.getElementById('resourceName');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+        }
+    });
+}
+
+function closeResourceModal() {
+    const modal = document.getElementById('resourceModal');
+    if (!modal) {
+        return;
+    }
+    modal.classList.remove('visible');
+    modal.setAttribute('aria-hidden', 'true');
+    resetResourceForm();
+}
+
 function setResourceFormMode(mode) {
     const title = document.getElementById('resourceFormTitle');
     const submit = document.getElementById('resourceFormSubmit');
@@ -2552,7 +2579,7 @@ function resetResourceForm() {
 }
 
 function showResourceFeedback(message, type = 'info') {
-    const feedback = document.getElementById('resourceFormFeedback');
+    const feedback = document.getElementById('resourceFeedback');
     if (!feedback) return;
     clearTimeout(resourceFeedbackTimer);
     if (!message) {
@@ -2595,32 +2622,35 @@ function formatDiameterRange(min, max) {
     return `Ø ${range}`;
 }
 
-function createResourceMetric(label, value) {
-    const metric = document.createElement('div');
-    metric.className = 'resource-metric';
-    const labelEl = document.createElement('span');
-    labelEl.className = 'resource-metric-label';
-    labelEl.textContent = label;
-    const valueEl = document.createElement('span');
-    valueEl.className = 'resource-metric-value';
-    valueEl.textContent = value || getTranslation('Keine Angabe', 'Keine Angabe');
-    metric.appendChild(labelEl);
-    metric.appendChild(valueEl);
-    return metric;
-}
-
 function renderResourceList() {
-    const list = document.getElementById('resourceList');
+    const tableBody = document.getElementById('resourceTableBody');
+    const table = document.getElementById('resourceTable');
+    const tableContainer = document.querySelector('.resources-table-container');
     const emptyState = document.getElementById('resourceEmptyState');
-    if (!list || !emptyState) return;
-
-    list.innerHTML = '';
-    if (!Array.isArray(resources) || resources.length === 0) {
-        emptyState.hidden = false;
+    if (!tableBody || !emptyState) {
         return;
     }
 
-    emptyState.hidden = true;
+    tableBody.innerHTML = '';
+    const hasResources = Array.isArray(resources) && resources.length > 0;
+    emptyState.hidden = hasResources;
+    if (!hasResources) {
+        if (table) {
+            table.dataset.hasResources = 'false';
+        }
+        if (tableContainer) {
+            tableContainer.dataset.empty = 'true';
+        }
+        return;
+    }
+
+    if (table) {
+        table.dataset.hasResources = 'true';
+    }
+    if (tableContainer) {
+        tableContainer.dataset.empty = 'false';
+    }
+
     const typeLabels = {
         '2d': getTranslation('Biegeformen 2D', 'Biegeformen 2D'),
         '3d': getTranslation('Biegeformen 3D', 'Biegeformen 3D'),
@@ -2629,20 +2659,80 @@ function renderResourceList() {
 
     const sorted = [...resources].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     sorted.forEach(resource => {
-        const item = document.createElement('article');
-        item.className = 'resource-item';
-        item.setAttribute('role', 'listitem');
+        const row = document.createElement('tr');
 
-        const header = document.createElement('div');
-        header.className = 'resource-item-header';
+        const nameCell = document.createElement('td');
+        nameCell.textContent = resource.name || getTranslation('Ressourcename', 'Ressourcename');
+        row.appendChild(nameCell);
 
-        const title = document.createElement('h3');
-        title.className = 'resource-item-title';
-        title.textContent = resource.name || getTranslation('Ressourcename', 'Ressourcename');
-        header.appendChild(title);
+        const descriptionCell = document.createElement('td');
+        descriptionCell.className = 'resource-description';
+        descriptionCell.textContent = resource.description || getTranslation('Keine Angabe', 'Keine Angabe');
+        row.appendChild(descriptionCell);
 
+        const diameterCell = document.createElement('td');
+        diameterCell.textContent = formatDiameterRange(resource.minDiameter, resource.maxDiameter);
+        row.appendChild(diameterCell);
+
+        const legCell = document.createElement('td');
+        legCell.textContent = formatResourceRange(resource.minLegLength, resource.maxLegLength, 'mm') || getTranslation('Keine Angabe', 'Keine Angabe');
+        row.appendChild(legCell);
+
+        const typesCell = document.createElement('td');
+        const typesBadges = document.createElement('div');
+        typesBadges.className = 'resource-badges';
+        if (resource.supportedTypes && resource.supportedTypes.length > 0) {
+            resource.supportedTypes.forEach(type => {
+                const badge = document.createElement('span');
+                badge.className = 'resource-badge';
+                badge.textContent = typeLabels[type] || type;
+                typesBadges.appendChild(badge);
+            });
+        } else {
+            const badge = document.createElement('span');
+            badge.className = 'resource-badge resource-badge--muted';
+            badge.textContent = getTranslation('Keine Auswahl', 'Keine Auswahl');
+            typesBadges.appendChild(badge);
+        }
+        typesCell.appendChild(typesBadges);
+        row.appendChild(typesCell);
+
+        const rollsCell = document.createElement('td');
+        const rollsBadges = document.createElement('div');
+        rollsBadges.className = 'resource-badges';
+        if (Array.isArray(resource.availableRollDiameters) && resource.availableRollDiameters.length > 0) {
+            resource.availableRollDiameters.forEach(value => {
+                const badge = document.createElement('span');
+                badge.className = 'resource-badge';
+                const decimals = Number.isInteger(value) ? 0 : 1;
+                badge.textContent = `${formatNumberLocalized(value, decimals)} mm`;
+                rollsBadges.appendChild(badge);
+            });
+        } else {
+            const badge = document.createElement('span');
+            badge.className = 'resource-badge resource-badge--muted';
+            badge.textContent = getTranslation('Keine Angabe', 'Keine Angabe');
+            rollsBadges.appendChild(badge);
+        }
+        rollsCell.appendChild(rollsBadges);
+        row.appendChild(rollsCell);
+
+        const createdCell = document.createElement('td');
+        createdCell.className = 'resource-created';
+        if (resource.createdAt) {
+            const created = new Date(resource.createdAt);
+            if (!Number.isNaN(created.getTime())) {
+                createdCell.textContent = created.toLocaleString();
+            }
+        }
+        if (!createdCell.textContent) {
+            createdCell.textContent = '—';
+        }
+        row.appendChild(createdCell);
+
+        const actionsCell = document.createElement('td');
         const actions = document.createElement('div');
-        actions.className = 'resource-item-actions';
+        actions.className = 'resource-actions';
 
         const editButton = document.createElement('button');
         editButton.type = 'button';
@@ -2660,94 +2750,10 @@ function renderResourceList() {
         deleteButton.textContent = getTranslation('Löschen', 'Löschen');
         actions.appendChild(deleteButton);
 
-        header.appendChild(actions);
-        item.appendChild(header);
+        actionsCell.appendChild(actions);
+        row.appendChild(actionsCell);
 
-        if (resource.description) {
-            const description = document.createElement('p');
-            description.className = 'resource-item-description';
-            description.textContent = resource.description;
-            item.appendChild(description);
-        }
-
-        const metrics = document.createElement('div');
-        metrics.className = 'resource-item-metrics';
-        metrics.appendChild(createResourceMetric(
-            getTranslation('Stabdurchmesser', 'Stabdurchmesser'),
-            formatDiameterRange(resource.minDiameter, resource.maxDiameter)
-        ));
-        metrics.appendChild(createResourceMetric(
-            getTranslation('Schenkellänge', 'Schenkellänge'),
-            formatResourceRange(resource.minLegLength, resource.maxLegLength, 'mm') || getTranslation('Keine Angabe', 'Keine Angabe')
-        ));
-        item.appendChild(metrics);
-
-        const supportedWrap = document.createElement('div');
-        supportedWrap.className = 'resource-item-supported';
-
-        const supportedLabel = document.createElement('span');
-        supportedLabel.className = 'resource-section-label';
-        supportedLabel.textContent = getTranslation('Unterstützte Biegeformen', 'Unterstützte Biegeformen');
-        supportedWrap.appendChild(supportedLabel);
-
-        const badges = document.createElement('div');
-        badges.className = 'resource-badges';
-
-        if (resource.supportedTypes && resource.supportedTypes.length > 0) {
-            resource.supportedTypes.forEach(type => {
-                const badge = document.createElement('span');
-                badge.className = 'resource-badge';
-                badge.textContent = typeLabels[type] || type;
-                badges.appendChild(badge);
-            });
-        } else {
-            const badge = document.createElement('span');
-            badge.className = 'resource-badge resource-badge--muted';
-            badge.textContent = getTranslation('Keine Auswahl', 'Keine Auswahl');
-            badges.appendChild(badge);
-        }
-
-        supportedWrap.appendChild(badges);
-        item.appendChild(supportedWrap);
-
-        const rollWrap = document.createElement('div');
-        rollWrap.className = 'resource-item-supported';
-
-        const rollLabel = document.createElement('span');
-        rollLabel.className = 'resource-section-label';
-        rollLabel.textContent = getTranslation('Verfügbare Biegerollen', 'Verfügbare Biegerollen');
-        rollWrap.appendChild(rollLabel);
-
-        const rollBadges = document.createElement('div');
-        rollBadges.className = 'resource-badges';
-        if (Array.isArray(resource.availableRollDiameters) && resource.availableRollDiameters.length > 0) {
-            resource.availableRollDiameters.forEach(value => {
-                const badge = document.createElement('span');
-                badge.className = 'resource-badge';
-                const decimals = Number.isInteger(value) ? 0 : 1;
-                badge.textContent = `${formatNumberLocalized(value, decimals)} mm`;
-                rollBadges.appendChild(badge);
-            });
-        } else {
-            const badge = document.createElement('span');
-            badge.className = 'resource-badge resource-badge--muted';
-            badge.textContent = getTranslation('Keine Angabe', 'Keine Angabe');
-            rollBadges.appendChild(badge);
-        }
-        rollWrap.appendChild(rollBadges);
-        item.appendChild(rollWrap);
-
-        if (resource.createdAt) {
-            const created = new Date(resource.createdAt);
-            if (!Number.isNaN(created.getTime())) {
-                const footer = document.createElement('div');
-                footer.className = 'resource-item-footer';
-                footer.textContent = `${getTranslation('Angelegt am', 'Angelegt am')} ${created.toLocaleString()}`;
-                item.appendChild(footer);
-            }
-        }
-
-        list.appendChild(item);
+        tableBody.appendChild(row);
     });
 }
 
@@ -2796,11 +2802,7 @@ function populateResourceForm(resourceId) {
         updateRollDiametersDropdownLabel();
     }
 
-    setResourceFormMode('edit');
-    showResourceFeedback('');
-    if (nameInput) {
-        nameInput.focus();
-    }
+    openResourceModal('edit');
 }
 
 function deleteResource(resourceId) {
@@ -2932,7 +2934,7 @@ function handleResourceFormSubmit(event) {
         showResourceFeedback(getTranslation('Ressource gespeichert.', 'Ressource gespeichert.'), 'success');
     }
 
-    resetResourceForm();
+    closeResourceModal();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3003,10 +3005,29 @@ document.addEventListener('DOMContentLoaded', () => {
         showResourceFeedback('');
     });
     document.getElementById('resourceFormCancel')?.addEventListener('click', () => {
-        resetResourceForm();
-        showResourceFeedback('');
+        closeResourceModal();
     });
-    document.getElementById('resourceList')?.addEventListener('click', handleResourceListClick);
+    document.getElementById('resourceTableBody')?.addEventListener('click', handleResourceListClick);
+    document.getElementById('openResourceModalButton')?.addEventListener('click', () => {
+        resetResourceForm();
+        openResourceModal('create');
+    });
+    document.getElementById('resourceModalClose')?.addEventListener('click', () => {
+        closeResourceModal();
+    });
+    document.getElementById('resourceModal')?.addEventListener('click', event => {
+        if (event.target === event.currentTarget) {
+            closeResourceModal();
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('resourceModal');
+            if (modal && modal.classList.contains('visible')) {
+                closeResourceModal();
+            }
+        }
+    });
     document.getElementById('quickReleaseButton')?.addEventListener('click', () => {
         openGeneratorAndClick('releaseButton');
         closeSidebarOnSmallScreens();
