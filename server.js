@@ -44,6 +44,13 @@ const ADDITIONAL_SERVICE_BUS_COLUMNS = [
     { name: 'context_json', type: 'TEXT' }
 ];
 
+const BENDING_FORM_STORAGE_KEYS = new Set([
+    'bf2dSavedForms',
+    'bf3dSavedForms',
+    'bf3dSavedShapes',
+    'bfmaSavedMeshes'
+]);
+
 const databaseInitPromise = new Promise((resolve, reject) => {
     database.serialize(() => {
         database.exec(`
@@ -65,6 +72,11 @@ const databaseInitPromise = new Promise((resolve, reject) => {
                 ON service_bus_messages (topic, subscription, received_at);
             CREATE INDEX IF NOT EXISTS idx_service_bus_messages_message_id
                 ON service_bus_messages (message_id);
+            CREATE TABLE IF NOT EXISTS persistent_storage (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TEXT NOT NULL
+            );
         `, error => {
             if (error) {
                 reject(error);
@@ -231,6 +243,39 @@ function extractBodyJsonString(message) {
         return tryExtractJson(message.body);
     }
     return tryExtractJson(message.rawBody);
+}
+
+function buildSqlitePlaceholders(values) {
+    return values.map(() => '?').join(', ');
+}
+
+function normalizeStorageValue(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    try {
+        return JSON.stringify(value);
+    } catch (error) {
+        console.warn('Failed to stringify storage value', error);
+        return null;
+    }
+}
+
+function parseStorageValue(text) {
+    if (typeof text !== 'string') {
+        return null;
+    }
+    if (!text.trim()) {
+        return null;
+    }
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return null;
+    }
 }
 
 function coerceNullableInteger(value) {
@@ -703,6 +748,124 @@ app.get('/api/service-bus/messages/topics', async (req, res) => {
     } catch (error) {
         console.error('Failed to load Service Bus topics', error);
         return res.status(500).json({ error: 'Failed to load topics.' });
+    }
+});
+
+app.get('/api/bending-forms/storage', async (req, res) => {
+    try {
+        await databaseInitPromise;
+        const keys = Array.from(BENDING_FORM_STORAGE_KEYS);
+        const placeholders = buildSqlitePlaceholders(keys);
+        const rows = await runDatabaseQuery(
+            `
+                SELECT key, value, updated_at
+                FROM persistent_storage
+                WHERE key IN (${placeholders})
+            `,
+            keys
+        );
+
+        const entries = keys.map(key => {
+            const row = rows.find(r => r.key === key);
+            if (!row) {
+                return { key, value: null, updatedAt: null };
+            }
+            return {
+                key: row.key,
+                value: parseStorageValue(row.value),
+                updatedAt: row.updated_at || null
+            };
+        });
+
+        return res.json({ entries });
+    } catch (error) {
+        console.error('Failed to load bending form storage snapshot', error);
+        return res.status(500).json({ error: 'Failed to load bending form storage snapshot.' });
+    }
+});
+
+app.put('/api/bending-forms/storage', async (req, res) => {
+    const payload = req.body?.data;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return res.status(400).json({ error: 'Invalid storage payload.' });
+    }
+
+    const updates = [];
+    for (const [key, value] of Object.entries(payload)) {
+        if (!BENDING_FORM_STORAGE_KEYS.has(key)) {
+            continue;
+        }
+        if (value === null || value === undefined) {
+            updates.push({ key, value: null });
+        } else {
+            const serialized = normalizeStorageValue(value);
+            if (serialized !== null) {
+                updates.push({ key, value: serialized });
+            }
+        }
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).json({ error: 'No valid storage keys provided.' });
+    }
+
+    await databaseInitPromise;
+
+    await runDatabaseCommand('BEGIN TRANSACTION');
+
+    try {
+        for (const update of updates) {
+            if (update.value === null) {
+                await runDatabaseCommand(
+                    'DELETE FROM persistent_storage WHERE key = ?',
+                    [update.key]
+                );
+            } else {
+                await runDatabaseCommand(
+                    `
+                        INSERT INTO persistent_storage (key, value, updated_at)
+                        VALUES (?, ?, CURRENT_TIMESTAMP)
+                        ON CONFLICT(key) DO UPDATE SET
+                            value = excluded.value,
+                            updated_at = excluded.updated_at
+                    `,
+                    [update.key, update.value]
+                );
+            }
+        }
+
+        await runDatabaseCommand('COMMIT');
+
+        const keys = updates.map(update => update.key);
+        const placeholders = buildSqlitePlaceholders(keys);
+        const rows = await runDatabaseQuery(
+            `
+                SELECT key, value, updated_at
+                FROM persistent_storage
+                WHERE key IN (${placeholders})
+            `,
+            keys
+        );
+
+        const entries = keys.map(key => {
+            const row = rows.find(r => r.key === key);
+            if (!row) {
+                return { key, value: null, updatedAt: null };
+            }
+            return {
+                key: row.key,
+                value: parseStorageValue(row.value),
+                updatedAt: row.updated_at || null
+            };
+        });
+
+        return res.json({ entries });
+    } catch (error) {
+        await runDatabaseCommand('ROLLBACK').catch(rollbackError => {
+            console.error('Failed to rollback storage transaction', rollbackError);
+        });
+        console.error('Failed to persist bending form storage snapshot', error);
+        return res.status(500).json({ error: 'Failed to persist bending form storage snapshot.' });
     }
 });
 

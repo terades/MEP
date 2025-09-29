@@ -35,12 +35,14 @@ function updateBatchButtonsState() {
     if (printBtn) printBtn.disabled = !hasSelection;
 }
 
-const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'serviceBusHistoryView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
+const APP_VIEW_IDS = ['generatorView', 'bvbsListView', 'serviceBusHistoryView', 'databaseViewerView', 'bf2dView', 'bfmaView', 'bf3dView', 'savedShapesView', 'productionView', 'resourcesView', 'settingsView'];
 const DEFAULT_VIEW_ID = 'generatorView';
 const ACTIVE_VIEW_STORAGE_KEY = 'bvbsActiveView';
 const VIEW_HASH_MAP = {
     generatorView: 'generator',
     bvbsListView: 'bvbs-list',
+    serviceBusHistoryView: 'service-bus-history',
+    databaseViewerView: 'database',
     bf2dView: 'bf2d',
     bfmaView: 'bfma',
     bf3dView: 'bf3d',
@@ -142,6 +144,7 @@ const SAVED_SHAPES_FILTER_DEFAULTS = {
 let savedShapesFilterState = { ...SAVED_SHAPES_FILTER_DEFAULTS };
 let savedShapesAllItems = [];
 let savedShapesControlsInitialized = false;
+let savedShapesNeedsRefresh = true;
 
 const RESOURCE_STORAGE_KEY = 'bvbsResources';
 let resources = [];
@@ -2115,6 +2118,8 @@ function renderSavedShapesOverview() {
     if (controls) {
         controls.setAttribute('aria-label', getTranslation('Filter und Anzeigeoptionen', 'Filter und Anzeigeoptionen'));
     }
+
+    savedShapesNeedsRefresh = false;
 }
 
 function showView(view, options = {}) {
@@ -2160,13 +2165,20 @@ function showView(view, options = {}) {
         renderProductionList();
     }
     if (view === 'savedShapesView') {
-        renderSavedShapesOverview();
+        if (savedShapesNeedsRefresh) {
+            renderSavedShapesOverview();
+        } else {
+            updateSavedShapesViewMode();
+        }
     }
     if (view === 'resourcesView') {
         renderResourceList();
     }
     if (view === 'serviceBusHistoryView' && window.serviceBusHistory && typeof window.serviceBusHistory.onShow === 'function') {
         window.serviceBusHistory.onShow();
+    }
+    if (view === 'databaseViewerView' && window.databaseViewer && typeof window.databaseViewer.onShow === 'function') {
+        window.databaseViewer.onShow();
     }
     if (view === 'bf2dView' && window.bf2dConfigurator && typeof window.bf2dConfigurator.onShow === 'function') {
         window.bf2dConfigurator.onShow();
@@ -2193,6 +2205,10 @@ function showResourcesView() {
 
 function showServiceBusHistoryView() {
     showView('serviceBusHistoryView');
+}
+
+function showDatabaseViewerView() {
+    showView('databaseViewerView');
 }
 
 function showBf2dView() {
@@ -2957,6 +2973,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('showServiceBusHistoryBtn')?.addEventListener('click', () => {
         showServiceBusHistoryView();
     });
+    document.getElementById('showDatabaseViewerBtn')?.addEventListener('click', () => {
+        showDatabaseViewerView();
+    });
     document.getElementById('showBf2dBtn')?.addEventListener('click', () => {
         showBf2dView();
     });
@@ -3004,6 +3023,17 @@ document.addEventListener('DOMContentLoaded', () => {
         openGeneratorAndClick('printLabelButton');
         closeSidebarOnSmallScreens();
     });
+    const handleSavedShapesUpdate = () => {
+        savedShapesNeedsRefresh = true;
+        const view = document.getElementById('savedShapesView');
+        if (view && view.style.display !== 'none') {
+            renderSavedShapesOverview();
+        }
+    };
+
+    window.addEventListener('bf2dSavedFormsUpdated', handleSavedShapesUpdate);
+    window.addEventListener('bfmaSavedMeshesUpdated', handleSavedShapesUpdate);
+
     if (typeof window !== 'undefined') {
         window.addEventListener('hashchange', () => {
             if (isUpdatingHashFromCode) {

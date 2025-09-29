@@ -324,10 +324,56 @@
             return {};
         }
     }
+    function notifySavedMeshesUpdated(names) {
+        if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+            return;
+        }
+        try {
+            const detail = {
+                names: Array.isArray(names) ? [...names] : []
+            };
+            window.dispatchEvent(new CustomEvent('bfmaSavedMeshesUpdated', { detail }));
+        } catch (error) {
+            console.warn('Failed to dispatch bfmaSavedMeshesUpdated event', error);
+        }
+    }
+
     function persistSavedMeshes(meshes) {
         const storage = getLocalStorageSafe();
-        if (!storage) return;
-        storage.setItem(STORAGE_KEY, JSON.stringify(meshes));
+        const keys = Object.keys(meshes || {});
+        const hasEntries = keys.length > 0;
+        if (!storage) {
+            if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+                try {
+                    window.bendingFormStorageSync.syncKey(
+                        STORAGE_KEY,
+                        hasEntries ? meshes : null
+                    );
+                } catch (error) {
+                    console.warn('Failed to sync BFMA meshes to backend', error);
+                }
+            }
+            notifySavedMeshesUpdated(keys);
+            return;
+        }
+        try {
+            if (!hasEntries) {
+                storage.removeItem(STORAGE_KEY);
+            } else {
+                storage.setItem(STORAGE_KEY, JSON.stringify(meshes));
+            }
+            if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+                window.bendingFormStorageSync.syncKey(
+                    STORAGE_KEY,
+                    hasEntries ? meshes : null
+                ).catch(error => {
+                    console.warn('Failed to sync BFMA meshes to backend', error);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to persist BFMA meshes', error);
+        }
+        notifySavedMeshesUpdated(keys);
     }
 
     // --- UI Rendering ---
@@ -750,6 +796,11 @@
         document.getElementById('bfmaLoadShapeButton').disabled = names.length === 0;
         document.getElementById('bfmaDeleteShapeButton').disabled = names.length === 0;
     }
+
+    window.addEventListener('bfmaSavedMeshesUpdated', () => {
+        const currentSelection = document.getElementById('bfmaSavedShapes')?.value || '';
+        populateSavedMeshesSelect(currentSelection);
+    });
 
     // --- Core Logic ---
     function calculateSummary() {

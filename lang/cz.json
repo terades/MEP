@@ -507,5 +507,21 @@
   "ServiceBusHistory.Value.AnySubscription": "Všechny odběry",
   "ServiceBusHistory.Value.UnknownTopic": "Bez tématu",
   "ServiceBusHistory.Value.UnknownSubscription": "Bez odběru",
-  "ServiceBusHistory.Value.Empty": "—"
+  "ServiceBusHistory.Value.Empty": "—",
+  "DatabaseViewer.Nav": "Databáze",
+  "DatabaseViewer.Title": "Prohlížeč databáze",
+  "DatabaseViewer.Description": "Přehled uložených tvarů ohybů a sítí na serveru.",
+  "DatabaseViewer.Actions.Refresh": "Obnovit",
+  "DatabaseViewer.Table.Title": "Uložené klíče",
+  "DatabaseViewer.Table.Key": "Klíč",
+  "DatabaseViewer.Table.Count": "Záznamy",
+  "DatabaseViewer.Table.Updated": "Naposledy aktualizováno",
+  "DatabaseViewer.Table.UpdatedUnknown": "Neznámé",
+  "DatabaseViewer.Table.Details": "Podrobnosti",
+  "DatabaseViewer.Details.Toggle": "Zobrazit podrobnosti",
+  "DatabaseViewer.Empty": "Žádná uložená data.",
+  "DatabaseViewer.Status.Loading": "Načítání uložených dat…",
+  "DatabaseViewer.Status.Empty": "Nebyla nalezena žádná uložená data.",
+  "DatabaseViewer.Status.Success": "Data byla úspěšně načtena.",
+  "DatabaseViewer.Error.Load": "Data se nepodařilo načíst."
 }

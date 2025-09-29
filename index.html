@@ -9,6 +9,7 @@
         <link rel="stylesheet" href="styles.css">
         <script src="i18n.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="storage-sync.js" defer></script>
         <script type="importmap">
             {
               "imports": {
@@ -25,6 +26,7 @@
         <script src="bfma-configurator.js" defer></script>
         <script src="bf3d-configurator.js" defer></script>
         <script src="service-bus-history.js" defer></script>
+        <script src="database-viewer.js" defer></script>
         <script src="production.js" defer></script>
         <script src="bvbs-list.js" defer></script>
         <script type="module" src="viewer3d.js" defer></script>
@@ -51,6 +53,12 @@
                                 <path d="M4 6l8 3 8-3V4l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2z" />
                             </svg>
                             <span class="sidebar-text" data-i18n="ServiceBusHistory.Nav">Service-Bus-Archiv</span>
+                        </button>
+                        <button id="showDatabaseViewerBtn" class="sidebar-link" data-view-target="databaseViewerView" data-i18n-title="DatabaseViewer.Nav" title="Datenbank">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3c-4.97 0-9 1.79-9 4v10c0 2.21 4.03 4 9 4s9-1.79 9-4V7c0-2.21-4.03-4-9-4zm0 2c3.86 0 7 1.12 7 2s-3.14 2-7 2-7-1.12-7-2 3.14-2 7-2zm0 14c-3.86 0-7-1.12-7-2v-1.5c1.57 1.1 4.27 1.5 7 1.5s5.43-.4 7-1.5V17c0 .88-3.14 2-7 2zm0-4c-3.86 0-7-1.12-7-2v-1.5c1.57 1.1 4.27 1.5 7 1.5s5.43-.4 7-1.5V13c0 .88-3.14 2-7 2z" />
+                            </svg>
+                            <span class="sidebar-text" data-i18n="DatabaseViewer.Nav">Datenbank</span>
                         </button>
                         <div class="sidebar-submenu" data-submenu data-submenu-views="bf2dView,bf3dView,bfmaView">
                             <button type="button" class="sidebar-link sidebar-submenu-toggle" data-submenu-toggle aria-expanded="false" data-i18n-title="Biegeformen" title="Biegeformen">
@@ -1557,6 +1565,38 @@
                                 <button type="button" class="btn-secondary" id="serviceBusHistoryNextBtn" data-i18n="ServiceBusHistory.Pagination.Next">Weiter</button>
                             </div>
                             <div class="servicebus-history-pagination-info" id="serviceBusHistoryPaginationInfo"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="databaseViewerView" class="app-container" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title" data-i18n="DatabaseViewer.Title">Datenbank-Viewer</h2>
+                            <div class="button-group">
+                                <button type="button" class="btn-secondary" id="databaseViewerRefreshBtn" data-i18n="DatabaseViewer.Actions.Refresh">Aktualisieren</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-subtitle" data-i18n="DatabaseViewer.Description">Überblick über gespeicherte Biegeformen und Matten im Server-Speicher.</p>
+                            <div id="databaseViewerStatus" class="info-text" aria-live="polite"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title" data-i18n="DatabaseViewer.Table.Title">Gespeicherte Schlüssel</h3>
+                        </div>
+                        <div class="production-table-wrapper">
+                            <table class="full-width-table" id="databaseViewerTable">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="DatabaseViewer.Table.Key">Schlüssel</th>
+                                        <th data-i18n="DatabaseViewer.Table.Count">Einträge</th>
+                                        <th data-i18n="DatabaseViewer.Table.Updated">Zuletzt aktualisiert</th>
+                                        <th data-i18n="DatabaseViewer.Table.Details">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="databaseViewerTableBody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
