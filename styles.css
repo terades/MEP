@@ -374,6 +374,7 @@ select {
     align-items: center;
     margin-bottom: 1rem;
     position: relative;
+    min-width: 0;
 }
 
 .form-group label {
@@ -385,8 +386,10 @@ select {
 }
 
 .form-group input,
-.form-group select {
-    flex-grow: 1;
+.form-group select,
+.form-group textarea {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .form-group .input-with-dropdown {
