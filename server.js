@@ -1,15 +1,159 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { ServiceBusClient } = require('@azure/service-bus');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const STATIC_DIR = __dirname;
 
+const DATA_DIRECTORY = path.join(__dirname, 'data');
+const DATABASE_FILE = path.join(DATA_DIRECTORY, 'bvbs-service-bus.sqlite');
+
 const SERVICE_BUS_MAX_MESSAGES = 50;
 const SERVICE_BUS_MIN_TIMEOUT = 5;
 const SERVICE_BUS_MAX_TIMEOUT = 60;
 const SERVICE_BUS_DEFAULT_TIMEOUT = 10;
+
+if (!fs.existsSync(DATA_DIRECTORY)) {
+    fs.mkdirSync(DATA_DIRECTORY, { recursive: true });
+}
+
+const database = new sqlite3.Database(DATABASE_FILE, error => {
+    if (error) {
+        console.error('Failed to open SQLite database', error);
+    }
+});
+
+const databaseInitPromise = new Promise((resolve, reject) => {
+    database.exec(`
+        PRAGMA journal_mode = WAL;
+        CREATE TABLE IF NOT EXISTS service_bus_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic TEXT NOT NULL,
+            subscription TEXT NOT NULL,
+            message_id TEXT,
+            sequence_number INTEGER,
+            raw_body TEXT,
+            content_type TEXT,
+            broker_properties_json TEXT,
+            application_properties_json TEXT,
+            annotations_json TEXT,
+            received_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_service_bus_messages_topic_subscription
+            ON service_bus_messages (topic, subscription, received_at);
+        CREATE INDEX IF NOT EXISTS idx_service_bus_messages_message_id
+            ON service_bus_messages (message_id);
+    `, error => {
+        if (error) {
+            reject(error);
+            return;
+        }
+        resolve();
+    });
+});
+
+databaseInitPromise.catch(error => {
+    console.error('Failed to initialize SQLite database', error);
+});
+
+function safeJsonStringify(value) {
+    if (value === undefined) {
+        return null;
+    }
+    try {
+        return JSON.stringify(value);
+    } catch (error) {
+        console.warn('Failed to stringify value for persistence', error);
+        return null;
+    }
+}
+
+function coerceRawBody(value) {
+    if (value === null || typeof value === 'undefined') {
+        return null;
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    if (Buffer.isBuffer(value)) {
+        return value.toString('utf8');
+    }
+    if (value instanceof Uint8Array) {
+        return Buffer.from(value).toString('utf8');
+    }
+    return String(value);
+}
+
+function runDatabaseCommand(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        database.run(sql, params, function (error) {
+            if (error) {
+                reject(error);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+async function persistServiceBusMessages(messages, context = {}) {
+    if (!Array.isArray(messages) || messages.length === 0) {
+        return;
+    }
+
+    await databaseInitPromise;
+
+    const insertSql = `
+        INSERT INTO service_bus_messages (
+            topic,
+            subscription,
+            message_id,
+            sequence_number,
+            raw_body,
+            content_type,
+            broker_properties_json,
+            application_properties_json,
+            annotations_json,
+            received_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const topic = typeof context.topic === 'string' ? context.topic : '';
+    const subscription = typeof context.subscription === 'string' ? context.subscription : '';
+
+    await runDatabaseCommand('BEGIN TRANSACTION');
+
+    try {
+        for (const message of messages) {
+            const brokerProperties = message?.brokerProperties || {};
+            const sequenceNumber = brokerProperties?.SequenceNumber;
+            const recordedAt = new Date().toISOString();
+
+            await runDatabaseCommand(insertSql, [
+                topic,
+                subscription,
+                brokerProperties?.MessageId || null,
+                Number.isFinite(sequenceNumber) ? sequenceNumber : null,
+                coerceRawBody(message?.rawBody),
+                message?.contentType || null,
+                safeJsonStringify(message?.brokerProperties),
+                safeJsonStringify(message?.applicationProperties),
+                safeJsonStringify(message?.annotations),
+                recordedAt
+            ]);
+        }
+
+        await runDatabaseCommand('COMMIT');
+    } catch (error) {
+        await runDatabaseCommand('ROLLBACK').catch(rollbackError => {
+            console.error('Failed to rollback SQLite transaction', rollbackError);
+        });
+        throw error;
+    }
+}
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(STATIC_DIR, { extensions: ['html'] }));
@@ -137,6 +281,8 @@ app.post('/api/service-bus/messages', async (req, res) => {
 
         const payload = buildProxyResponse(receivedMessages);
 
+        await persistServiceBusMessages(payload, { topic, subscription });
+
         if (!peekOnly && receivedMessages.length) {
             await Promise.all(
                 receivedMessages.map(message => receiver.completeMessage(message).catch(() => null))
@@ -182,6 +328,35 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(STATIC_DIR, 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
+function closeDatabaseConnection(callback) {
+    database.close(error => {
+        if (error) {
+            console.error('Failed to close SQLite database', error);
+        }
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+}
+
+let isShuttingDown = false;
+
+function shutdown(signal) {
+    if (isShuttingDown) {
+        return;
+    }
+    isShuttingDown = true;
+    console.log(`Received ${signal}. Shutting down gracefully…`);
+    server.close(() => {
+        closeDatabaseConnection(() => {
+            process.exit(0);
+        });
+    });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
