@@ -507,5 +507,21 @@
   "ServiceBusHistory.Value.AnySubscription": "Wszystkie subskrypcje",
   "ServiceBusHistory.Value.UnknownTopic": "Bez tematu",
   "ServiceBusHistory.Value.UnknownSubscription": "Bez subskrypcji",
-  "ServiceBusHistory.Value.Empty": "—"
+  "ServiceBusHistory.Value.Empty": "—",
+  "DatabaseViewer.Nav": "Baza danych",
+  "DatabaseViewer.Title": "Podgląd bazy danych",
+  "DatabaseViewer.Description": "Przegląd zapisanych kształtów gięcia i siatek na serwerze.",
+  "DatabaseViewer.Actions.Refresh": "Odśwież",
+  "DatabaseViewer.Table.Title": "Zapisane klucze",
+  "DatabaseViewer.Table.Key": "Klucz",
+  "DatabaseViewer.Table.Count": "Elementy",
+  "DatabaseViewer.Table.Updated": "Ostatnia aktualizacja",
+  "DatabaseViewer.Table.UpdatedUnknown": "Nieznane",
+  "DatabaseViewer.Table.Details": "Szczegóły",
+  "DatabaseViewer.Details.Toggle": "Pokaż szczegóły",
+  "DatabaseViewer.Empty": "Brak zapisanych danych.",
+  "DatabaseViewer.Status.Loading": "Ładowanie zapisanych danych…",
+  "DatabaseViewer.Status.Empty": "Nie znaleziono zapisanych danych.",
+  "DatabaseViewer.Status.Success": "Dane pomyślnie załadowane.",
+  "DatabaseViewer.Error.Load": "Nie udało się wczytać danych."
 }

@@ -514,5 +514,21 @@
   "ServiceBusHistory.Value.AnySubscription": "All subscriptions",
   "ServiceBusHistory.Value.UnknownTopic": "No topic",
   "ServiceBusHistory.Value.UnknownSubscription": "No subscription",
-  "ServiceBusHistory.Value.Empty": "—"
+  "ServiceBusHistory.Value.Empty": "—",
+  "DatabaseViewer.Nav": "Database",
+  "DatabaseViewer.Title": "Database viewer",
+  "DatabaseViewer.Description": "Overview of stored bending shapes and meshes on the server.",
+  "DatabaseViewer.Actions.Refresh": "Refresh",
+  "DatabaseViewer.Table.Title": "Stored keys",
+  "DatabaseViewer.Table.Key": "Key",
+  "DatabaseViewer.Table.Count": "Entries",
+  "DatabaseViewer.Table.Updated": "Last updated",
+  "DatabaseViewer.Table.UpdatedUnknown": "Unknown",
+  "DatabaseViewer.Table.Details": "Details",
+  "DatabaseViewer.Details.Toggle": "Show details",
+  "DatabaseViewer.Empty": "No stored data available.",
+  "DatabaseViewer.Status.Loading": "Loading stored data…",
+  "DatabaseViewer.Status.Empty": "No stored data found.",
+  "DatabaseViewer.Status.Success": "Data loaded successfully.",
+  "DatabaseViewer.Error.Load": "Failed to load data."
 }

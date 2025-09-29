@@ -774,14 +774,37 @@
 
     function persistSavedForms(forms) {
         const storage = getLocalStorageSafe();
-        if (!storage) return false;
+        const entries = Object.keys(forms || {});
+        const hasEntries = entries.length > 0;
+        if (!storage) {
+            if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+                try {
+                    window.bendingFormStorageSync.syncKey(
+                        SAVED_FORMS_STORAGE_KEY,
+                        hasEntries ? forms : null
+                    );
+                } catch (error) {
+                    console.warn('Failed to sync BF2D forms to backend', error);
+                }
+            }
+            notifySavedFormsUpdated(entries);
+            return false;
+        }
         try {
-            const entries = Object.keys(forms || {});
-            if (!entries.length) {
+            if (!hasEntries) {
                 storage.removeItem(SAVED_FORMS_STORAGE_KEY);
             } else {
                 storage.setItem(SAVED_FORMS_STORAGE_KEY, JSON.stringify(forms));
             }
+            if (typeof window?.bendingFormStorageSync?.syncKey === 'function') {
+                window.bendingFormStorageSync.syncKey(
+                    SAVED_FORMS_STORAGE_KEY,
+                    hasEntries ? forms : null
+                ).catch(error => {
+                    console.warn('Failed to sync BF2D forms to backend', error);
+                });
+            }
+            notifySavedFormsUpdated(entries);
             return true;
         } catch (error) {
             console.error('Failed to persist BF2D forms', error);
@@ -838,7 +861,6 @@
         if (deleteBtn) {
             deleteBtn.disabled = !hasForms;
         }
-        notifySavedFormsUpdated(names);
     }
 
     function readShapeNameInput() {
@@ -3238,6 +3260,11 @@
         loadBvbsEntry,
         clearBvbsContext: clearActiveBvbsContext
     };
+
+    window.addEventListener('bf2dSavedFormsUpdated', () => {
+        const currentSelection = document.getElementById('bf2dSavedForms')?.value || '';
+        populateSavedFormsSelect(currentSelection);
+    });
 
     window.bf2dConfigurator = configurator;
 

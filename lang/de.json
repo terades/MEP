@@ -532,5 +532,21 @@
   "ServiceBusHistory.Value.AnySubscription": "Alle Subscriptions",
   "ServiceBusHistory.Value.UnknownTopic": "Ohne Topic",
   "ServiceBusHistory.Value.UnknownSubscription": "Ohne Subscription",
-  "ServiceBusHistory.Value.Empty": "—"
+  "ServiceBusHistory.Value.Empty": "—",
+  "DatabaseViewer.Nav": "Datenbank",
+  "DatabaseViewer.Title": "Datenbank-Viewer",
+  "DatabaseViewer.Description": "Überblick über gespeicherte Biegeformen und Matten im Server-Speicher.",
+  "DatabaseViewer.Actions.Refresh": "Aktualisieren",
+  "DatabaseViewer.Table.Title": "Gespeicherte Schlüssel",
+  "DatabaseViewer.Table.Key": "Schlüssel",
+  "DatabaseViewer.Table.Count": "Einträge",
+  "DatabaseViewer.Table.Updated": "Zuletzt aktualisiert",
+  "DatabaseViewer.Table.UpdatedUnknown": "Unbekannt",
+  "DatabaseViewer.Table.Details": "Details",
+  "DatabaseViewer.Details.Toggle": "Details anzeigen",
+  "DatabaseViewer.Empty": "Keine gespeicherten Daten vorhanden.",
+  "DatabaseViewer.Status.Loading": "Lade gespeicherte Daten…",
+  "DatabaseViewer.Status.Empty": "Keine gespeicherten Daten gefunden.",
+  "DatabaseViewer.Status.Success": "Daten erfolgreich geladen.",
+  "DatabaseViewer.Error.Load": "Daten konnten nicht geladen werden."
 }
