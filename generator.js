@@ -2535,6 +2535,9 @@ function generateZoneSummary(zones) {
                                 if (index < zonesPerLabel) {
                                     row.classList.add('first-label-zone');
                                 }
+                                if (index === zonesPerLabel) {
+                                    row.classList.add('label-separator-row');
+                                }
                                 if (highlightedZoneDisplayIndex === displayIndex) {
                                     row.classList.add('focused-zone-form');
                                 }
@@ -2807,6 +2810,7 @@ function triggerPreviewUpdateDebounced() {
                                 const g2 = document.createElement('th');
                                 g2.textContent = 'Code 2';
                                 g2.colSpan = secondGroup.length;
+                                g2.classList.add('second-label-start');
                                 groupRow.appendChild(g2);
                                 tbody.appendChild(groupRow);
                             }
@@ -2834,6 +2838,9 @@ function triggerPreviewUpdateDebounced() {
                                     }
                                     if (cellIndex < zonesPerLabel) {
                                         cell.classList.add('first-label-zone');
+                                    }
+                                    if (cellIndex === zonesPerLabel) {
+                                        cell.classList.add('second-label-start');
                                     }
                                     row.appendChild(cell);
                                 });
