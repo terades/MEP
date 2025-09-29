@@ -2266,6 +2266,9 @@ function generateZoneSummary(zones) {
                                 return false;
                             }
 
+                            if (element.isContentEditable) {
+                                return true;
+                            }
                             const tagName = element.tagName ? element.tagName.toUpperCase() : '';
                             if (tagName === 'TEXTAREA') {
                                 return true;
@@ -2294,8 +2297,18 @@ function generateZoneSummary(zones) {
                                 const value = typeof element.value === 'string' ? element.value : String(element.value ?? '');
                                 try {
                                     element.setSelectionRange(0, value.length);
+                                    return;
                                 } catch (error) {
                                     // ignore selection errors
+                                }
+                            }
+                            if (element.isContentEditable && typeof window !== 'undefined') {
+                                const selection = window.getSelection?.();
+                                if (selection && typeof selection.removeAllRanges === 'function') {
+                                    const range = document.createRange();
+                                    range.selectNodeContents(element);
+                                    selection.removeAllRanges();
+                                    selection.addRange(range);
                                 }
                             }
                         }
@@ -2315,18 +2328,6 @@ function generateZoneSummary(zones) {
                                 setTimeout(run, 0);
                             }
                         }
-
-                        function handleZoneFieldFocus(displayIndex, element) {
-                            setHighlightedZone(displayIndex, true);
-                            scheduleAutoSelect(element);
-                        }
-
-                        function handleZoneFieldBlur(displayIndex) {
-                            setHighlightedZone(displayIndex, false);
-                        }
-
-                        window.handleZoneFieldFocus = handleZoneFieldFocus;
-                        window.handleZoneFieldBlur = handleZoneFieldBlur;
 
                         function initAutoSelectForGeneratorView() {
                             const generatorView = document.getElementById('generatorView');
@@ -2355,7 +2356,7 @@ function generateZoneSummary(zones) {
                                 tableRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
 
-                            const focusable = tableRow.querySelector('input, select, textarea');
+                            const focusable = tableRow.querySelector('[data-zone-field], input, select, textarea');
                             if (focusable) {
                                 focusable.focus({ preventScroll: true });
                                 if (typeof focusable.select === 'function') {
@@ -2365,8 +2366,148 @@ function generateZoneSummary(zones) {
                         }
 
                         window.focusZoneFromPreview = focusZoneFromPreview;
-			
-			// Render all zone input fields and buttons AND the summary table
+
+                        function formatZoneFieldValue(field, value) {
+                            if (value === undefined || value === null || Number.isNaN(value)) {
+                                return '';
+                            }
+                            return String(value);
+                        }
+
+                        function parseZoneFieldValue(field, rawValue) {
+                            if (typeof rawValue !== 'string') {
+                                return { valid: false };
+                            }
+                            const trimmed = rawValue.trim();
+                            if (trimmed === '') {
+                                return { valid: false };
+                            }
+                            const normalized = trimmed.replace(',', '.');
+                            if (field === 'num') {
+                                const parsed = parseInt(normalized, 10);
+                                if (!Number.isInteger(parsed) || parsed < 0) {
+                                    return { valid: false };
+                                }
+                                return { valid: true, value: parsed };
+                            }
+                            const parsed = parseInt(normalized, 10);
+                            if (!Number.isInteger(parsed)) {
+                                return { valid: false };
+                            }
+                            if (field === 'dia') {
+                                if (parsed <= 0) {
+                                    return { valid: false };
+                                }
+                                const allowedDiameters = [6, 8, 10, 12, 14, 16];
+                                if (!allowedDiameters.includes(parsed)) {
+                                    return { valid: false };
+                                }
+                                return { valid: true, value: parsed };
+                            }
+                            if (field === 'pitch') {
+                                if (parsed < 1) {
+                                    return { valid: false };
+                                }
+                                return { valid: true, value: parsed };
+                            }
+                            return { valid: false };
+                        }
+
+                        function markZoneCellInvalid(cell, field, previousValue) {
+                            if (!cell) {
+                                return;
+                            }
+                            cell.classList.add('zone-editable-cell--invalid');
+                            cell.textContent = formatZoneFieldValue(field, previousValue);
+                            setTimeout(() => cell.classList.remove('zone-editable-cell--invalid'), 1200);
+                        }
+
+                        function commitZoneEditableCell(cell) {
+                            if (!cell) {
+                                return;
+                            }
+                            const zoneId = Number(cell.dataset.zoneId);
+                            const field = cell.dataset.zoneField;
+                            if (!Number.isFinite(zoneId) || !field) {
+                                return;
+                            }
+                            const zone = zonesData.find(z => z.id == zoneId);
+                            if (!zone) {
+                                return;
+                            }
+                            const previousValue = zone[field];
+                            const { valid, value } = parseZoneFieldValue(field, cell.textContent || '');
+                            if (!valid) {
+                                markZoneCellInvalid(cell, field, previousValue);
+                                return;
+                            }
+                            if (value === previousValue) {
+                                cell.textContent = formatZoneFieldValue(field, value);
+                                return;
+                            }
+                            cell.classList.remove('zone-editable-cell--invalid');
+                            zone[field] = value;
+                            cell.textContent = formatZoneFieldValue(field, value);
+                            renderZoneSummaryTable();
+                            triggerPreviewUpdateDebounced();
+                            updateGeneratorSummary();
+                            if (typeof updateLabelPreview === 'function') {
+                                updateLabelPreview();
+                            }
+                        }
+
+                        function makeZoneCellEditable(cell, zone, field, label, displayIndex, isLastRow) {
+                            cell.setAttribute('data-label', label);
+                            cell.dataset.zoneId = zone.id;
+                            cell.dataset.zoneField = field;
+                            cell.contentEditable = 'true';
+                            cell.tabIndex = 0;
+                            cell.setAttribute('role', 'textbox');
+                            cell.classList.add('zone-editable-cell');
+                            cell.textContent = formatZoneFieldValue(field, zone[field]);
+                            cell.addEventListener('focus', () => {
+                                setHighlightedZone(displayIndex, true);
+                                cell.dataset.originalValue = cell.textContent.trim();
+                                scheduleAutoSelect(cell);
+                            });
+                            cell.addEventListener('blur', () => {
+                                commitZoneEditableCell(cell);
+                                setHighlightedZone(displayIndex, false);
+                                delete cell.dataset.originalValue;
+                            });
+                            cell.addEventListener('keydown', (event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    cell.blur();
+                                    return;
+                                }
+                                if (event.key === 'Escape') {
+                                    event.preventDefault();
+                                    const original = cell.dataset.originalValue;
+                                    if (original !== undefined) {
+                                        cell.textContent = original;
+                                    } else {
+                                        cell.textContent = formatZoneFieldValue(field, zone[field]);
+                                    }
+                                    cell.blur();
+                                    return;
+                                }
+                                if (field === 'pitch' && event.key === 'Tab' && !event.shiftKey && isLastRow && zonesData.length < maxZones) {
+                                    event.preventDefault();
+                                    commitZoneEditableCell(cell);
+                                    addZone(8, 3, 150, true);
+                                }
+                            });
+                            cell.addEventListener('paste', (event) => {
+                                const text = event.clipboardData?.getData('text/plain');
+                                if (text !== undefined) {
+                                    event.preventDefault();
+                                    document.execCommand('insertText', false, text);
+                                }
+                            });
+                        }
+
+                        // Render all zone input fields and buttons AND the summary table
                         function renderAllZones() {
                             const tbody = document.querySelector('#zonesTable tbody');
                             if (!tbody) return;
@@ -2398,64 +2539,27 @@ function generateZoneSummary(zones) {
                                     row.classList.add('focused-zone-form');
                                 }
 			
-			        const zoneCell = row.insertCell();
-			        zoneCell.textContent = displayIndex;
-			        zoneCell.setAttribute('data-label', 'Zone');
-			        zoneCell.style.fontWeight = 'bold';
-			        zoneCell.style.textAlign = 'center';
-			
-			        // Add mouse events for highlighting on hover
-			        row.addEventListener('mouseover', () => setHighlightedZone(displayIndex, true));
-			        row.addEventListener('mouseout', () => setHighlightedZone(displayIndex, false));
-			
-			        const diaCell = row.insertCell();
-			        diaCell.setAttribute('data-label', 'Ø (d)');
-                                diaCell.innerHTML = `
-                                    <div class="form-group">
-                                        <label for="durchmesser-${zone.id}">Ø (d):</label>
-                                        <select id="durchmesser-${zone.id}" oninput="updateZoneData(${zone.id}, 'dia', this.value); validateNumberInput(this, 6, 'int', 'Mind. 6mm');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
-                                            <option value="6" ${zone.dia == 6 ? 'selected' : ''}>6 mm</option>
-                                            <option value="8" ${zone.dia == 8 ? 'selected' : ''}>8 mm</option>
-                                            <option value="10" ${zone.dia == 10 ? 'selected' : ''}>10 mm</option>
-			                    <option value="12" ${zone.dia == 12 ? 'selected' : ''}>12 mm</option>
-			                    <option value="14" ${zone.dia == 14 ? 'selected' : ''}>14 mm</option>
-			                    <option value="16" ${zone.dia == 16 ? 'selected' : ''}>16 mm</option>
-			                </select>
-			                <span class="input-feedback"></span>
-			            </div>
-			        `;
-			
-			        const numCell = row.insertCell();
-			        numCell.setAttribute('data-label', 'Anzahl (n)');
-                                numCell.innerHTML = `
-                                    <div class="form-group">
-                                        <label for="anzahlBUEGEL-${zone.id}">Anzahl (n):</label>
-                                        <input type="number" id="anzahlBUEGEL-${zone.id}" value="${zone.num}" min="0" oninput="updateZoneData(${zone.id}, 'num', this.value); validateNumberInput(this, 0, 'int', 'Anzahl >= 0');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
-                                        <span class="input-feedback"></span>
-                                    </div>
-                                `;
-			
-			        const pitchCell = row.insertCell();
-                                pitchCell.setAttribute('data-label', 'Pitch (p)');
-                                pitchCell.innerHTML = `
-                                    <div class="form-group">
-                                        <label for="pitch-${zone.id}">Pitch (p):</label>
-                                        <input type="number" id="pitch-${zone.id}" value="${zone.pitch}" min="1" oninput="updateZoneData(${zone.id}, 'pitch', this.value); validateNumberInput(this, 1, 'int', 'Pitch >= 1mm');" onfocus="handleZoneFieldFocus(${displayIndex}, this)" onblur="handleZoneFieldBlur(${displayIndex})">
-                                        <span class="input-feedback"></span>
-                                    </div>
-                                `;
-                                const pitchInput = pitchCell.querySelector('input');
-                                if (pitchInput) {
-                                    pitchInput.addEventListener('keydown', (e) => {
-                                        if (e.key === 'Tab' && !e.shiftKey && index === zonesData.length - 1) {
-                                            e.preventDefault();
-                                            addZone(8, 3, 150, true);
-                                        }
-                                    });
-                                }
-			
-			        const actionsCell = row.insertCell();
-			        actionsCell.setAttribute('data-label', 'Aktion');
+                                const zoneCell = row.insertCell();
+                                zoneCell.textContent = displayIndex;
+                                zoneCell.setAttribute('data-label', 'Zone');
+                                zoneCell.classList.add('zone-index-cell');
+                                zoneCell.dataset.autoSelect = 'false';
+
+                                // Add mouse events for highlighting on hover
+                                row.addEventListener('mouseover', () => setHighlightedZone(displayIndex, true));
+                                row.addEventListener('mouseout', () => setHighlightedZone(displayIndex, false));
+
+                                const diaCell = row.insertCell();
+                                makeZoneCellEditable(diaCell, zone, 'dia', 'Ø (d)', displayIndex, index === zonesData.length - 1);
+
+                                const numCell = row.insertCell();
+                                makeZoneCellEditable(numCell, zone, 'num', 'Anzahl (n)', displayIndex, index === zonesData.length - 1);
+
+                                const pitchCell = row.insertCell();
+                                makeZoneCellEditable(pitchCell, zone, 'pitch', 'Pitch (p)', displayIndex, index === zonesData.length - 1);
+
+                                const actionsCell = row.insertCell();
+                                actionsCell.setAttribute('data-label', 'Aktion');
 			        actionsCell.style.textAlign = 'center';
 			        actionsCell.innerHTML = `
 			            <button type="button" class="btn-delete-zone" onclick="removeSpecificZoneById(${zone.id})" title="Diese Zone löschen">
@@ -2465,23 +2569,6 @@ function generateZoneSummary(zones) {
 			    });
 			    renderZoneSummaryTable();
 			    triggerPreviewUpdateDebounced();
-			}
-			
-			// Update a specific zone's data
-			function updateZoneData(zoneId, field, value) {
-			    const zone = zonesData.find(z => z.id == zoneId);
-			    if (zone) {
-			        let parsedValue;
-			        if (field === 'num') {
-			            parsedValue = parseInt(value, 10);
-			            zone[field] = Number.isInteger(parsedValue) && parsedValue >= 0 ? parsedValue : zone[field] || 0;
-			        } else {
-			            parsedValue = parseFloat(value);
-			            zone[field] = parsedValue > 0 ? parsedValue : zone[field] || (field === 'dia' ? 8 : 1);
-			        }
-			    }
-			    triggerPreviewUpdateDebounced();
-			    renderZoneSummaryTable(); // This is the corrected call
 			}
 			
 			// Add a new zone to the list
@@ -2500,9 +2587,10 @@ function generateZoneSummary(zones) {
                             renderAllZones();
                             updateAddZoneButtonState();
                             if (focusNum) {
-                                const numInput = document.getElementById(`anzahlBUEGEL-${newId}`);
-                                if (numInput) {
-                                    numInput.focus();
+                                const newRow = document.querySelector(`#zonesTable tr[data-zone-id="${newId}"]`);
+                                const numCell = newRow ? newRow.querySelector('[data-zone-field="num"]') : null;
+                                if (numCell && typeof numCell.focus === 'function') {
+                                    numCell.focus({ preventScroll: true });
                                 }
                             }
 
