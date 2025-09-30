@@ -2512,6 +2512,45 @@ function formatDateTime(value) {
     return date.toLocaleString();
 }
 
+function updateProductionDurations() {
+    const tableBody = document.getElementById('productionList');
+    if (!tableBody) {
+        return;
+    }
+
+    if (!productionList.some(order => order && order.status === 'inProgress')) {
+        return;
+    }
+
+    const now = Date.now();
+
+    tableBody.querySelectorAll('.production-duration-cell').forEach(cell => {
+        const orderIndexAttr = cell.dataset.orderIndex;
+        if (!orderIndexAttr) {
+            cell.textContent = '-';
+            return;
+        }
+
+        const parsedIndex = Number.parseInt(orderIndexAttr, 10);
+        if (!Number.isFinite(parsedIndex) || parsedIndex < 0 || parsedIndex >= productionList.length) {
+            cell.textContent = '-';
+            return;
+        }
+
+        const order = productionList[parsedIndex];
+        if (!order || !order.startTimestamp) {
+            cell.textContent = '-';
+            return;
+        }
+
+        const effectiveEnd = (order.status === 'done' && order.endTimestamp)
+            ? order.endTimestamp
+            : now;
+        const durationMs = Math.max(0, effectiveEnd - order.startTimestamp);
+        cell.textContent = formatDuration(durationMs);
+    });
+}
+
 function updateSelectAllCheckboxState() {
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     const tableBody = document.getElementById('productionList');
@@ -2606,6 +2645,12 @@ function renderProductionList() {
         const rawRowId = item.id || fallbackId;
         const rowIdValue = String(rawRowId);
         row.dataset.id = rowIdValue;
+        const orderIndex = productionList.indexOf(item);
+        if (orderIndex >= 0) {
+            row.dataset.orderIndex = String(orderIndex);
+        } else {
+            delete row.dataset.orderIndex;
+        }
         const formFieldBaseId = createFormFieldIdentifier('production', rowIdValue);
 
         // Checkbox
@@ -2666,8 +2711,15 @@ function renderProductionList() {
 
         // Timestamps and Duration
         row.insertCell().textContent = item.startTime ? new Date(item.startTime).toLocaleString() : '-';
+        const durationCell = row.insertCell();
         const duration = item.startTimestamp ? ((item.status === 'done' ? item.endTimestamp : Date.now()) - item.startTimestamp) : null;
-        row.insertCell().textContent = duration !== null ? formatDuration(duration) : '-';
+        durationCell.textContent = duration !== null ? formatDuration(duration) : '-';
+        durationCell.classList.add('production-duration-cell');
+        if (row.dataset.orderIndex) {
+            durationCell.dataset.orderIndex = row.dataset.orderIndex;
+        } else {
+            delete durationCell.dataset.orderIndex;
+        }
 
         // Note
         const hasNote = typeof item.note === 'string' && item.note.trim().length > 0;
@@ -3703,9 +3755,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     setInterval(() => {
-        if (productionList.some(p => p.status === 'inProgress')) {
-            renderProductionList();
-        }
+        updateProductionDurations();
     }, 1000);
 
     document.getElementById('printSelectedButton')?.addEventListener('click', () => {
