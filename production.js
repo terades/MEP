@@ -103,7 +103,7 @@ let productionSortKey = 'startTime';
 let productionStatusFilter = 'all';
 const EDIT_PASSWORD = 'mep';
 let selectedProductionIds = new Set();
-let editingProductionNoteOrder = null;
+let editingProductionNoteOrderId = null;
 
 function updateBatchButtonsState() {
     const hasSelection = selectedProductionIds.size > 0;
@@ -2369,7 +2369,9 @@ function openProductionNoteModal(order = null) {
     if (!modal || !textarea || !order) {
         return;
     }
-    editingProductionNoteOrder = order;
+    editingProductionNoteOrderId = order.id !== null && order.id !== undefined
+        ? String(order.id)
+        : null;
     textarea.value = typeof order.note === 'string' ? order.note : '';
     modal.classList.add('visible');
     setTimeout(() => {
@@ -2387,7 +2389,7 @@ function closeProductionNoteModal() {
     if (modal) {
         modal.classList.remove('visible');
     }
-    editingProductionNoteOrder = null;
+    editingProductionNoteOrderId = null;
 }
 
 function closeLabelPreviewModal() {
@@ -2536,7 +2538,7 @@ function updateProductionOrderStatus(order, nextStatus, { restartTimer = false }
     renderProductionList();
 }
 
-function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral' }) {
+function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral', showLabel = false }) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `table-action-button table-action-button--${variant}`;
@@ -2544,18 +2546,20 @@ function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onCli
     button.setAttribute('aria-label', label);
     button.title = label;
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('aria-hidden', 'true');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', iconPath);
-    svg.appendChild(path);
-    button.appendChild(svg);
+    if (typeof iconPath === 'string' && iconPath.trim().length > 0) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', iconPath);
+        svg.appendChild(path);
+        button.appendChild(svg);
+    }
 
-    const hiddenLabel = document.createElement('span');
-    hiddenLabel.className = 'visually-hidden';
-    hiddenLabel.textContent = label;
-    button.appendChild(hiddenLabel);
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = label;
+    labelSpan.className = showLabel ? 'table-action-button__label' : 'visually-hidden';
+    button.appendChild(labelSpan);
 
     if (typeof onClick === 'function') {
         button.addEventListener('click', onClick);
@@ -2647,31 +2651,18 @@ function renderProductionList() {
         row.insertCell().textContent = duration !== null ? formatDuration(duration) : '-';
 
         // Note
+        const hasNote = typeof item.note === 'string' && item.note.trim().length > 0;
         const cellNote = row.insertCell();
         cellNote.classList.add('production-note-cell');
         const noteWrapper = document.createElement('div');
         noteWrapper.className = 'production-note';
         const noteText = document.createElement('div');
         noteText.className = 'production-note-text';
-        const hasNote = typeof item.note === 'string' && item.note.trim().length > 0;
         noteText.textContent = hasNote
             ? item.note
             : getTranslation('Keine Bemerkung', 'Keine Bemerkung');
         noteText.title = hasNote ? item.note : '';
         noteWrapper.appendChild(noteText);
-
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.className = 'production-note-edit-button';
-        const labelKey = hasNote ? 'Bemerkung bearbeiten' : 'Bemerkung hinzufügen';
-        const buttonLabel = getTranslation(labelKey, labelKey);
-        editButton.textContent = buttonLabel;
-        editButton.setAttribute('aria-label', buttonLabel);
-        editButton.addEventListener('click', () => {
-            openProductionNoteModal(item);
-        });
-        noteWrapper.appendChild(editButton);
-
         cellNote.appendChild(noteWrapper);
 
         // Label Preview
@@ -2728,6 +2719,17 @@ function renderProductionList() {
             variant: 'neutral'
         });
         btnGroup.appendChild(detailButton);
+
+        const noteButtonLabelKey = hasNote ? 'Bemerkung bearbeiten' : 'Bemerkung hinzufügen';
+        const noteButton = createProductionActionButton({
+            iconPath: '',
+            labelKey: noteButtonLabelKey,
+            fallbackLabel: noteButtonLabelKey,
+            onClick: () => openProductionNoteModal(item),
+            variant: 'note',
+            showLabel: true
+        });
+        btnGroup.appendChild(noteButton);
 
         if (item.status !== 'inProgress') {
             const startButton = createProductionActionButton({
@@ -3461,28 +3463,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         document.getElementById('productionNoteSaveButton')?.addEventListener('click', () => {
-            if (!editingProductionNoteOrder) {
+            const textarea = document.getElementById('productionNoteInput');
+            if (!textarea || !editingProductionNoteOrderId) {
                 closeProductionNoteModal();
                 return;
             }
-            const textarea = document.getElementById('productionNoteInput');
-            if (!textarea) {
+            const targetOrder = productionList.find(item => {
+                if (item.id === null || item.id === undefined) {
+                    return false;
+                }
+                return String(item.id) === editingProductionNoteOrderId;
+            });
+            if (!targetOrder) {
                 closeProductionNoteModal();
                 return;
             }
             const newValue = textarea.value.trim();
-            const previousValue = typeof editingProductionNoteOrder.note === 'string'
-                ? editingProductionNoteOrder.note
-                : '';
+            const previousValue = typeof targetOrder.note === 'string' ? targetOrder.note : '';
             if (previousValue === newValue) {
                 closeProductionNoteModal();
                 return;
             }
-            editingProductionNoteOrder.note = newValue;
-            editingProductionNoteOrder.updatedAt = new Date().toISOString();
+            targetOrder.note = newValue;
+            targetOrder.updatedAt = new Date().toISOString();
             persistProductionList();
-            closeProductionNoteModal();
             renderProductionList();
+            closeProductionNoteModal();
         });
         document.getElementById('productionNoteModal')?.addEventListener('click', event => {
             if (event.target === event.currentTarget) {
