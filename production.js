@@ -4,6 +4,17 @@ const LOCAL_STORAGE_PRODUCTION_LIST_KEY = 'bvbsProductionList';
 let productionList = [];
 const PRODUCTION_STATUS_VALUES = new Set(['pending', 'inProgress', 'done']);
 
+function createFormFieldIdentifier(prefix, rawValue) {
+    const normalized = String(rawValue ?? '')
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    const base = normalized.length > 0 ? normalized : 'item';
+    return `${prefix}-${base}`;
+}
+
 function normalizeTimestamp(value) {
     if (value === null || value === undefined) {
         return null;
@@ -2588,10 +2599,14 @@ function renderProductionList() {
     });
 
     tbody.innerHTML = '';
-    items.forEach(item => {
+    items.forEach((item, index) => {
         const row = tbody.insertRow();
         row.className = `production-item ${statusClass(item.status)}`;
-        row.dataset.id = item.id || (item.komm + item.posnr);
+        const fallbackId = `${item.komm || 'komm'}-${item.posnr || index}`;
+        const rawRowId = item.id || fallbackId;
+        const rowIdValue = String(rawRowId);
+        row.dataset.id = rowIdValue;
+        const formFieldBaseId = createFormFieldIdentifier('production', rowIdValue);
 
         // Checkbox
         const cellCheckbox = row.insertCell();
@@ -2599,6 +2614,8 @@ function renderProductionList() {
         checkbox.type = 'checkbox';
         checkbox.className = 'row-checkbox';
         checkbox.dataset.id = row.dataset.id;
+        checkbox.id = `${formFieldBaseId}-select`;
+        checkbox.name = `${formFieldBaseId}-select`;
         checkbox.checked = selectedProductionIds.has(row.dataset.id);
         cellCheckbox.appendChild(checkbox);
 
@@ -2612,6 +2629,8 @@ function renderProductionList() {
         const cellStatus = row.insertCell();
         const statusSelect = document.createElement('select');
         statusSelect.className = 'status-select';
+        statusSelect.id = `${formFieldBaseId}-status`;
+        statusSelect.name = `${formFieldBaseId}-status`;
 
         const updateSelectClass = () => {
             statusSelect.classList.remove('pending', 'in-progress', 'done');
