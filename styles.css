@@ -4139,36 +4139,54 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 }
 
 #productionTable .button-group svg {
-    width: 1.2em;
-    height: 1.2em;
+    width: 1.3em;
+    height: 1.3em;
     fill: currentColor;
     margin: 0;
+}
+
+#productionTable .production-actions {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+}
+
+#productionTable .production-actions .table-action-button {
+    width: 2.75rem;
+    height: 2.75rem;
+}
+
+.production-actions-cell {
+    vertical-align: top;
 }
 
 .table-action-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.35rem;
-    min-height: 2.35rem;
-    padding: 0.45rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border-color);
-    background-color: var(--card-bg-color);
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0.6rem;
+    border-radius: 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent);
+    background: linear-gradient(140deg,
+            color-mix(in srgb, var(--card-bg-color) 92%, rgba(var(--primary-color-rgb), 0.18) 8%),
+            color-mix(in srgb, var(--card-bg-color) 96%, rgba(var(--primary-color-rgb), 0.05) 4%));
     color: var(--text-color);
     cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.table-action-button__label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .table-action-button svg {
-    width: 1.1em;
-    height: 1.1em;
+    width: 1.35em;
+    height: 1.35em;
+}
+
+.table-action-button:hover,
+.table-action-button:focus-visible {
+    transform: translateY(-1px);
 }
 
 .table-action-button:focus-visible {
@@ -4178,43 +4196,43 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 
 .table-action-button--neutral:hover,
 .table-action-button--neutral:focus-visible {
-    background-color: rgba(var(--primary-color-rgb), 0.08);
+    background: linear-gradient(140deg, rgba(var(--primary-color-rgb), 0.16), rgba(var(--primary-color-rgb), 0.08));
     border-color: rgba(var(--primary-color-rgb), 0.35);
     color: var(--primary-color);
-    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.18);
+    box-shadow: 0 12px 28px rgba(var(--primary-color-rgb), 0.22);
 }
 
 .table-action-button--note {
-    min-width: auto;
-    padding: 0.45rem 0.85rem;
-    background-color: rgba(var(--primary-color-rgb), 0.08);
-    border-color: rgba(var(--primary-color-rgb), 0.35);
+    background: linear-gradient(140deg, rgba(var(--primary-color-rgb), 0.22), rgba(var(--primary-color-rgb), 0.12));
+    border-color: rgba(var(--primary-color-rgb), 0.45);
     color: var(--primary-color);
 }
 
 .table-action-button--note:hover,
 .table-action-button--note:focus-visible {
-    background-color: rgba(var(--primary-color-rgb), 0.18);
-    border-color: rgba(var(--primary-color-rgb), 0.55);
+    background: linear-gradient(140deg, rgba(var(--primary-color-rgb), 0.32), rgba(var(--primary-color-rgb), 0.18));
+    border-color: rgba(var(--primary-color-rgb), 0.6);
     color: var(--primary-color);
-    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.2);
+    box-shadow: 0 12px 30px rgba(var(--primary-color-rgb), 0.24);
 }
 
 .table-action-button--start {
-    background-color: rgba(var(--primary-color-rgb), 0.12);
-    border-color: rgba(var(--primary-color-rgb), 0.35);
+    background: linear-gradient(140deg, rgba(var(--primary-color-rgb), 0.26), rgba(var(--primary-color-rgb), 0.16));
+    border-color: rgba(var(--primary-color-rgb), 0.45);
     color: var(--primary-color);
 }
 
 .table-action-button--start:hover,
 .table-action-button--start:focus-visible {
-    background-color: rgba(var(--primary-color-rgb), 0.24);
-    border-color: rgba(var(--primary-color-rgb), 0.55);
-    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.2);
+    background: linear-gradient(140deg, rgba(var(--primary-color-rgb), 0.36), rgba(var(--primary-color-rgb), 0.22));
+    border-color: rgba(var(--primary-color-rgb), 0.6);
+    box-shadow: 0 14px 32px rgba(var(--primary-color-rgb), 0.24);
 }
 
 .table-action-button--complete {
-    background-color: color-mix(in srgb, var(--success-color) 18%, transparent);
+    background: linear-gradient(140deg,
+            color-mix(in srgb, var(--success-color) 32%, transparent),
+            color-mix(in srgb, var(--success-color) 18%, transparent));
     border-color: color-mix(in srgb, var(--success-color) 45%, transparent);
     color: color-mix(in srgb, var(--success-color) 70%, black);
 }
@@ -4225,13 +4243,17 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 
 .table-action-button--complete:hover,
 .table-action-button--complete:focus-visible {
-    background-color: color-mix(in srgb, var(--success-color) 28%, transparent);
+    background: linear-gradient(140deg,
+            color-mix(in srgb, var(--success-color) 42%, transparent),
+            color-mix(in srgb, var(--success-color) 28%, transparent));
     border-color: color-mix(in srgb, var(--success-color) 55%, transparent);
-    box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--success-color) 30%, transparent);
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--success-color) 34%, transparent);
 }
 
 .table-action-button--reset {
-    background-color: color-mix(in srgb, var(--warning-color) 18%, transparent);
+    background: linear-gradient(140deg,
+            color-mix(in srgb, var(--warning-color) 32%, transparent),
+            color-mix(in srgb, var(--warning-color) 18%, transparent));
     border-color: color-mix(in srgb, var(--warning-color) 45%, transparent);
     color: color-mix(in srgb, var(--warning-color) 70%, black);
 }
@@ -4242,9 +4264,11 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 
 .table-action-button--reset:hover,
 .table-action-button--reset:focus-visible {
-    background-color: color-mix(in srgb, var(--warning-color) 28%, transparent);
+    background: linear-gradient(140deg,
+            color-mix(in srgb, var(--warning-color) 42%, transparent),
+            color-mix(in srgb, var(--warning-color) 28%, transparent));
     border-color: color-mix(in srgb, var(--warning-color) 55%, transparent);
-    box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--warning-color) 32%, transparent);
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--warning-color) 32%, transparent);
 }
 
 .status-select {
