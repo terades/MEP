@@ -47,6 +47,7 @@
     let uploadToggleBtn, uploadSection, uploadCard;
     let serviceBusNamespaceInput, serviceBusTopicInput, serviceBusSubscriptionInput;
     let serviceBusMessageCountInput, serviceBusSasTokenInput, serviceBusConnectionStringInput;
+    let serviceBusConnectionSelect, serviceBusConnectionStringGroup;
     let serviceBusPeekCheckbox, serviceBusReplaceCheckbox;
     let serviceBusFetchBtn, serviceBusStatusEl;
     let lastPreviewTrigger = null;
@@ -891,6 +892,54 @@
         return withoutProtocol.replace(/\/+$/g, '');
     }
 
+    async function loadConnectionsForSelect() {
+        if (!serviceBusConnectionSelect) return;
+
+        try {
+            const response = await fetch('/api/service-bus/connections');
+            if (!response.ok) return;
+            const data = await response.json();
+
+            const connections = data.connections || [];
+            const currentValue = serviceBusConnectionSelect.value;
+
+            // Clear existing options except for the first one (manual entry)
+            while (serviceBusConnectionSelect.options.length > 1) {
+                serviceBusConnectionSelect.remove(1);
+            }
+
+            connections.forEach(conn => {
+                const option = document.createElement('option');
+                option.value = conn.id;
+                option.textContent = conn.name;
+                serviceBusConnectionSelect.appendChild(option);
+            });
+
+            // Restore previous selection if it still exists
+            if (currentValue) {
+                serviceBusConnectionSelect.value = currentValue;
+            }
+            handleConnectionSelectChange();
+
+        } catch (error) {
+            console.warn('Failed to load service bus connections for select.', error);
+        }
+    }
+
+    function handleConnectionSelectChange() {
+        if (!serviceBusConnectionSelect || !serviceBusConnectionStringGroup) return;
+        const isManual = serviceBusConnectionSelect.value === '';
+        serviceBusConnectionStringGroup.style.display = isManual ? '' : 'none';
+
+        // Also hide SAS token if a saved connection is used
+        if (serviceBusSasTokenInput) {
+            const parentGroup = serviceBusSasTokenInput.closest('.form-group');
+            if (parentGroup) {
+                parentGroup.style.display = isManual ? '' : 'none';
+            }
+        }
+    }
+
     function extractNamespaceFromConnectionString(connectionString) {
         if (typeof connectionString !== 'string') {
             return '';
@@ -1139,14 +1188,16 @@
         );
         const peekOnly = options.peekOnly !== false;
 
+        const connectionId = options.connectionId || null;
         const connectionString = typeof options.connectionString === 'string'
             ? options.connectionString.trim()
             : '';
         const sasToken = typeof options.sasToken === 'string' ? options.sasToken.trim() : '';
         const namespace = sanitizeServiceBusNamespace(options.namespace);
 
-        if (connectionString) {
+        if (connectionId || connectionString) {
             return fetchServiceBusMessagesViaProxy({
+                connectionId,
                 connectionString,
                 topic,
                 subscription,
@@ -1240,6 +1291,7 @@
 
     async function fetchServiceBusMessagesViaProxy(options = {}) {
         const payload = {
+            connectionId: options.connectionId || null,
             connectionString: typeof options.connectionString === 'string' ? options.connectionString : '',
             topic: options.topic,
             subscription: options.subscription,
@@ -3503,7 +3555,10 @@
         const topic = serviceBusTopicInput?.value?.trim() || '';
         const subscription = serviceBusSubscriptionInput?.value?.trim() || '';
         const sasToken = serviceBusSasTokenInput?.value?.trim() || '';
-        const connectionString = serviceBusConnectionStringInput?.value?.trim() || '';
+
+        const connectionSelect = serviceBusConnectionSelect?.value;
+        const connectionId = connectionSelect && connectionSelect !== '' ? parseInt(connectionSelect, 10) : null;
+        let connectionString = serviceBusConnectionStringInput?.value?.trim() || '';
 
         if (!namespace && connectionString) {
             const parsedNamespace = extractNamespaceFromConnectionString(connectionString);
@@ -3532,12 +3587,12 @@
             return;
         }
 
-        if (!namespace && !connectionString) {
-            setServiceBusStatus(translate('ServiceBus.ErrorMissingNamespaceOrConnection', 'Please provide either a namespace or a connection string.'), { type: 'error' });
+        if (!connectionId && !connectionString) {
+            setServiceBusStatus(translate('ServiceBus.ErrorMissingConnection', 'Please select a saved connection or provide a connection string.'), { type: 'error' });
             return;
         }
 
-        if (!sasToken && !connectionString) {
+        if (!connectionId && !connectionString && !sasToken) {
             setServiceBusStatus(translate('ServiceBus.ErrorMissingCredential', 'Please provide either a SAS token or a connection string.'), { type: 'error' });
             return;
         }
@@ -3547,6 +3602,7 @@
 
         try {
             const messages = await fetchServiceBusMessages({
+                connectionId,
                 namespace,
                 topic,
                 subscription,
@@ -3732,6 +3788,8 @@
         serviceBusMessageCountInput = document.getElementById('bvbsServiceBusMessageCount');
         serviceBusSasTokenInput = document.getElementById('bvbsServiceBusSasToken');
         serviceBusConnectionStringInput = document.getElementById('bvbsServiceBusConnectionString');
+        serviceBusConnectionSelect = document.getElementById('bvbsServiceBusConnectionSelect');
+        serviceBusConnectionStringGroup = document.getElementById('bvbsServiceBusConnectionStringGroup');
         serviceBusPeekCheckbox = document.getElementById('bvbsServiceBusPeekOnly');
         serviceBusReplaceCheckbox = document.getElementById('bvbsServiceBusReplace');
         serviceBusFetchBtn = document.getElementById('bvbsServiceBusFetchBtn');
@@ -3814,6 +3872,11 @@
             serviceBusFetchBtn.addEventListener('click', handleServiceBusFetchClick);
         }
 
+        if (serviceBusConnectionSelect) {
+            serviceBusConnectionSelect.addEventListener('change', handleConnectionSelectChange);
+            loadConnectionsForSelect();
+        }
+
         const serviceBusInputs = [
             serviceBusNamespaceInput,
             serviceBusTopicInput,
@@ -3850,6 +3913,7 @@
     }
 
     window.bvbsListRefreshTranslations = function () {
+        loadConnectionsForSelect();
         ensureColumnVisibilityState();
         buildColumnFilterMenu();
         updateColumnFilterToggleState();

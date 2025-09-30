@@ -79,6 +79,15 @@ const databaseInitPromise = new Promise((resolve, reject) => {
                 value TEXT,
                 updated_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS service_bus_connections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                connection_string TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_service_bus_connections_name
+                ON service_bus_connections (name);
         `, error => {
             if (error) {
                 reject(error);
@@ -506,19 +515,144 @@ function buildProxyResponse(messages) {
     });
 }
 
-app.post('/api/service-bus/messages', async (req, res) => {
+app.get('/api/service-bus/connections', async (req, res) => {
+    try {
+        await databaseInitPromise;
+        const rows = await runDatabaseQuery(
+            `
+                SELECT id, name, created_at, updated_at
+                FROM service_bus_connections
+                ORDER BY name COLLATE NOCASE
+            `
+        );
+        res.json({ connections: rows });
+    } catch (error) {
+        console.error('Failed to load Service Bus connections', error);
+        res.status(500).json({ error: 'Failed to load connections.' });
+    }
+});
+
+app.post('/api/service-bus/connections', async (req, res) => {
+    const name = sanitizeText(req.body?.name);
     const connectionString = sanitizeText(req.body?.connectionString);
+
+    if (!name || !connectionString) {
+        return res.status(400).json({ error: 'Name and connection string are required.' });
+    }
+
+    try {
+        await databaseInitPromise;
+        const now = new Date().toISOString();
+        await runDatabaseCommand(
+            `
+                INSERT INTO service_bus_connections (name, connection_string, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+            `,
+            [name, connectionString, now, now]
+        );
+        const newConnection = await getDatabaseValue(
+            'SELECT id, name, created_at, updated_at FROM service_bus_connections WHERE name = ?',
+            [name]
+        );
+        res.status(201).json(newConnection);
+    } catch (error) {
+        console.error('Failed to create Service Bus connection', error);
+        if (error.message && error.message.includes('UNIQUE constraint failed')) {
+            return res.status(409).json({ error: 'A connection with this name already exists.' });
+        }
+        res.status(500).json({ error: 'Failed to create connection.' });
+    }
+});
+
+app.put('/api/service-bus/connections/:id', async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    const name = sanitizeText(req.body?.name);
+    const connectionString = sanitizeText(req.body?.connectionString);
+
+    if (!Number.isFinite(id)) {
+        return res.status(400).json({ error: 'Invalid connection ID.' });
+    }
+    if (!name || !connectionString) {
+        return res.status(400).json({ error: 'Name and connection string are required.' });
+    }
+
+    try {
+        await databaseInitPromise;
+        const now = new Date().toISOString();
+        await runDatabaseCommand(
+            `
+                UPDATE service_bus_connections
+                SET name = ?, connection_string = ?, updated_at = ?
+                WHERE id = ?
+            `,
+            [name, connectionString, now, id]
+        );
+        const updatedConnection = await getDatabaseValue(
+            'SELECT id, name, created_at, updated_at FROM service_bus_connections WHERE id = ?',
+            [id]
+        );
+        if (!updatedConnection) {
+            return res.status(404).json({ error: 'Connection not found.' });
+        }
+        res.json(updatedConnection);
+    } catch (error) {
+        console.error(`Failed to update Service Bus connection ${id}`, error);
+        if (error.message && error.message.includes('UNIQUE constraint failed')) {
+            return res.status(409).json({ error: 'A connection with this name already exists.' });
+        }
+        res.status(500).json({ error: 'Failed to update connection.' });
+    }
+});
+
+app.delete('/api/service-bus/connections/:id', async (req, res) => {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+        return res.status(400).json({ error: 'Invalid connection ID.' });
+    }
+
+    try {
+        await databaseInitPromise;
+        await runDatabaseCommand('DELETE FROM service_bus_connections WHERE id = ?', [id]);
+        res.status(204).send();
+    } catch (error) {
+        console.error(`Failed to delete Service Bus connection ${id}`, error);
+        res.status(500).json({ error: 'Failed to delete connection.' });
+    }
+});
+
+app.post('/api/service-bus/messages', async (req, res) => {
+    const connectionId = Number.isFinite(Number.parseInt(req.body?.connectionId, 10))
+        ? Number.parseInt(req.body.connectionId, 10)
+        : null;
+    let connectionString = sanitizeText(req.body?.connectionString);
     const topic = sanitizeText(req.body?.topic);
     const subscription = sanitizeText(req.body?.subscription);
     const peekOnly = req.body?.peekOnly !== false;
     const maxMessages = coerceMessageCount(req.body?.maxMessages);
     const timeoutSeconds = coerceTimeoutSeconds(req.body?.timeoutSeconds);
 
-    if (!connectionString) {
-        return res.status(400).json({ error: 'Connection string is required.' });
+    if (!connectionId && !connectionString) {
+        return res.status(400).json({ error: 'Connection ID or connection string is required.' });
     }
     if (!topic || !subscription) {
         return res.status(400).json({ error: 'Topic and subscription are required.' });
+    }
+
+    try {
+        await databaseInitPromise;
+        if (connectionId) {
+            const connection = await getDatabaseValue(
+                'SELECT connection_string FROM service_bus_connections WHERE id = ?',
+                [connectionId]
+            );
+            if (!connection) {
+                return res.status(404).json({ error: 'Connection not found.' });
+            }
+            connectionString = connection.connection_string;
+        }
+    } catch (error) {
+        console.error('Failed to look up Service Bus connection', error);
+        return res.status(500).json({ error: 'Failed to look up connection.' });
     }
 
     let client;
