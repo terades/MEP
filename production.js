@@ -2423,13 +2423,60 @@ function updateSelectAllCheckboxState() {
     selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
 }
 
-function updateSelectAllCheckboxState() {
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    const tableBody = document.getElementById('productionList');
-    if (!tableBody || !selectAllCheckbox) return;
-    const rowCheckboxes = tableBody.querySelectorAll('.row-checkbox');
-    const allChecked = Array.from(rowCheckboxes).every(checkbox => checkbox.checked);
-    selectAllCheckbox.checked = rowCheckboxes.length > 0 && allChecked;
+function updateProductionOrderStatus(order, nextStatus, { restartTimer = false } = {}) {
+    if (!order || !nextStatus) {
+        return;
+    }
+
+    const now = Date.now();
+
+    if (nextStatus === 'pending') {
+        delete order.startTimestamp;
+        delete order.endTimestamp;
+    } else if (nextStatus === 'inProgress') {
+        if (restartTimer || !order.startTimestamp) {
+            order.startTimestamp = now;
+        }
+        delete order.endTimestamp;
+    } else if (nextStatus === 'done') {
+        if (!order.startTimestamp) {
+            order.startTimestamp = now;
+        }
+        order.endTimestamp = now;
+    }
+
+    order.status = nextStatus;
+    order.updatedAt = new Date().toISOString();
+    persistProductionList();
+    renderProductionList();
+}
+
+function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral' }) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `table-action-button table-action-button--${variant}`;
+    const label = getTranslation(labelKey, fallbackLabel || labelKey);
+    button.setAttribute('aria-label', label);
+    button.title = label;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', iconPath);
+    svg.appendChild(path);
+    button.appendChild(svg);
+
+    const hiddenLabel = document.createElement('span');
+    hiddenLabel.className = 'visually-hidden';
+    hiddenLabel.textContent = label;
+    button.appendChild(hiddenLabel);
+
+    if (typeof onClick === 'function') {
+        button.addEventListener('click', onClick);
+    }
+
+    return button;
 }
 
 function renderProductionList() {
@@ -2562,6 +2609,46 @@ function renderProductionList() {
         const cellActions = row.insertCell();
         const btnGroup = document.createElement('div');
         btnGroup.className = 'button-group';
+
+        const detailButton = createProductionActionButton({
+            iconPath: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5S14.49 16.5 12 16.5zm0-7a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
+            labelKey: 'Details anzeigen',
+            fallbackLabel: 'Details anzeigen',
+            onClick: () => openLabelPreviewModal(item),
+            variant: 'neutral'
+        });
+        btnGroup.appendChild(detailButton);
+
+        if (item.status !== 'inProgress') {
+            const startButton = createProductionActionButton({
+                iconPath: 'M8 5v14l11-7z',
+                labelKey: 'Produktion starten',
+                fallbackLabel: 'Produktion starten',
+                onClick: () => updateProductionOrderStatus(item, 'inProgress', { restartTimer: true }),
+                variant: 'start'
+            });
+            btnGroup.appendChild(startButton);
+        } else {
+            const completeButton = createProductionActionButton({
+                iconPath: 'M9 16.17l-3.88-3.88-1.41 1.41L9 19l12-12-1.41-1.41z',
+                labelKey: 'Produktion abschließen',
+                fallbackLabel: 'Produktion abschließen',
+                onClick: () => updateProductionOrderStatus(item, 'done'),
+                variant: 'complete'
+            });
+            btnGroup.appendChild(completeButton);
+        }
+
+        if (item.status !== 'pending') {
+            const resetButton = createProductionActionButton({
+                iconPath: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.41 3.59 8 8 8s8-3.59 8-8-3.59-8-8-8z',
+                labelKey: 'Auftrag zurücksetzen',
+                fallbackLabel: 'Auftrag zurücksetzen',
+                onClick: () => updateProductionOrderStatus(item, 'pending'),
+                variant: 'reset'
+            });
+            btnGroup.appendChild(resetButton);
+        }
 
         cellActions.appendChild(btnGroup);
     });
