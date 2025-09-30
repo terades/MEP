@@ -25,6 +25,7 @@
         <script type="module" src="bf3d-viewer3d.js" defer></script>
         <script src="bfma-configurator.js" defer></script>
         <script src="bf3d-configurator.js" defer></script>
+        <script src="service-bus-connections.js" defer></script>
         <script src="service-bus-history.js" defer></script>
         <script src="database-viewer.js" defer></script>
         <script src="production.js" defer></script>
@@ -53,6 +54,12 @@
                                 <path d="M4 6l8 3 8-3V4l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2zm0 4l8 3 8-3v-2l-8 3-8-3v2z" />
                             </svg>
                             <span class="sidebar-text" data-i18n="ServiceBusHistory.Nav">Service-Bus-Archiv</span>
+                        </button>
+                        <button id="showServiceBusConnectionsBtn" class="sidebar-link" data-view-target="serviceBusConnectionsView" data-i18n-title="ServiceBusConnections.Nav" title="Verbindungen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M17 7h-4v2h4c1.65 0 3 1.35 3 3s-1.35 3-3 3h-4v2h4c2.76 0 5-2.24 5-5s-2.24-5-5-5zm-6 8H7c-1.65 0-3-1.35-3-3s1.35-3 3-3h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-2zm-3-4h8v2H8v-2z"/>
+                            </svg>
+                            <span class="sidebar-text" data-i18n="ServiceBusConnections.Nav">Verbindungen</span>
                         </button>
                         <button id="showDatabaseViewerBtn" class="sidebar-link" data-view-target="databaseViewerView" data-i18n-title="DatabaseViewer.Nav" title="Datenbank">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1631,6 +1638,68 @@
                         </div>
                     </div>
                 </div>
+                <div id="serviceBusConnectionsView" class="app-container" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title" data-i18n="ServiceBusConnections.Title">Verbindungen verwalten</h2>
+                            <div class="button-group">
+                                <button type="button" class="btn-primary" id="serviceBusConnectionsNewBtn" data-i18n="ServiceBusConnections.Actions.New">Neue Verbindung</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-subtitle" data-i18n="ServiceBusConnections.Description">Hier können Sie Ihre Azure Service Bus-Verbindungszeichenfolgen sicher speichern und verwalten.</p>
+                            <div id="serviceBusConnectionsStatus" class="info-text" aria-live="polite"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title" data-i18n="ServiceBusConnections.Table.Title">Gespeicherte Verbindungen</h3>
+                        </div>
+                        <div class="production-table-wrapper">
+                            <table id="serviceBusConnectionsTable" class="full-width-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="ServiceBusConnections.Table.Name">Name</th>
+                                        <th data-i18n="ServiceBusConnections.Table.CreatedAt">Erstellt am</th>
+                                        <th data-i18n="ServiceBusConnections.Table.UpdatedAt">Aktualisiert am</th>
+                                        <th data-i18n="ServiceBusConnections.Table.Actions">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceBusConnectionsTableBody"></tbody>
+                            </table>
+                        </div>
+                        <p id="serviceBusConnectionsEmpty" class="info-text" data-i18n="ServiceBusConnections.Empty" hidden>Keine Verbindungen gespeichert.</p>
+                    </div>
+
+                    <div id="serviceBusConnectionModal" class="modal-overlay" aria-hidden="true">
+                        <div class="modal-content card" role="dialog" aria-modal="true" aria-labelledby="serviceBusConnectionModalTitle">
+                            <div class="modal-header card-header">
+                                <h2 class="modal-title card-title" id="serviceBusConnectionModalTitle"></h2>
+                                <button type="button" class="close-modal-btn" id="serviceBusConnectionModalCloseBtn">
+                                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                </button>
+                            </div>
+                            <form id="serviceBusConnectionForm" class="modal-body">
+                                <input type="hidden" id="serviceBusConnectionId" />
+                                <div class="form-group">
+                                    <label for="serviceBusConnectionName" data-i18n="ServiceBusConnections.Form.Name">Name</label>
+                                    <input type="text" id="serviceBusConnectionName" required>
+                                    <p class="form-hint" data-i18n="ServiceBusConnections.Form.NameHint">Ein eindeutiger Name für die Verbindung.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceBusConnectionConnectionString" data-i18n="ServiceBusConnections.Form.ConnectionString">Verbindungszeichenfolge</label>
+                                    <textarea id="serviceBusConnectionConnectionString" rows="4" required spellcheck="false"></textarea>
+                                    <p class="form-hint" data-i18n="ServiceBusConnections.Form.ConnectionStringHint">Die vollständige Verbindungszeichenfolge von Azure Service Bus.</p>
+                                </div>
+                                <div id="serviceBusConnectionModalError" class="info-text error-message"></div>
+                                <div class="modal-footer button-group" style="justify-content: flex-end;">
+                                    <button type="button" class="btn-secondary" id="serviceBusConnectionModalCancelBtn" data-i18n="Abbrechen">Abbrechen</button>
+                                    <button type="submit" class="btn-primary" id="serviceBusConnectionModalSaveBtn" data-i18n="Speichern">Speichern</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <div id="databaseViewerView" class="app-container" style="display:none;">
                     <div class="card">
                         <div class="card-header">
@@ -1720,6 +1789,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
+                                    <label for="bvbsServiceBusConnectionSelect" data-i18n="ServiceBus.ConnectionSelect">Gespeicherte Verbindung</label>
+                                    <select id="bvbsServiceBusConnectionSelect">
+                                        <option value="" data-i18n="ServiceBus.ConnectionSelect.Manual">Manuelle Eingabe</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="bvbsServiceBusConnectionStringGroup">
                                     <label for="bvbsServiceBusConnectionString" data-i18n="ServiceBus.ConnectionString">Verbindungszeichenfolge</label>
                                     <textarea id="bvbsServiceBusConnectionString" rows="2" spellcheck="false" autocomplete="off" placeholder="Endpoint=sb://example.servicebus.windows.net/;SharedAccessKeyName=...;SharedAccessKey=..."></textarea>
                                     <div class="input-hint" data-i18n="ServiceBus.ConnectionStringHint">Wird nur für diese Sitzung verwendet und nicht gespeichert.</div>
