@@ -2568,13 +2568,13 @@ function updateProductionOrderStatus(order, nextStatus, { restartTimer = false }
     const now = Date.now();
 
     if (nextStatus === 'pending') {
-        delete order.startTimestamp;
-        delete order.endTimestamp;
+        order.startTimestamp = null;
+        order.endTimestamp = null;
     } else if (nextStatus === 'inProgress') {
         if (restartTimer || !order.startTimestamp) {
             order.startTimestamp = now;
         }
-        delete order.endTimestamp;
+        order.endTimestamp = null;
     } else if (nextStatus === 'done') {
         if (!order.startTimestamp) {
             order.startTimestamp = now;
@@ -2694,16 +2694,8 @@ function renderProductionList() {
         });
         statusSelect.addEventListener('change', (e) => {
             const newStatus = e.target.value;
-            item.status = newStatus;
-            if (newStatus === 'inProgress' && !item.startTimestamp) {
-                item.startTimestamp = Date.now();
-            } else if (newStatus === 'done' && !item.endTimestamp) {
-                item.endTimestamp = Date.now();
-            }
-            item.updatedAt = new Date().toISOString();
-            updateSelectClass();
-            persistProductionList();
-            renderProductionList();
+            const restartTimer = item.status === 'pending' && newStatus === 'inProgress';
+            updateProductionOrderStatus(item, newStatus, { restartTimer });
         });
         updateSelectClass();
         cellStatus.appendChild(statusSelect);
@@ -2802,7 +2794,7 @@ function renderProductionList() {
         });
         btnGroup.appendChild(noteButton);
 
-        if (item.status !== 'inProgress') {
+        if (item.status === 'pending') {
             const startButton = createProductionActionButton({
                 iconPath: 'M8 5v14l11-7z',
                 labelKey: 'Produktion starten',
@@ -2811,7 +2803,7 @@ function renderProductionList() {
                 variant: 'start'
             });
             btnGroup.appendChild(startButton);
-        } else {
+        } else if (item.status === 'inProgress') {
             const completeButton = createProductionActionButton({
                 iconPath: 'M9 16.17l-3.88-3.88-1.41 1.41L9 19l12-12-1.41-1.41z',
                 labelKey: 'Produktion abschließen',
@@ -2820,6 +2812,15 @@ function renderProductionList() {
                 variant: 'complete'
             });
             btnGroup.appendChild(completeButton);
+        } else if (item.status === 'done') {
+            const continueButton = createProductionActionButton({
+                iconPath: 'M8 5v14l11-7z',
+                labelKey: 'Produktion fortsetzen',
+                fallbackLabel: 'Produktion fortsetzen',
+                onClick: () => updateProductionOrderStatus(item, 'inProgress'),
+                variant: 'start'
+            });
+            btnGroup.appendChild(continueButton);
         }
 
         if (item.status !== 'pending') {
