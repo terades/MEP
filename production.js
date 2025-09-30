@@ -2538,7 +2538,7 @@ function updateProductionOrderStatus(order, nextStatus, { restartTimer = false }
     renderProductionList();
 }
 
-function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral', showLabel = false }) {
+function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral' }) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `table-action-button table-action-button--${variant}`;
@@ -2558,7 +2558,7 @@ function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onCli
 
     const labelSpan = document.createElement('span');
     labelSpan.textContent = label;
-    labelSpan.className = showLabel ? 'table-action-button__label' : 'visually-hidden';
+    labelSpan.className = 'visually-hidden';
     button.appendChild(labelSpan);
 
     if (typeof onClick === 'function') {
@@ -2708,8 +2708,9 @@ function renderProductionList() {
 
         // Actions
         const cellActions = row.insertCell();
+        cellActions.classList.add('production-actions-cell');
         const btnGroup = document.createElement('div');
-        btnGroup.className = 'button-group';
+        btnGroup.className = 'button-group production-actions';
 
         const detailButton = createProductionActionButton({
             iconPath: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5S14.49 16.5 12 16.5zm0-7a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
@@ -2722,12 +2723,11 @@ function renderProductionList() {
 
         const noteButtonLabelKey = hasNote ? 'Bemerkung bearbeiten' : 'Bemerkung hinzufügen';
         const noteButton = createProductionActionButton({
-            iconPath: '',
+            iconPath: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm15.71-9.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
             labelKey: noteButtonLabelKey,
             fallbackLabel: noteButtonLabelKey,
             onClick: () => openProductionNoteModal(item),
-            variant: 'note',
-            showLabel: true
+            variant: 'note'
         });
         btnGroup.appendChild(noteButton);
 
