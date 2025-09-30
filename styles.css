@@ -12,6 +12,9 @@
     --success-color: #7ED321;
     --danger-color: #D0021B;
     --warning-color: #F5A623;
+    --success-color-rgb: 126, 211, 33;
+    --danger-color-rgb: 208, 2, 27;
+    --warning-color-rgb: 245, 166, 35;
     --body-bg-color: #F7F9FA; /* A lighter, cleaner background */
     --card-bg-color: #FFFFFF;
     --light-bg-color: #FDFDFD;
@@ -4109,11 +4112,10 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
 
 #productionTable .button-group {
     justify-content: flex-start;
-    gap: 0.25rem;
+    gap: 0.35rem;
 }
 
 #productionTable .button-group button {
-    padding: 0.4rem;
     line-height: 0;
 }
 
@@ -4122,6 +4124,86 @@ body[data-theme="dark"] #bvbsListTable tbody tr.is-selected:hover {
     height: 1.2em;
     fill: currentColor;
     margin: 0;
+}
+
+.table-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.35rem;
+    min-height: 2.35rem;
+    padding: 0.45rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-action-button svg {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+.table-action-button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.table-action-button--neutral:hover,
+.table-action-button--neutral:focus-visible {
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    border-color: rgba(var(--primary-color-rgb), 0.35);
+    color: var(--primary-color);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.18);
+}
+
+.table-action-button--start {
+    background-color: rgba(var(--primary-color-rgb), 0.12);
+    border-color: rgba(var(--primary-color-rgb), 0.35);
+    color: var(--primary-color);
+}
+
+.table-action-button--start:hover,
+.table-action-button--start:focus-visible {
+    background-color: rgba(var(--primary-color-rgb), 0.24);
+    border-color: rgba(var(--primary-color-rgb), 0.55);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.2);
+}
+
+.table-action-button--complete {
+    background-color: color-mix(in srgb, var(--success-color) 18%, transparent);
+    border-color: color-mix(in srgb, var(--success-color) 45%, transparent);
+    color: color-mix(in srgb, var(--success-color) 70%, black);
+}
+
+.table-action-button--complete:focus-visible {
+    outline-color: var(--success-color);
+}
+
+.table-action-button--complete:hover,
+.table-action-button--complete:focus-visible {
+    background-color: color-mix(in srgb, var(--success-color) 28%, transparent);
+    border-color: color-mix(in srgb, var(--success-color) 55%, transparent);
+    box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--success-color) 30%, transparent);
+}
+
+.table-action-button--reset {
+    background-color: color-mix(in srgb, var(--warning-color) 18%, transparent);
+    border-color: color-mix(in srgb, var(--warning-color) 45%, transparent);
+    color: color-mix(in srgb, var(--warning-color) 70%, black);
+}
+
+.table-action-button--reset:focus-visible {
+    outline-color: var(--warning-color);
+}
+
+.table-action-button--reset:hover,
+.table-action-button--reset:focus-visible {
+    background-color: color-mix(in srgb, var(--warning-color) 28%, transparent);
+    border-color: color-mix(in srgb, var(--warning-color) 55%, transparent);
+    box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--warning-color) 32%, transparent);
 }
 
 .status-select {
