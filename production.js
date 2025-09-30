@@ -2,6 +2,38 @@
 
 const LOCAL_STORAGE_PRODUCTION_LIST_KEY = 'bvbsProductionList';
 let productionList = [];
+const PRODUCTION_STATUS_VALUES = new Set(['pending', 'inProgress', 'done']);
+
+function normalizeTimestamp(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === 'string' && value.trim()) {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+    return null;
+}
+
+function buildProductionListSignature(list) {
+    if (!Array.isArray(list)) {
+        return '';
+    }
+    try {
+        return JSON.stringify(list.map(item => ({
+            id: item?.id ?? null,
+            updatedAt: item?.updatedAt ?? null,
+            status: item?.status ?? null,
+            note: item?.note ?? ''
+        })));
+    } catch (error) {
+        console.warn('Failed to build production list signature', error);
+        return String(Date.now());
+    }
+}
 
 function loadProductionList() {
     const data = localStorage.getItem(LOCAL_STORAGE_PRODUCTION_LIST_KEY);
@@ -11,15 +43,27 @@ function loadProductionList() {
             if (Array.isArray(parsed)) {
                 productionList = parsed.map(item => {
                     const entry = { ...item };
+                    entry.id = typeof item?.id === 'string' || Number.isFinite(item?.id)
+                        ? item.id
+                        : `${item?.komm || ''}${item?.posnr || ''}${Date.now()}`;
                     entry.bvbsCodes = Array.isArray(item?.bvbsCodes)
                         ? item.bvbsCodes.filter(code => typeof code === 'string' && code.trim().length > 0)
                         : [];
                     entry.labelImg = typeof item?.labelImg === 'string' ? item.labelImg : '';
+                    entry.note = typeof item?.note === 'string' ? item.note : '';
+                    entry.status = typeof item?.status === 'string' && PRODUCTION_STATUS_VALUES.has(item.status)
+                        ? item.status
+                        : 'pending';
+                    entry.startTimestamp = normalizeTimestamp(item?.startTimestamp);
+                    entry.endTimestamp = normalizeTimestamp(item?.endTimestamp);
                     if (!entry.releasedAt && entry.startTime) {
                         entry.releasedAt = entry.startTime;
                     }
                     if (!entry.updatedAt && entry.releasedAt) {
                         entry.updatedAt = entry.releasedAt;
+                    }
+                    if (!entry.updatedAt) {
+                        entry.updatedAt = new Date().toISOString();
                     }
                     return entry;
                 });
@@ -39,6 +83,19 @@ function persistProductionList() {
     } catch (e) {
         console.error('Could not store production list', e);
     }
+    try {
+        if (window.bendingFormStorageSync && typeof window.bendingFormStorageSync.syncKey === 'function') {
+            const snapshot = productionList.map(item => ({ ...item }));
+            const syncResult = window.bendingFormStorageSync.syncKey(LOCAL_STORAGE_PRODUCTION_LIST_KEY, snapshot);
+            if (syncResult && typeof syncResult.catch === 'function') {
+                syncResult.catch(syncError => {
+                    console.error('Failed to sync production list to persistent storage', syncError);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to trigger production list sync', error);
+    }
 }
 
 let productionFilterText = '';
@@ -46,6 +103,7 @@ let productionSortKey = 'startTime';
 let productionStatusFilter = 'all';
 const EDIT_PASSWORD = 'mep';
 let selectedProductionIds = new Set();
+let editingProductionNoteOrder = null;
 
 function updateBatchButtonsState() {
     const hasSelection = selectedProductionIds.size > 0;
@@ -2305,6 +2363,33 @@ function closeReleaseModal() {
     if (modal) modal.classList.remove('visible');
 }
 
+function openProductionNoteModal(order = null) {
+    const modal = document.getElementById('productionNoteModal');
+    const textarea = document.getElementById('productionNoteInput');
+    if (!modal || !textarea || !order) {
+        return;
+    }
+    editingProductionNoteOrder = order;
+    textarea.value = typeof order.note === 'string' ? order.note : '';
+    modal.classList.add('visible');
+    setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }, 0);
+}
+
+function closeProductionNoteModal() {
+    const modal = document.getElementById('productionNoteModal');
+    const textarea = document.getElementById('productionNoteInput');
+    if (textarea) {
+        textarea.value = '';
+    }
+    if (modal) {
+        modal.classList.remove('visible');
+    }
+    editingProductionNoteOrder = null;
+}
+
 function closeLabelPreviewModal() {
     const modal = document.getElementById('labelPreviewModal');
     if (!modal) return;
@@ -2562,7 +2647,32 @@ function renderProductionList() {
         row.insertCell().textContent = duration !== null ? formatDuration(duration) : '-';
 
         // Note
-        row.insertCell().textContent = item.note || '';
+        const cellNote = row.insertCell();
+        cellNote.classList.add('production-note-cell');
+        const noteWrapper = document.createElement('div');
+        noteWrapper.className = 'production-note';
+        const noteText = document.createElement('div');
+        noteText.className = 'production-note-text';
+        const hasNote = typeof item.note === 'string' && item.note.trim().length > 0;
+        noteText.textContent = hasNote
+            ? item.note
+            : getTranslation('Keine Bemerkung', 'Keine Bemerkung');
+        noteText.title = hasNote ? item.note : '';
+        noteWrapper.appendChild(noteText);
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'production-note-edit-button';
+        const labelKey = hasNote ? 'Bemerkung bearbeiten' : 'Bemerkung hinzufügen';
+        const buttonLabel = getTranslation(labelKey, labelKey);
+        editButton.textContent = buttonLabel;
+        editButton.setAttribute('aria-label', buttonLabel);
+        editButton.addEventListener('click', () => {
+            openProductionNoteModal(item);
+        });
+        noteWrapper.appendChild(editButton);
+
+        cellNote.appendChild(noteWrapper);
 
         // Label Preview
         const cellLabel = row.insertCell();
@@ -3269,6 +3379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notifyResourceSubscribers();
         setupMasterDataUI();
         loadProductionList();
+        renderProductionList();
         const sidebarElement = document.getElementById('appSidebar');
         if (sidebarElement) {
             sidebarElement.setAttribute('aria-expanded', 'true');
@@ -3349,6 +3460,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeLabelPreviewModal();
             }
         });
+        document.getElementById('productionNoteSaveButton')?.addEventListener('click', () => {
+            if (!editingProductionNoteOrder) {
+                closeProductionNoteModal();
+                return;
+            }
+            const textarea = document.getElementById('productionNoteInput');
+            if (!textarea) {
+                closeProductionNoteModal();
+                return;
+            }
+            const newValue = textarea.value.trim();
+            const previousValue = typeof editingProductionNoteOrder.note === 'string'
+                ? editingProductionNoteOrder.note
+                : '';
+            if (previousValue === newValue) {
+                closeProductionNoteModal();
+                return;
+            }
+            editingProductionNoteOrder.note = newValue;
+            editingProductionNoteOrder.updatedAt = new Date().toISOString();
+            persistProductionList();
+            closeProductionNoteModal();
+            renderProductionList();
+        });
+        document.getElementById('productionNoteModal')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) {
+                closeProductionNoteModal();
+            }
+        });
+        window.addEventListener('bvbsProductionListUpdated', () => {
+            const previousSignature = buildProductionListSignature(productionList);
+            loadProductionList();
+            const nextSignature = buildProductionListSignature(productionList);
+            if (previousSignature !== nextSignature) {
+                renderProductionList();
+            }
+        });
         const labelPreviewOpenButton = document.getElementById('labelPreviewOpenButton');
         if (labelPreviewOpenButton) {
             labelPreviewOpenButton.disabled = true;
@@ -3362,6 +3510,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const labelModal = document.getElementById('labelPreviewModal');
                 if (labelModal && labelModal.classList.contains('visible')) {
                     closeLabelPreviewModal();
+                }
+                const noteModal = document.getElementById('productionNoteModal');
+                if (noteModal && noteModal.classList.contains('visible')) {
+                    closeProductionNoteModal();
                 }
             }
         });
@@ -3455,6 +3607,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ? codes.filter(code => typeof code === 'string' && code.trim().length > 0)
             : [];
         const timestampIso = new Date().toISOString();
+        const releaseNoteInput = document.getElementById('releaseNote');
+        const releaseNoteValue = typeof releaseNoteInput?.value === 'string' ? releaseNoteInput.value.trim() : '';
         productionList.push({
             id: Date.now(),
             startTime,
@@ -3462,7 +3616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             komm: document.getElementById('KommNr').value,
             auftrag: document.getElementById('auftrag').value,
             posnr: document.getElementById('posnr').value,
-            note: document.getElementById('releaseNote')?.value || '',
+            note: releaseNoteValue,
             labelImg: imgData,
             status: 'pending',
             bvbsCodes: normalizedCodes,

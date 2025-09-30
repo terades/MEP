@@ -23,6 +23,12 @@
                     .map(item => (item && typeof item.name === 'string') ? item.name : null)
                     .filter(name => Boolean(name));
             }
+        },
+        bvbsProductionList: {
+            event: 'bvbsProductionListUpdated',
+            buildDetail: value => ({
+                orderCount: Array.isArray(value) ? value.length : 0
+            })
         }
     };
 
