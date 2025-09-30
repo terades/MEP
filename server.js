@@ -49,7 +49,8 @@ const BENDING_FORM_STORAGE_KEYS = new Set([
     'bf3dSavedForms',
     'bf3dSavedShapes',
     'bfmaSavedMeshes',
-    'bvbsResources'
+    'bvbsResources',
+    'bvbsProductionList'
 ]);
 
 const databaseInitPromise = new Promise((resolve, reject) => {
@@ -412,7 +413,7 @@ async function persistServiceBusMessages(messages, context = {}) {
     }
 }
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(STATIC_DIR, { extensions: ['html'] }));
 
 function sanitizeText(value) {
