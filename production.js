@@ -7,7 +7,25 @@ function loadProductionList() {
     const data = localStorage.getItem(LOCAL_STORAGE_PRODUCTION_LIST_KEY);
     if (data) {
         try {
-            productionList = JSON.parse(data);
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed)) {
+                productionList = parsed.map(item => {
+                    const entry = { ...item };
+                    entry.bvbsCodes = Array.isArray(item?.bvbsCodes)
+                        ? item.bvbsCodes.filter(code => typeof code === 'string' && code.trim().length > 0)
+                        : [];
+                    entry.labelImg = typeof item?.labelImg === 'string' ? item.labelImg : '';
+                    if (!entry.releasedAt && entry.startTime) {
+                        entry.releasedAt = entry.startTime;
+                    }
+                    if (!entry.updatedAt && entry.releasedAt) {
+                        entry.updatedAt = entry.releasedAt;
+                    }
+                    return entry;
+                });
+            } else {
+                productionList = [];
+            }
         } catch (e) {
             console.error('Could not parse production list', e);
             productionList = [];
@@ -2287,6 +2305,80 @@ function closeReleaseModal() {
     if (modal) modal.classList.remove('visible');
 }
 
+function closeLabelPreviewModal() {
+    const modal = document.getElementById('labelPreviewModal');
+    if (!modal) return;
+    modal.classList.remove('visible');
+    const image = document.getElementById('labelPreviewImage');
+    if (image) {
+        image.src = '';
+    }
+    const detailList = document.getElementById('labelPreviewDetails');
+    if (detailList) {
+        detailList.innerHTML = '';
+    }
+    const openButton = document.getElementById('labelPreviewOpenButton');
+    if (openButton) {
+        openButton.disabled = true;
+        openButton.onclick = null;
+    }
+}
+
+function openLabelPreviewModal(order = {}) {
+    const modal = document.getElementById('labelPreviewModal');
+    if (!modal) return;
+
+    const image = document.getElementById('labelPreviewImage');
+    if (image) {
+        image.src = order.labelImg || '';
+        image.alt = getTranslation('Label Vorschau', 'Label Vorschau');
+    }
+
+    const openButton = document.getElementById('labelPreviewOpenButton');
+    if (openButton) {
+        const hasImage = typeof order.labelImg === 'string' && order.labelImg.length > 0;
+        openButton.disabled = !hasImage;
+        openButton.onclick = hasImage ? () => window.open(order.labelImg, '_blank') : null;
+    }
+
+    const detailEntries = [];
+    const labelCount = Array.isArray(order.bvbsCodes) ? order.bvbsCodes.length : 0;
+    const durationMs = order.startTimestamp
+        ? ((order.status === 'done' && order.endTimestamp) ? (order.endTimestamp - order.startTimestamp) : (Date.now() - order.startTimestamp))
+        : null;
+
+    detailEntries.push({ labelKey: 'Projekt', fallbackLabel: 'Projekt', value: order.projekt });
+    detailEntries.push({ labelKey: 'KommNr', fallbackLabel: 'KommNr', value: order.komm });
+    detailEntries.push({ labelKey: 'Auftrag', fallbackLabel: 'Auftrag', value: order.auftrag });
+    detailEntries.push({ labelKey: 'Pos-Nr.', fallbackLabel: 'Pos-Nr.', value: order.posnr });
+    detailEntries.push({ labelKey: 'Status', fallbackLabel: 'Status', value: getTranslation(statusKey(order.status), statusKey(order.status)) });
+    detailEntries.push({ labelKey: 'Startzeit', fallbackLabel: 'Startzeit', value: formatDateTime(order.startTime) });
+    detailEntries.push({ labelKey: 'Freigegeben am', fallbackLabel: 'Freigegeben am', value: formatDateTime(order.releasedAt || order.startTimestamp) });
+    detailEntries.push({ labelKey: 'Zuletzt aktualisiert', fallbackLabel: 'Zuletzt aktualisiert', value: formatDateTime(order.updatedAt || order.releasedAt) });
+    detailEntries.push({ labelKey: 'Laufzeit', fallbackLabel: 'Laufzeit', value: durationMs !== null ? formatDuration(durationMs) : '-' });
+    detailEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: labelCount });
+    const noteValue = typeof order.note === 'string' && order.note.trim().length > 0
+        ? order.note.trim()
+        : getTranslation('Keine Bemerkung', 'Keine Bemerkung');
+    detailEntries.push({ labelKey: 'Bemerkung', fallbackLabel: 'Bemerkung', value: noteValue });
+
+    const detailList = document.getElementById('labelPreviewDetails');
+    if (detailList) {
+        detailList.innerHTML = '';
+        detailEntries.forEach(entry => {
+            const value = entry.value !== null && entry.value !== undefined && entry.value !== '' ? entry.value : '-';
+            const dt = document.createElement('dt');
+            dt.textContent = getTranslation(entry.labelKey, entry.fallbackLabel || entry.labelKey);
+            const dd = document.createElement('dd');
+            dd.textContent = typeof value === 'string' ? value : String(value);
+            detailList.appendChild(dt);
+            detailList.appendChild(dd);
+        });
+    }
+
+    modal.classList.add('visible');
+}
+
 function statusKey(status) {
     switch (status) {
         case 'inProgress': return 'In Arbeit';
@@ -2309,6 +2401,17 @@ function formatDuration(ms) {
     const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
+}
+
+function formatDateTime(value) {
+    if (!value) {
+        return '-';
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '-';
+    }
+    return date.toLocaleString();
 }
 
 function updateSelectAllCheckboxState() {
@@ -2397,6 +2500,7 @@ function renderProductionList() {
             } else if (newStatus === 'done' && !item.endTimestamp) {
                 item.endTimestamp = Date.now();
             }
+            item.updatedAt = new Date().toISOString();
             updateSelectClass();
             persistProductionList();
             renderProductionList();
@@ -2415,11 +2519,44 @@ function renderProductionList() {
 
         // Label Preview
         const cellLabel = row.insertCell();
+        cellLabel.classList.add('label-cell');
+        const previewButton = document.createElement('button');
+        previewButton.type = 'button';
+        previewButton.className = 'label-preview-button';
+        previewButton.setAttribute('aria-label', getTranslation('Label vergrößern', 'Label vergrößern'));
+        previewButton.title = getTranslation('Label vergrößern', 'Label vergrößern');
         const img = document.createElement('img');
-        img.src = item.labelImg;
+        const hasLabelImage = typeof item.labelImg === 'string' && item.labelImg.length > 0;
+        img.src = hasLabelImage ? item.labelImg : '';
         img.className = 'label-thumbnail';
-        img.addEventListener('click', () => window.open(item.labelImg, '_blank'));
-        cellLabel.appendChild(img);
+        img.alt = getTranslation('Label Vorschau', 'Label Vorschau');
+        previewButton.appendChild(img);
+        previewButton.disabled = !hasLabelImage;
+        if (hasLabelImage) {
+            previewButton.addEventListener('click', () => openLabelPreviewModal(item));
+        }
+        cellLabel.appendChild(previewButton);
+
+        const labelInfoList = document.createElement('dl');
+        labelInfoList.className = 'label-extra-info';
+        const labelInfoEntries = [];
+        const labelCount = Array.isArray(item.bvbsCodes) ? item.bvbsCodes.length : 0;
+        labelInfoEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: labelCount });
+        const releaseTime = item.releasedAt || item.startTime || item.startTimestamp;
+        labelInfoEntries.push({ labelKey: 'Freigegeben am', fallbackLabel: 'Freigegeben am', value: formatDateTime(releaseTime) });
+        if (item.updatedAt && item.updatedAt !== releaseTime) {
+            labelInfoEntries.push({ labelKey: 'Zuletzt aktualisiert', fallbackLabel: 'Zuletzt aktualisiert', value: formatDateTime(item.updatedAt) });
+        }
+        labelInfoEntries.forEach(info => {
+            const dt = document.createElement('dt');
+            dt.textContent = getTranslation(info.labelKey, info.fallbackLabel || info.labelKey);
+            const dd = document.createElement('dd');
+            const value = info.value !== null && info.value !== undefined && info.value !== '' ? info.value : '-';
+            dd.textContent = typeof value === 'string' ? value : String(value);
+            labelInfoList.appendChild(dt);
+            labelInfoList.appendChild(dd);
+        });
+        cellLabel.appendChild(labelInfoList);
 
         // Actions
         const cellActions = row.insertCell();
@@ -3117,11 +3254,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeResourceModal();
             }
         });
+        document.getElementById('labelPreviewCloseButton')?.addEventListener('click', () => {
+            closeLabelPreviewModal();
+        });
+        document.getElementById('labelPreviewModal')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) {
+                closeLabelPreviewModal();
+            }
+        });
+        const labelPreviewOpenButton = document.getElementById('labelPreviewOpenButton');
+        if (labelPreviewOpenButton) {
+            labelPreviewOpenButton.disabled = true;
+        }
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape') {
                 const modal = document.getElementById('resourceModal');
                 if (modal && modal.classList.contains('visible')) {
                     closeResourceModal();
+                }
+                const labelModal = document.getElementById('labelPreviewModal');
+                if (labelModal && labelModal.classList.contains('visible')) {
+                    closeLabelPreviewModal();
                 }
             }
         });
@@ -3211,6 +3364,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = await html2canvas(labelElement);
         const imgData = canvas.toDataURL('image/png');
         const codes = typeof getBvbsCodes === 'function' ? getBvbsCodes() : [];
+        const normalizedCodes = Array.isArray(codes)
+            ? codes.filter(code => typeof code === 'string' && code.trim().length > 0)
+            : [];
+        const timestampIso = new Date().toISOString();
         productionList.push({
             id: Date.now(),
             startTime,
@@ -3221,7 +3378,9 @@ document.addEventListener('DOMContentLoaded', () => {
             note: document.getElementById('releaseNote')?.value || '',
             labelImg: imgData,
             status: 'pending',
-            bvbsCodes: codes
+            bvbsCodes: normalizedCodes,
+            releasedAt: timestampIso,
+            updatedAt: timestampIso
         });
         if (window.deleteCurrentSavedOrder) {
             window.deleteCurrentSavedOrder();

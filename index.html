@@ -1938,6 +1938,31 @@
             </div>
         </div>
 
+        <div id="labelPreviewModal" class="modal-overlay">
+            <div class="modal-content card label-preview-modal">
+                <div class="modal-header card-header">
+                    <h2 class="modal-title card-title" data-i18n="Label Vorschau">Label Vorschau</h2>
+                    <button type="button" class="close-modal-btn" id="labelPreviewCloseButton">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body label-preview-body">
+                    <div class="label-preview-image-wrapper">
+                        <img id="labelPreviewImage" class="label-preview-image" alt="">
+                        <div class="label-preview-actions">
+                            <button type="button" id="labelPreviewOpenButton" class="btn-secondary" data-i18n="In neuem Tab öffnen">In neuem Tab öffnen</button>
+                        </div>
+                    </div>
+                    <div class="label-preview-meta">
+                        <h3 class="label-preview-subtitle" data-i18n="Auftragsdetails">Auftragsdetails</h3>
+                        <dl id="labelPreviewDetails" class="label-preview-details"></dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="savedOrdersModal" class="modal-overlay">
             <div class="modal-content card">
                 <div class="modal-header card-header">
