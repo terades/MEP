@@ -3875,6 +3875,11 @@
         if (serviceBusConnectionSelect) {
             serviceBusConnectionSelect.addEventListener('change', handleConnectionSelectChange);
             loadConnectionsForSelect();
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                window.addEventListener('servicebus:connections-updated', () => {
+                    loadConnectionsForSelect();
+                });
+            }
         }
 
         const serviceBusInputs = [
