@@ -2588,13 +2588,25 @@ function updateProductionOrderStatus(order, nextStatus, { restartTimer = false }
     renderProductionList();
 }
 
-function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onClick, variant = 'neutral' }) {
+function createProductionActionButton({ iconPath, labelKey, fallbackLabel, action, orderId, orderIndex, variant = 'neutral', disabled = false }) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `table-action-button table-action-button--${variant}`;
     const label = getTranslation(labelKey, fallbackLabel || labelKey);
     button.setAttribute('aria-label', label);
     button.title = label;
+    if (action) {
+        button.dataset.action = action;
+    }
+    if (orderId !== undefined) {
+        button.dataset.orderId = String(orderId);
+    }
+    if (Number.isFinite(orderIndex) && orderIndex >= 0) {
+        button.dataset.orderIndex = String(orderIndex);
+    }
+    if (disabled) {
+        button.disabled = true;
+    }
 
     if (typeof iconPath === 'string' && iconPath.trim().length > 0) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -2611,11 +2623,68 @@ function createProductionActionButton({ iconPath, labelKey, fallbackLabel, onCli
     labelSpan.className = 'visually-hidden';
     button.appendChild(labelSpan);
 
-    if (typeof onClick === 'function') {
-        button.addEventListener('click', onClick);
-    }
-
     return button;
+}
+
+function getProductionOrderByDataset(button) {
+    if (!button) {
+        return null;
+    }
+    if (button.dataset.orderIndex) {
+        const parsedIndex = Number.parseInt(button.dataset.orderIndex, 10);
+        if (Number.isFinite(parsedIndex) && parsedIndex >= 0 && parsedIndex < productionList.length) {
+            const order = productionList[parsedIndex];
+            if (order) {
+                return order;
+            }
+        }
+    }
+    if (button.dataset.orderId) {
+        const orderId = button.dataset.orderId;
+        const order = productionList.find(item => String(item?.id ?? '') === orderId);
+        if (order) {
+            return order;
+        }
+    }
+    return null;
+}
+
+function handleProductionTableClick(event) {
+    const button = event.target?.closest('.table-action-button');
+    if (!button || button.disabled) {
+        return;
+    }
+    const action = button.dataset.action;
+    if (!action) {
+        return;
+    }
+    const order = getProductionOrderByDataset(button);
+    if (!order) {
+        return;
+    }
+    event.preventDefault();
+    switch (action) {
+        case 'detail':
+            openLabelPreviewModal(order);
+            break;
+        case 'note':
+            openProductionNoteModal(order);
+            break;
+        case 'start':
+            updateProductionOrderStatus(order, 'inProgress', { restartTimer: true });
+            break;
+        case 'complete':
+            updateProductionOrderStatus(order, 'done');
+            break;
+        case 'continue':
+            updateProductionOrderStatus(order, 'inProgress');
+            break;
+        case 'reset':
+            updateProductionOrderStatus(order, 'pending');
+            break;
+        default:
+            break;
+    }
 }
 
 function renderProductionList() {
@@ -2779,7 +2848,9 @@ function renderProductionList() {
             iconPath: 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5S14.49 16.5 12 16.5zm0-7a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
             labelKey: 'Details anzeigen',
             fallbackLabel: 'Details anzeigen',
-            onClick: () => openLabelPreviewModal(item),
+            action: 'detail',
+            orderId: rowIdValue,
+            orderIndex,
             variant: 'neutral'
         });
         btnGroup.appendChild(detailButton);
@@ -2789,7 +2860,9 @@ function renderProductionList() {
             iconPath: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm15.71-9.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
             labelKey: noteButtonLabelKey,
             fallbackLabel: noteButtonLabelKey,
-            onClick: () => openProductionNoteModal(item),
+            action: 'note',
+            orderId: rowIdValue,
+            orderIndex,
             variant: 'note'
         });
         btnGroup.appendChild(noteButton);
@@ -2799,7 +2872,9 @@ function renderProductionList() {
                 iconPath: 'M8 5v14l11-7z',
                 labelKey: 'Produktion starten',
                 fallbackLabel: 'Produktion starten',
-                onClick: () => updateProductionOrderStatus(item, 'inProgress', { restartTimer: true }),
+                action: 'start',
+                orderId: rowIdValue,
+                orderIndex,
                 variant: 'start'
             });
             btnGroup.appendChild(startButton);
@@ -2808,7 +2883,9 @@ function renderProductionList() {
                 iconPath: 'M9 16.17l-3.88-3.88-1.41 1.41L9 19l12-12-1.41-1.41z',
                 labelKey: 'Produktion abschließen',
                 fallbackLabel: 'Produktion abschließen',
-                onClick: () => updateProductionOrderStatus(item, 'done'),
+                action: 'complete',
+                orderId: rowIdValue,
+                orderIndex,
                 variant: 'complete'
             });
             btnGroup.appendChild(completeButton);
@@ -2817,7 +2894,9 @@ function renderProductionList() {
                 iconPath: 'M8 5v14l11-7z',
                 labelKey: 'Produktion fortsetzen',
                 fallbackLabel: 'Produktion fortsetzen',
-                onClick: () => updateProductionOrderStatus(item, 'inProgress'),
+                action: 'continue',
+                orderId: rowIdValue,
+                orderIndex,
                 variant: 'start'
             });
             btnGroup.appendChild(continueButton);
@@ -2828,7 +2907,9 @@ function renderProductionList() {
                 iconPath: 'M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.41 3.59 8 8 8s8-3.59 8-8-3.59-8-8-8z',
                 labelKey: 'Auftrag zurücksetzen',
                 fallbackLabel: 'Auftrag zurücksetzen',
-                onClick: () => updateProductionOrderStatus(item, 'pending'),
+                action: 'reset',
+                orderId: rowIdValue,
+                orderIndex,
                 variant: 'reset'
             });
             btnGroup.appendChild(resetButton);
@@ -3735,6 +3816,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSelectAllCheckboxState();
         }
     });
+    tableBody?.addEventListener('click', handleProductionTableClick);
 
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     selectAllCheckbox?.addEventListener('change', e => {
