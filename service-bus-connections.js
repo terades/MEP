@@ -131,6 +131,17 @@
         state.editingConnection = null;
     }
 
+    function notifyConnectionsUpdated() {
+        if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+            return;
+        }
+        try {
+            window.dispatchEvent(new CustomEvent('servicebus:connections-updated'));
+        } catch (error) {
+            console.warn('Failed to dispatch connections updated event', error);
+        }
+    }
+
     async function handleFormSubmit(event) {
         event.preventDefault();
         const id = elements.modal.idInput.value;
@@ -159,6 +170,7 @@
 
             closeModal();
             await loadConnections();
+            notifyConnectionsUpdated();
             setStatus(id
                 ? translate('ServiceBusConnections.Status.UpdateSuccess', 'Verbindung aktualisiert.')
                 : translate('ServiceBusConnections.Status.CreateSuccess', 'Verbindung erstellt.'), 'success');
@@ -183,6 +195,7 @@
             const response = await fetch(`/api/service-bus/connections/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Failed to delete');
             await loadConnections();
+            notifyConnectionsUpdated();
             setStatus(translate('ServiceBusConnections.Status.DeleteSuccess', 'Verbindung gelöscht.'), 'success');
         } catch (error) {
             console.error('Failed to delete connection:', error);
