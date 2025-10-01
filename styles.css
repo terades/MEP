@@ -5079,6 +5079,10 @@ body[data-theme="dark"] .bf2d-machine-list-item {
     height: 100%;
 }
 
+.bf2d-preview-stage > svg {
+    overflow: visible;
+}
+
 #bf2dPreviewSvg {
     display: block;
 }
