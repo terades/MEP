@@ -1056,7 +1056,7 @@ let zonesPerLabel = 16; // Zonenanzahl Zone 1 (aufteilbar)
 			let previewUpdateTimer;
 let highlightedZoneDisplayIndex = null;
 let dimensioningMode = 'arrangementLength'; // 'arrangementLength' or 'totalZoneSpace'
-let showOverhangs = false;
+let showOverhangs = true;
 let summaryStatusOverride = null;
 let summaryStatusTimer = null;
 			
@@ -2770,8 +2770,11 @@ function triggerPreviewUpdateDebounced() {
                         const basketData = {
                             totalLength: parseFloat(document.getElementById('gesamtlange').value) || 0,
                             mainBarDiameter: parseFloat(document.getElementById('langdrahtDurchmesser').value) || 0,
+                            initialOverhang: parseFloat(document.getElementById('anfangsueberstand').value) || 0,
+                            finalOverhang: parseFloat(document.getElementById('endueberstand').value) || 0,
                             zones: JSON.parse(JSON.stringify(zonesData)),
-                            highlightedZoneDisplayIndex
+                            highlightedZoneDisplayIndex,
+                            showOverhangs
                         };
                         window.viewer3d.update(basketData);
                     }
@@ -2932,26 +2935,33 @@ function triggerPreviewUpdateDebounced() {
 			    svgContent += '<g class="cage-drawing-group">';
 			
 			    try {
-			        const totalLength = parseFloat(document.getElementById('gesamtlange').value) || 0;
-			        if (totalLength <= 0) {
-			            errorEl.textContent = 'Gesamtlänge muss größer als 0 sein.';
-			            errorEl.classList.add('error');
-			            svgContainer.innerHTML = svgContent + '</g>';
-			            return;
-			        }
-			
-                                const initialOverhang = 0;
-                                const finalOverhang = 0;
-			        const drawingWidth = width - 2 * PADDING_VISUAL;
-			        if (drawingWidth <= 0) {
-			            svgContainer.innerHTML = svgContent + '</g>';
-			            return;
-			        }
-			
-			        const scale = drawingWidth / totalLength;
-			        const centerY = height / 2 - 20;
-			
-			        svgContent += '<g class="main-bars-group">';
+                                const totalLength = parseFloat(document.getElementById('gesamtlange').value) || 0;
+                                const initialOverhang = Math.max(0, parseFloat(document.getElementById('anfangsueberstand').value) || 0);
+                                const finalOverhang = Math.max(0, parseFloat(document.getElementById('endueberstand').value) || 0);
+                                if (totalLength <= 0) {
+                                    errorEl.textContent = 'Gesamtlänge muss größer als 0 sein.';
+                                    errorEl.classList.add('error');
+                                    svgContainer.innerHTML = svgContent + '</g>';
+                                    return;
+                                }
+
+                                if (initialOverhang + finalOverhang > totalLength) {
+                                    errorEl.textContent = 'Summe aus Anfangs- und Endüberstand überschreitet die Gesamtlänge.';
+                                    errorEl.classList.add('error');
+                                    svgContainer.innerHTML = svgContent + '</g>';
+                                    return;
+                                }
+
+                                const drawingWidth = width - 2 * PADDING_VISUAL;
+                                if (drawingWidth <= 0) {
+                                    svgContainer.innerHTML = svgContent + '</g>';
+                                    return;
+                                }
+
+                                const scale = drawingWidth / totalLength;
+                                const centerY = height / 2 - 20;
+
+                                svgContent += '<g class="main-bars-group">';
 			        const barYTop = Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 3.5);
 			        const barYBottom = Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 3.5);
 			        const startX = Math.round(PADDING_VISUAL);
@@ -2960,10 +2970,19 @@ function triggerPreviewUpdateDebounced() {
 			        svgContent += `<line class="main-bar" x1="${startX}" y1="${barYBottom}" x2="${endX}" y2="${barYBottom}"/>`;
 			        svgContent += '</g>';
 			
-                                let currentPositionMm = 0;
+                                let currentPositionMm = initialOverhang;
                                 let stirrupZoneTotalLength = 0;
                                 const dimY = centerY + STIRRUP_HEIGHT_VISUAL / 2 + DIM_LINE_OFFSET_BELOW;
                                 const dimYPitch = centerY - STIRRUP_HEIGHT_VISUAL / 2 - DIM_LINE_OFFSET_ABOVE;
+                                const zoneLimitMm = totalLength - finalOverhang;
+
+                                if (showOverhangs && initialOverhang > 0) {
+                                    const overhangWidth = Math.round(initialOverhang * scale);
+                                    const overhangX = Math.round(PADDING_VISUAL);
+                                    const overhangY = Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2);
+                                    svgContent += `<rect class="overhang-rect" x="${overhangX}" y="${overhangY}" width="${overhangWidth}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
+                                    svgContent += buildDimensionLineSvg(overhangX, dimY + INTER_ZONE_DIM_OFFSET, overhangX + overhangWidth, dimY + INTER_ZONE_DIM_OFFSET, `i=${initialOverhang}`, 0, 'dim-text-overhang', 'dim-line-default', 'center');
+                                }
 
                                 // draw standard stirrup at position 0
                                 if (zonesData.length > 0) {
@@ -2983,6 +3002,7 @@ function triggerPreviewUpdateDebounced() {
 
                                     const zoneLength = numStirrups > 0 && pitch > 0 ? numStirrups * pitch : 0;
                                     stirrupZoneTotalLength += zoneLength;
+                                    const zoneEffectiveLength = Math.max(0, Math.min(zoneLength, zoneLimitMm - zoneStart));
 
                                     const isHighlighted = highlightedZoneDisplayIndex === displayIndex;
                                     const zoneColorIndex = index % NUM_ZONE_COLORS_AVAILABLE;
@@ -2996,11 +3016,14 @@ function triggerPreviewUpdateDebounced() {
 
                                     if (numStirrups > 0) {
                                         const zoneStartScaled = PADDING_VISUAL + zoneStart * scale;
-                                        if (zoneLength > 0) {
-                                            svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneLength * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
+                                        if (zoneEffectiveLength > 0) {
+                                            svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneEffectiveLength * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                         }
                                         for (let j = 1; j <= numStirrups; j++) {
                                             const stirrupPos = zoneStart + j * pitch;
+                                            if (stirrupPos > zoneLimitMm + 1) {
+                                                break;
+                                            }
                                             const stirrupX = Math.round(PADDING_VISUAL + stirrupPos * scale);
                                             if (stirrupPos <= totalLength + 1) {
                                                 const strokeClass = stirrupStrokeClass;
@@ -3015,14 +3038,14 @@ function triggerPreviewUpdateDebounced() {
                                         let dimText = '';
 
                                         if (dimensioningMode === 'totalZoneSpace' && numStirrups > 0 && pitch > 0) {
-                                            dimLength = numStirrups * pitch;
+                                            dimLength = Math.max(0, Math.min(numStirrups * pitch, zoneEffectiveLength));
                                             dimText = `${numStirrups}x${pitch}=${dimLength}`;
                                             const dimEndScaled = PADDING_VISUAL + (zoneStart + dimLength) * scale;
                                             if (dimLength > 0) {
                                                 svgContent += buildDimensionLineSvg(zoneStartScaled, dimLineY, dimEndScaled, dimLineY, dimText, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'center');
                                             }
                                         } else if (numStirrups > 0 && pitch > 0) {
-                                            dimLength = numStirrups * pitch;
+                                            dimLength = Math.max(0, Math.min(numStirrups * pitch, zoneEffectiveLength));
                                             dimText = `${numStirrups}x${pitch}=${dimLength}`;
                                             const dimEndScaled = PADDING_VISUAL + (zoneStart + dimLength) * scale;
                                             svgContent += buildDimensionLineSvg(zoneStartScaled, dimLineY, dimEndScaled, dimLineY, dimText, 0, `dim-text-default ${zoneColorIndex}`, `dim-line-default ${zoneColorIndex}`, 'center');
@@ -3043,15 +3066,25 @@ function triggerPreviewUpdateDebounced() {
                                 });
                                 svgContent += '</g>';
 
-                                if (stirrupZoneTotalLength < totalLength - 0.1) {
-                                    const leerraumStart = PADDING_VISUAL + stirrupZoneTotalLength * scale;
-                                    const leerraumEnd = PADDING_VISUAL + totalLength * scale;
+                                if (showOverhangs && finalOverhang > 0) {
+                                    const finalStartMm = totalLength - finalOverhang;
+                                    const finalStartX = Math.round(PADDING_VISUAL + finalStartMm * scale);
+                                    const finalWidth = Math.round(finalOverhang * scale);
+                                    const overhangY = Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2);
+                                    svgContent += `<rect class="overhang-rect" x="${finalStartX}" y="${overhangY}" width="${finalWidth}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
+                                    svgContent += buildDimensionLineSvg(finalStartX, dimY + INTER_ZONE_DIM_OFFSET * 2, finalStartX + finalWidth, dimY + INTER_ZONE_DIM_OFFSET * 2, `a=${finalOverhang}`, 0, 'dim-text-overhang', 'dim-line-default', 'center');
+                                }
+
+                                const zoneCoverageEndMm = initialOverhang + stirrupZoneTotalLength;
+                                if (zoneCoverageEndMm < zoneLimitMm - 0.1) {
+                                    const leerraumStart = PADDING_VISUAL + zoneCoverageEndMm * scale;
+                                    const leerraumEnd = PADDING_VISUAL + zoneLimitMm * scale;
                                     svgContent += '<g class="leerraum-visual-group">';
                                     svgContent += `<rect class="leerraum-fill" x="${Math.round(leerraumStart)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(leerraumEnd - leerraumStart)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                     svgContent += '</g>';
                                 }
 
-                                const effectiveLength = totalLength;
+                                const effectiveLength = Math.max(0, totalLength - initialOverhang - finalOverhang);
                                 if (Math.abs(stirrupZoneTotalLength - effectiveLength) > 0.1 && stirrupZoneTotalLength < effectiveLength) {
                                     errorEl.textContent = `Warnung: Leerraum (${(effectiveLength - stirrupZoneTotalLength).toFixed(1)}mm).`;
                                     errorEl.classList.add('warning');
@@ -3678,11 +3711,45 @@ document.addEventListener('DOMContentLoaded', () => {
                                 showFeedback('barcodeError', 'Debug-Log gelöscht.', 'info', 2000);
                             });
 
+                            const viewer3dMeasureBtn = document.getElementById('viewer3dMeasureBtn');
+                            let viewer3dMeasurementActive = false;
+
+                            const setViewer3dMeasurementMode = (active) => {
+                                const next = !!active;
+                                viewer3dMeasurementActive = next;
+                                if (viewer3dMeasureBtn) {
+                                    viewer3dMeasureBtn.classList.toggle('is-active', next);
+                                    viewer3dMeasureBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+                                }
+                                if (window.viewer3d && typeof window.viewer3d.toggleMeasurementMode === 'function') {
+                                    window.viewer3d.toggleMeasurementMode(next);
+                                }
+                            };
+
+                            if (viewer3dMeasureBtn) {
+                                viewer3dMeasureBtn.disabled = true;
+                                viewer3dMeasureBtn.setAttribute('aria-pressed', 'false');
+                                viewer3dMeasureBtn.addEventListener('click', () => {
+                                    if (viewer3dMeasureBtn.disabled) {
+                                        return;
+                                    }
+                                    setViewer3dMeasurementMode(!viewer3dMeasurementActive);
+                                });
+                            }
+
                             document.getElementById('view2dBtn')?.addEventListener('click', () => {
                                 document.getElementById('cagePreviewSvgContainer').style.display = 'block';
                                 document.getElementById('viewer3dContainer').style.display = 'none';
                                 document.getElementById('view2dBtn').classList.add('active');
                                 document.getElementById('view3dBtn').classList.remove('active');
+                                if (viewer3dMeasureBtn) {
+                                    viewer3dMeasureBtn.disabled = true;
+                                    viewer3dMeasureBtn.classList.remove('is-active');
+                                    viewer3dMeasureBtn.setAttribute('aria-pressed', 'false');
+                                }
+                                if (viewer3dMeasurementActive) {
+                                    setViewer3dMeasurementMode(false);
+                                }
                                 if (typeof window.requestAnimationFrame === 'function') {
                                     window.requestAnimationFrame(() => drawCagePreview());
                                 } else {
@@ -3695,6 +3762,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 document.getElementById('viewer3dContainer').style.display = 'block';
                                 document.getElementById('view2dBtn').classList.remove('active');
                                 document.getElementById('view3dBtn').classList.add('active');
+                                if (viewer3dMeasureBtn) {
+                                    viewer3dMeasureBtn.disabled = false;
+                                }
                                 // May need to trigger a resize/render of the 3D view
                                 if(window.viewer3d) {
                                     window.viewer3d.onResize();
