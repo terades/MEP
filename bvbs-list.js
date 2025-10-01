@@ -95,6 +95,83 @@
         return typeof fallback === 'string' ? fallback : key;
     }
 
+    function computeSvgScale(svg, viewBox) {
+        if (!svg || !viewBox) {
+            return { unitPerPx: 1, pxPerUnit: 1 };
+        }
+        const rect = typeof svg.getBoundingClientRect === 'function' ? svg.getBoundingClientRect() : null;
+        const widthPx = rect?.width || svg.clientWidth || 0;
+        const heightPx = rect?.height || svg.clientHeight || 0;
+        const viewWidth = Number.isFinite(viewBox.width) && viewBox.width > 0 ? viewBox.width : 1;
+        const viewHeight = Number.isFinite(viewBox.height) && viewBox.height > 0 ? viewBox.height : 1;
+
+        let pxPerUnitX = Number.isFinite(viewWidth) && viewWidth > 0 && widthPx > 0 ? widthPx / viewWidth : Number.POSITIVE_INFINITY;
+        let pxPerUnitY = Number.isFinite(viewHeight) && viewHeight > 0 && heightPx > 0 ? heightPx / viewHeight : Number.POSITIVE_INFINITY;
+        let pxPerUnit = Math.min(pxPerUnitX, pxPerUnitY);
+
+        if (!Number.isFinite(pxPerUnit) || pxPerUnit <= 0) {
+            const fallbackWidthPx = widthPx > 0 ? widthPx : 800;
+            pxPerUnit = viewWidth > 0 ? fallbackWidthPx / viewWidth : 1;
+        }
+        if (!Number.isFinite(pxPerUnit) || pxPerUnit <= 0) {
+            pxPerUnit = 1;
+        }
+        return { pxPerUnit, unitPerPx: 1 / pxPerUnit };
+    }
+
+    function expandViewBox(viewBox, paddingUnits) {
+        if (!viewBox || !Number.isFinite(paddingUnits) || paddingUnits <= 0) {
+            return viewBox;
+        }
+        return {
+            x: viewBox.x - paddingUnits,
+            y: viewBox.y - paddingUnits,
+            width: viewBox.width + paddingUnits * 2,
+            height: viewBox.height + paddingUnits * 2
+        };
+    }
+
+    function computePreviewLabelMetrics(viewBox, scale) {
+        const pxPerUnit = Number.isFinite(scale?.pxPerUnit) && scale.pxPerUnit > 0 ? scale.pxPerUnit : 1;
+        const unitPerPx = Number.isFinite(scale?.unitPerPx) && scale.unitPerPx > 0 ? scale.unitPerPx : 1;
+        const baseUnits = Math.max(
+            Number.isFinite(viewBox?.width) ? viewBox.width : 0,
+            Number.isFinite(viewBox?.height) ? viewBox.height : 0,
+            1
+        );
+        const basePixelSize = Math.max(baseUnits * pxPerUnit, 1);
+
+        const lengthFontPx = Math.min(Math.max(basePixelSize * 0.12, 12), 26);
+        const angleFontPx = Math.min(Math.max(basePixelSize * 0.1, 11), 24);
+        const lengthOffsetPx = Math.max(Math.min(basePixelSize * 0.09, basePixelSize * 0.4), 18);
+        const angleOffsetPx = Math.max(Math.min(basePixelSize * 0.14, basePixelSize * 0.45), 22);
+        const outlineWidthPx = Math.min(Math.max(basePixelSize / 450, 0.8), 2.5);
+
+        return {
+            basePixelSize,
+            lengthFontPx,
+            angleFontPx,
+            lengthOffsetPx,
+            angleOffsetPx,
+            outlineWidthPx,
+            lengthFontUnits: lengthFontPx * unitPerPx,
+            angleFontUnits: angleFontPx * unitPerPx,
+            lengthOffsetUnits: lengthOffsetPx * unitPerPx,
+            angleOffsetUnits: angleOffsetPx * unitPerPx,
+            outlineWidthUnits: outlineWidthPx * unitPerPx
+        };
+    }
+
+    function computePreviewPaddingUnits(metrics, scale) {
+        if (!metrics || !scale || !Number.isFinite(scale.unitPerPx) || scale.unitPerPx <= 0) {
+            return 0;
+        }
+        const lengthMarginPx = metrics.lengthOffsetPx + metrics.lengthFontPx * 0.7;
+        const angleMarginPx = metrics.angleOffsetPx + metrics.angleFontPx * 0.7;
+        const paddingPx = Math.max(lengthMarginPx, angleMarginPx, 32);
+        return paddingPx * scale.unitPerPx;
+    }
+
     function getLocalStorageSafe() {
         try {
             if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
@@ -1820,13 +1897,39 @@
             return;
         }
 
-        const { viewBox, pathData, segmentScreenData = [], bendLabelData = [] } = geometry;
+        let viewBox = geometry.viewBox ? { ...geometry.viewBox } : null;
+        if (!viewBox) {
+            svg.innerHTML = '';
+            svg.removeAttribute('viewBox');
+            return;
+        }
+
+        let scale = computeSvgScale(svg, viewBox);
+        let metrics = computePreviewLabelMetrics(viewBox, scale);
+        let paddingUnits = computePreviewPaddingUnits(metrics, scale);
+        if (paddingUnits > 0) {
+            viewBox = expandViewBox(viewBox, paddingUnits);
+            scale = computeSvgScale(svg, viewBox);
+            metrics = computePreviewLabelMetrics(viewBox, scale);
+            const refinedPadding = computePreviewPaddingUnits(metrics, scale);
+            if (refinedPadding > paddingUnits) {
+                viewBox = expandViewBox(viewBox, refinedPadding - paddingUnits);
+                scale = computeSvgScale(svg, viewBox);
+                metrics = computePreviewLabelMetrics(viewBox, scale);
+                paddingUnits = refinedPadding;
+            } else {
+                paddingUnits = refinedPadding;
+            }
+        }
+
+        const { pathData, segmentScreenData = [], bendLabelData = [] } = geometry;
         svg.setAttribute('viewBox', `${viewBox.x.toFixed(2)} ${viewBox.y.toFixed(2)} ${viewBox.width.toFixed(2)} ${viewBox.height.toFixed(2)}`);
         svg.innerHTML = '';
 
         const path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('class', 'bf2d-svg-path');
-        const strokeReference = Math.max(viewBox.width, viewBox.height) || 100;
+        const originalViewBox = geometry.viewBox || viewBox;
+        const strokeReference = Math.max(originalViewBox.width, originalViewBox.height) || 100;
         const strokeWidth = Math.max(Math.min(strokeReference / 50, 6), 1.25);
         path.setAttribute('d', pathData);
         path.style.strokeWidth = `${strokeWidth.toFixed(2)}`;
@@ -1836,12 +1939,11 @@
         labelLayer.setAttribute('class', 'bf2d-preview-labels');
         svg.appendChild(labelLayer);
 
-        const baseSize = Math.max(viewBox.width, viewBox.height) || 100;
-        const lengthFontSize = Math.min(Math.max(baseSize * 0.12, 8), 20);
-        const angleFontSize = Math.min(Math.max(baseSize * 0.1, 8), 18);
-        const lengthOffset = Math.min(Math.max(baseSize * 0.08, 12), baseSize * 0.3);
-        const angleOffset = Math.min(Math.max(baseSize * 0.12, 14), baseSize * 0.35);
-        const outlineWidth = Math.max(baseSize / 400, 0.75);
+        const lengthFontSize = metrics.lengthFontUnits;
+        const angleFontSize = metrics.angleFontUnits;
+        const lengthOffset = metrics.lengthOffsetUnits;
+        const angleOffset = metrics.angleOffsetUnits;
+        const outlineWidth = Math.max(metrics.outlineWidthUnits, scale.unitPerPx * 0.75);
 
         function createLabel(text, x, y, className, fontSize) {
             if (!Number.isFinite(x) || !Number.isFinite(y)) return;
