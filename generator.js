@@ -2984,14 +2984,6 @@ function triggerPreviewUpdateDebounced() {
                                     svgContent += buildDimensionLineSvg(overhangX, dimY + INTER_ZONE_DIM_OFFSET, overhangX + overhangWidth, dimY + INTER_ZONE_DIM_OFFSET, `i=${initialOverhang}`, 0, 'dim-text-overhang', 'dim-line-default', 'center');
                                 }
 
-                                // draw standard stirrup at the start of the effective zone (end of initial overhang)
-                                if (zonesData.length > 0) {
-                                    const firstDia = zonesData[0].dia;
-                                    let strokeWidthStd = Math.max(1, Math.min(3.5, firstDia / 3));
-                                    const xStd = Math.round(PADDING_VISUAL + initialOverhang * scale);
-                                    svgContent += `<line class="stirrup" style="stroke-width:${strokeWidthStd}px;stroke:#000" x1="${xStd}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${xStd}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
-                                }
-
                                 svgContent += '<g class="stirrup-zones-group">';
                                 zonesData.forEach((zone, index) => {
                                     const zoneStart = currentPositionMm;
@@ -3068,6 +3060,14 @@ function triggerPreviewUpdateDebounced() {
                                     svgContent += `</g>`;
                                 });
                                 svgContent += '</g>';
+
+                                // draw standard stirrup at the transition between the initial overhang and the first zone
+                                if (zonesData.length > 0) {
+                                    const firstDia = zonesData[0].dia;
+                                    const strokeWidthStd = Math.max(1, Math.min(3.5, firstDia / 3));
+                                    const xStd = Math.round(PADDING_VISUAL + initialOverhang * scale);
+                                    svgContent += `<line class="stirrup" style="stroke-width:${strokeWidthStd}px;stroke:#000" x1="${xStd}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${xStd}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
+                                }
 
                                 if (showOverhangs && finalOverhang > 0) {
                                     const finalStartMm = totalLength - finalOverhang;
