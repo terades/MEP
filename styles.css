@@ -4343,6 +4343,27 @@ select.status-select.done {
     display: block;
 }
 
+.viewer3d-measure-value {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.375rem;
+    background: rgba(30, 64, 175, 0.92);
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+    display: none;
+    z-index: 12;
+}
+
+.viewer3d-measure-value.is-preview {
+    background: rgba(79, 70, 229, 0.88);
+}
+
 .preview-toolbar .btn-secondary.is-active {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
