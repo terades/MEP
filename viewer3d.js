@@ -21,11 +21,44 @@ const measurementState = {
     controlsBackup: null
 };
 let measurementLabelEl = null;
+let measurementValueEl = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let isPointerDown = false;
 let pointerMoved = false;
 const pointerDownPosition = { x: 0, y: 0 };
+
+function ensureMeasurementValueElement() {
+    if (!viewerContainer) {
+        return null;
+    }
+    if (!measurementValueEl) {
+        measurementValueEl = document.createElement('div');
+        measurementValueEl.className = 'viewer3d-measure-value';
+        measurementValueEl.style.display = 'none';
+        viewerContainer.appendChild(measurementValueEl);
+    }
+    return measurementValueEl;
+}
+
+function updateMeasurementValue(text, { isPreview = false } = {}) {
+    const element = ensureMeasurementValueElement();
+    if (!element) {
+        return;
+    }
+    element.textContent = text;
+    element.style.display = 'block';
+    element.classList.toggle('is-preview', isPreview);
+}
+
+function hideMeasurementValue() {
+    if (!measurementValueEl) {
+        return;
+    }
+    measurementValueEl.textContent = '';
+    measurementValueEl.style.display = 'none';
+    measurementValueEl.classList.remove('is-preview');
+}
 
 function init() {
     const container = document.getElementById('viewer3dContainer');
@@ -50,6 +83,7 @@ function init() {
 
     viewerContainer = container;
     ensureMeasurementLabel();
+    ensureMeasurementValueElement();
 
     if (renderer.domElement) {
         renderer.domElement.style.cursor = 'grab';
@@ -362,6 +396,8 @@ function clearMeasurement({ keepHover = false } = {}) {
         measurementLabelEl.classList.remove('is-preview');
     }
 
+    hideMeasurementValue();
+
     if (!keepHover && measurementState.hoverMarker) {
         scene?.remove(measurementState.hoverMarker);
         measurementState.hoverMarker.material?.dispose?.();
@@ -471,12 +507,14 @@ function updateMeasurementVisual(start, end, { isFinal = false } = {}) {
     line.geometry.computeBoundingSphere();
 
     const distance = start.distanceTo(end);
+    const measurementText = formatMeasurement(distance);
     const label = ensureMeasurementLabel();
     if (label) {
-        label.textContent = formatMeasurement(distance);
+        label.textContent = measurementText;
         label.classList.toggle('is-preview', !isFinal);
         label.style.display = 'block';
     }
+    updateMeasurementValue(measurementText, { isPreview: !isFinal });
     const midpoint = start.clone().add(end).multiplyScalar(0.5);
     measurementState.labelPoint = midpoint;
     updateMeasurementLabelPosition(midpoint);
@@ -612,6 +650,7 @@ function setMeasurementActive(active) {
         }
         measurementState.controlsBackup = null;
         clearMeasurement({ keepHover: false });
+        hideMeasurementValue();
     }
 
     if (renderer?.domElement) {
