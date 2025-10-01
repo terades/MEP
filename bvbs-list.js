@@ -3164,6 +3164,55 @@
 </table>`;
     }
 
+    function createPrintDetailMarkup(entry) {
+        if (!entry) {
+            return '';
+        }
+
+        const section = document.createElement('section');
+        section.className = 'bvbs-print-detail-item';
+
+        const title = document.createElement('h2');
+        title.className = 'bvbs-print-detail-title';
+        const itemId = entry?.metadata?.itemId;
+        title.textContent = itemId ? itemId : '—';
+        section.appendChild(title);
+
+        const previewWrapper = document.createElement('div');
+        previewWrapper.className = 'bvbs-print-detail-preview-wrapper';
+
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('class', 'bvbs-print-detail-preview');
+        svg.setAttribute('xmlns', SVG_NS);
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+
+        previewWrapper.appendChild(svg);
+        section.appendChild(previewWrapper);
+
+        renderEntryPreview(svg, entry);
+
+        return section.outerHTML;
+    }
+
+    function buildPrintDetailsHtml(entries) {
+        if (!Array.isArray(entries) || !entries.length) {
+            return '';
+        }
+
+        const detailMarkup = entries
+            .map(entry => createPrintDetailMarkup(entry))
+            .filter(Boolean)
+            .join('');
+
+        if (!detailMarkup) {
+            return '';
+        }
+
+        return `<section class="bvbs-print-details">${detailMarkup}</section>`;
+    }
+
     function openPrintPreviewWindow(entries, columns, options = {}) {
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -3176,6 +3225,7 @@
         const subtitleText = typeof options.subtitle === 'string' ? options.subtitle.trim() : '';
         const metaItems = Array.isArray(options.metaItems) ? options.metaItems : [];
         const tableMarkup = buildPrintTableHtml(entries, columns);
+        const detailsMarkup = buildPrintDetailsHtml(entries);
 
         const subtitleMarkup = subtitleText
             ? `<p class="bvbs-print-subtitle">${escapeHtml(subtitleText)}</p>`
@@ -3325,6 +3375,27 @@
             fill: #6b7280;
             font-size: 12px;
         }
+        .bvbs-print-details {
+            margin-top: 36px;
+        }
+        .bvbs-print-detail-item {
+            margin-bottom: 48px;
+            page-break-inside: avoid;
+        }
+        .bvbs-print-detail-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 16px;
+        }
+        .bvbs-print-detail-preview-wrapper {
+            display: flex;
+            justify-content: flex-start;
+        }
+        .bvbs-print-detail-preview {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+        }
         @media print {
             body { background: #ffffff; }
             .bvbs-print-page { padding: 0; }
@@ -3339,6 +3410,7 @@
             ${metaListMarkup}
         </header>
         ${tableMarkup}
+        ${detailsMarkup}
     </div>
     <script>
         window.addEventListener('load', function () {
