@@ -61,6 +61,8 @@
   "Pitch-Abstände": "Pitch spacing",
   "Zonenlängen": "Zone lengths",
   "Überstände": "Overhangs",
+  "Messmodus": "Measurement mode",
+  "Messmodus Hinweis": "Click two points to measure the distance. Click again to exit.",
   "(n-1) x Pitch": "(n-1) x Pitch",
   "n x Pitch": "n x Pitch",
   "Beispielkorb laden": "Load sample basket",

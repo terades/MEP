@@ -35,8 +35,22 @@ class PlanarArcCurve3 extends THREE.Curve {
         meshGroup: null,
         labelRenderer: null,
         labelRoot: null,
-        currentBounds: null
+        measurementLabelRoot: null,
+        currentBounds: null,
+        lastTubeRadius: 5,
+        measurement: {
+            active: false,
+            points: [],
+            markers: [],
+            hoverMarker: null,
+            line: null,
+            label: null,
+            controlsBackup: null
+        }
     };
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
 
     function animate() {
         if (!state.renderer || !state.scene || !state.camera) return;
@@ -92,6 +106,9 @@ class PlanarArcCurve3 extends THREE.Curve {
         state.labelRoot = new THREE.Group();
         state.scene.add(state.labelRoot);
 
+        state.measurementLabelRoot = new THREE.Group();
+        state.scene.add(state.measurementLabelRoot);
+
         window.addEventListener('resize', onResize, false);
         state.initialized = true;
         animate();
@@ -121,6 +138,7 @@ class PlanarArcCurve3 extends THREE.Curve {
             state.meshGroup = null;
         }
         clearLabels();
+        clearMeasurementObjects({ keepHoverMarker: state.measurement.active });
     }
 
     function fitCameraToBounds(box) {
@@ -150,6 +168,318 @@ class PlanarArcCurve3 extends THREE.Curve {
             }
             state.labelRoot.remove(child);
         });
+    }
+
+    function removeMeasurementLabel(label) {
+        if (!label) return;
+        if (label.element?.parentNode) {
+            label.element.parentNode.removeChild(label.element);
+        }
+        state.measurementLabelRoot?.remove(label);
+    }
+
+    function disposeObject3D(object) {
+        if (!object) return;
+        state.scene?.remove(object);
+        object.traverse?.(child => {
+            if (child !== object) {
+                disposeObject3D(child);
+            }
+        });
+        if (object.geometry?.dispose) {
+            object.geometry.dispose();
+        }
+        const material = object.material;
+        if (Array.isArray(material)) {
+            material.forEach(mat => mat?.dispose?.());
+        } else {
+            material?.dispose?.();
+        }
+    }
+
+    function clearMeasurementObjects({ keepHoverMarker = false } = {}) {
+        state.measurement.points = [];
+
+        state.measurement.markers.forEach(marker => disposeObject3D(marker));
+        state.measurement.markers = [];
+
+        if (state.measurement.line) {
+            disposeObject3D(state.measurement.line);
+            state.measurement.line = null;
+        }
+
+        if (state.measurement.label) {
+            removeMeasurementLabel(state.measurement.label);
+            state.measurement.label = null;
+        }
+
+        if (!keepHoverMarker && state.measurement.hoverMarker) {
+            disposeObject3D(state.measurement.hoverMarker);
+            state.measurement.hoverMarker = null;
+        } else if (state.measurement.hoverMarker) {
+            state.measurement.hoverMarker.visible = false;
+        }
+    }
+
+    function ensureMeasurementLine() {
+        if (!state.measurement.line) {
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+            const material = new THREE.LineBasicMaterial({
+                color: 0x1d4ed8,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.9,
+                depthTest: false,
+                depthWrite: false
+            });
+            const line = new THREE.Line(geometry, material);
+            line.visible = false;
+            line.renderOrder = 1000;
+            state.scene?.add(line);
+            state.measurement.line = line;
+        }
+        return state.measurement.line;
+    }
+
+    function ensureMeasurementLabel() {
+        if (!state.measurement.label) {
+            const label = createLabel('0 mm', 'bf3d-dim-label--measurement');
+            label.visible = false;
+            state.measurementLabelRoot?.add(label);
+            state.measurement.label = label;
+        }
+        return state.measurement.label;
+    }
+
+    function getMeasurementLabelPosition(start, end) {
+        const midpoint = start.clone().add(end).multiplyScalar(0.5);
+        const direction = end.clone().sub(start);
+        if (direction.lengthSq() === 0) {
+            return midpoint;
+        }
+        direction.normalize();
+        const up = new THREE.Vector3(0, 1, 0);
+        let side = new THREE.Vector3().crossVectors(direction, up);
+        if (side.lengthSq() < 1e-4) {
+            side = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(1, 0, 0));
+        }
+        if (side.lengthSq() > 0) {
+            side.normalize();
+        }
+        const distance = start.distanceTo(end);
+        const offsetScale = Math.min(Math.max(distance * 0.15, 30), 220);
+        midpoint.add(side.multiplyScalar(offsetScale * 0.6));
+        midpoint.add(up.clone().multiplyScalar(offsetScale * 0.4));
+        return midpoint;
+    }
+
+    function updateMeasurementVisual(start, end, { isFinal = false } = {}) {
+        if (!start || !end) {
+            return;
+        }
+        const line = ensureMeasurementLine();
+        const positionAttr = line.geometry.getAttribute('position');
+        positionAttr.setXYZ(0, start.x, start.y, start.z);
+        positionAttr.setXYZ(1, end.x, end.y, end.z);
+        positionAttr.needsUpdate = true;
+        line.visible = true;
+        line.geometry.computeBoundingSphere();
+
+        const label = ensureMeasurementLabel();
+        const distance = start.distanceTo(end);
+        label.visible = true;
+        label.element.textContent = `${formatMeasurement(distance)} mm`;
+        label.element.classList.toggle('is-preview', !isFinal);
+        label.position.copy(getMeasurementLabelPosition(start, end));
+    }
+
+    function updateHoverMarkerScale() {
+        if (!state.measurement.hoverMarker) {
+            return;
+        }
+        const radius = Math.max(state.lastTubeRadius * 0.45, 4);
+        state.measurement.hoverMarker.scale.setScalar(Math.max(radius, 0.001));
+    }
+
+    function createMeasurementMarker(position, color, radius, opacity = 0.9) {
+        const geometry = new THREE.SphereGeometry(1, 24, 24);
+        const material = new THREE.MeshBasicMaterial({
+            color,
+            transparent: opacity < 1,
+            opacity,
+            depthTest: false,
+            depthWrite: false
+        });
+        const marker = new THREE.Mesh(geometry, material);
+        marker.scale.setScalar(Math.max(radius, 0.001));
+        marker.position.copy(position);
+        marker.renderOrder = 1001;
+        state.scene?.add(marker);
+        return marker;
+    }
+
+    function updateHoverMarker(position) {
+        if (!position) {
+            return;
+        }
+        const radius = Math.max(state.lastTubeRadius * 0.45, 4);
+        if (!state.measurement.hoverMarker) {
+            state.measurement.hoverMarker = createMeasurementMarker(position, 0x2563eb, radius, 0.4);
+        } else {
+            state.measurement.hoverMarker.visible = true;
+            state.measurement.hoverMarker.position.copy(position);
+            state.measurement.hoverMarker.scale.setScalar(Math.max(radius, 0.001));
+        }
+    }
+
+    function findMeasurementPoint(event) {
+        if (!state.camera || !state.renderer) {
+            return null;
+        }
+        const rect = state.renderer.domElement.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+            return null;
+        }
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, state.camera);
+
+        if (state.meshGroup) {
+            const intersection = raycaster.intersectObject(state.meshGroup, true)[0];
+            if (intersection) {
+                return intersection.point.clone();
+            }
+        }
+
+        const target = state.controls?.target ? state.controls.target.clone() : new THREE.Vector3();
+        const normal = state.camera.getWorldDirection(new THREE.Vector3());
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, target);
+        const fallbackPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, fallbackPoint)) {
+            return fallbackPoint;
+        }
+        return null;
+    }
+
+    function handleMeasurementPointerMove(event) {
+        if (!state.measurement.active) {
+            return;
+        }
+        const point = findMeasurementPoint(event);
+        if (!point) {
+            if (state.measurement.hoverMarker) {
+                state.measurement.hoverMarker.visible = false;
+            }
+            if (state.measurement.points.length === 1) {
+                if (state.measurement.line) {
+                    state.measurement.line.visible = false;
+                }
+                if (state.measurement.label) {
+                    state.measurement.label.visible = false;
+                }
+            }
+            return;
+        }
+
+        updateHoverMarker(point);
+
+        if (state.measurement.points.length === 1) {
+            updateMeasurementVisual(state.measurement.points[0], point, { isFinal: false });
+        }
+    }
+
+    function handleMeasurementClick(event) {
+        if (!state.measurement.active) {
+            return;
+        }
+        const point = findMeasurementPoint(event);
+        if (!point) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (state.measurement.points.length >= 2) {
+            clearMeasurementObjects({ keepHoverMarker: true });
+        }
+
+        const fixedMarker = createMeasurementMarker(point, 0x1d4ed8, Math.max(state.lastTubeRadius * 0.55, 4), 0.85);
+        state.measurement.markers.push(fixedMarker);
+        state.measurement.points.push(point.clone());
+
+        updateHoverMarker(point);
+
+        if (state.measurement.points.length === 1) {
+            if (state.measurement.line) {
+                state.measurement.line.visible = false;
+            }
+            if (state.measurement.label) {
+                state.measurement.label.visible = false;
+            }
+            return;
+        }
+
+        if (state.measurement.points.length > 2) {
+            state.measurement.points = state.measurement.points.slice(-2);
+        }
+
+        updateMeasurementVisual(state.measurement.points[0], state.measurement.points[1], { isFinal: true });
+    }
+
+    function setMeasurementActive(active) {
+        const shouldActivate = !!active;
+        if (shouldActivate === state.measurement.active) {
+            if (shouldActivate) {
+                clearMeasurementObjects({ keepHoverMarker: true });
+            }
+            return state.measurement.active;
+        }
+
+        if (shouldActivate && !state.initialized) {
+            if (!ensureInit()) {
+                return false;
+            }
+        }
+
+        state.measurement.active = shouldActivate;
+
+        if (state.container) {
+            state.container.classList.toggle('is-measuring', shouldActivate);
+        }
+
+        if (shouldActivate) {
+            clearMeasurementObjects({ keepHoverMarker: false });
+            updateHoverMarkerScale();
+            if (state.controls) {
+                state.measurement.controlsBackup = {
+                    enabled: state.controls.enabled,
+                    enableRotate: state.controls.enableRotate,
+                    enablePan: state.controls.enablePan,
+                    enableZoom: state.controls.enableZoom
+                };
+                state.controls.enabled = false;
+                state.controls.enableRotate = false;
+                state.controls.enablePan = false;
+                state.controls.enableZoom = false;
+            }
+            state.renderer?.domElement.addEventListener('pointermove', handleMeasurementPointerMove);
+            state.renderer?.domElement.addEventListener('click', handleMeasurementClick);
+        } else {
+            state.renderer?.domElement.removeEventListener('pointermove', handleMeasurementPointerMove);
+            state.renderer?.domElement.removeEventListener('click', handleMeasurementClick);
+            if (state.controls && state.measurement.controlsBackup) {
+                state.controls.enabled = state.measurement.controlsBackup.enabled;
+                state.controls.enableRotate = state.measurement.controlsBackup.enableRotate;
+                state.controls.enablePan = state.measurement.controlsBackup.enablePan;
+                state.controls.enableZoom = state.measurement.controlsBackup.enableZoom;
+                state.measurement.controlsBackup = null;
+            }
+            clearMeasurementObjects({ keepHoverMarker: false });
+        }
+
+        return state.measurement.active;
     }
 
     function toVector3(point) {
@@ -349,6 +679,7 @@ class PlanarArcCurve3 extends THREE.Curve {
 
         const diameter = Math.max(1, Number(configuratorState.header?.d) || 10);
         const tubeRadius = diameter / 2;
+        state.lastTubeRadius = tubeRadius;
         const dimensionSettings = configuratorState.dimensionSettings || {};
 
         let curveInfo = null;
@@ -400,6 +731,10 @@ class PlanarArcCurve3 extends THREE.Curve {
             tubeRadius,
             bounds: expandedBounds
         });
+
+        if (state.measurement.active) {
+            updateHoverMarkerScale();
+        }
     }
 
     function init() {
@@ -411,6 +746,7 @@ class PlanarArcCurve3 extends THREE.Curve {
     window.bf3dViewer = {
         init,
         update,
-        onResize
+        onResize,
+        toggleMeasurementMode: setMeasurementActive
     };
 })();
