@@ -121,12 +121,14 @@
             elements.modal.connectionStringInput.placeholder = 'Endpoint=sb://...';
         }
         elements.modal.overlay.hidden = false;
+        elements.modal.overlay.classList.add('visible');
         elements.modal.overlay.setAttribute('aria-hidden', 'false');
         elements.modal.nameInput.focus();
     }
 
     function closeModal() {
         elements.modal.overlay.hidden = true;
+        elements.modal.overlay.classList.remove('visible');
         elements.modal.overlay.setAttribute('aria-hidden', 'true');
         state.editingConnection = null;
     }
