@@ -3019,7 +3019,10 @@ function triggerPreviewUpdateDebounced() {
                                         if (zoneEffectiveLength > 0) {
                                             svgContent += `<rect class="${zoneBgFillClass}" x="${Math.round(zoneStartScaled)}" y="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" width="${Math.round(zoneEffectiveLength * scale)}" height="${Math.round(STIRRUP_HEIGHT_VISUAL)}"/>`;
                                         }
-                                        for (let j = 1; j <= numStirrups; j++) {
+                                        for (let j = 0; j < numStirrups; j++) {
+                                            if (j > 0 && pitch <= 0) {
+                                                break;
+                                            }
                                             const stirrupPos = zoneStart + j * pitch;
                                             if (stirrupPos > zoneLimitMm + 1) {
                                                 break;
