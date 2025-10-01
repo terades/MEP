@@ -1204,6 +1204,8 @@ function createSavedOrderPreview(order) {
     zones.forEach((zone, index) => {
         const pitch = Number(zone.pitch) || 0;
         const numStirrups = Math.max(0, getEffectiveZoneNum(zone, index));
+        const includeStandardStirrup = index === 0 && numStirrups > 0;
+        const regularStirrupCount = includeStandardStirrup ? numStirrups - 1 : numStirrups;
         const zoneLength = numStirrups > 0 && pitch > 0 ? numStirrups * pitch : 0;
         if (zoneLength > 0) {
             const zoneStartX = paddingX + currentPosition * scale;
@@ -1221,8 +1223,22 @@ function createSavedOrderPreview(order) {
             rect.setAttribute('stroke-width', '0.5');
             backgroundGroup.appendChild(rect);
 
-            for (let j = 1; j <= numStirrups; j++) {
-                const stirrupPos = currentPosition + j * pitch;
+            if (includeStandardStirrup) {
+                const standardLine = document.createElementNS(SVG_NS, 'line');
+                standardLine.setAttribute('x1', zoneStartX.toFixed(2));
+                standardLine.setAttribute('x2', zoneStartX.toFixed(2));
+                standardLine.setAttribute('y1', top.toFixed(2));
+                standardLine.setAttribute('y2', bottom.toFixed(2));
+                standardLine.setAttribute('stroke', zoneColor);
+                standardLine.setAttribute('stroke-width', '1');
+                stirrupGroup.appendChild(standardLine);
+            }
+
+            for (let j = 0; j < regularStirrupCount; j++) {
+                if (pitch <= 0) {
+                    break;
+                }
+                const stirrupPos = currentPosition + (j + 1) * pitch;
                 const stirrupX = paddingX + stirrupPos * scale;
                 if (stirrupX > endX + 0.5) {
                     break;
