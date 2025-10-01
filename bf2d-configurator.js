@@ -1708,7 +1708,7 @@
 
     function computeSvgScale(svg, viewBox) {
         if (!svg || !viewBox) {
-            return { unitPerPx: 1, pxPerUnit: 1 };
+            return { unitPerPx: 1, pxPerUnit: 1, viewportWidthPx: 0, viewportHeightPx: 0 };
         }
         const rect = typeof svg.getBoundingClientRect === 'function' ? svg.getBoundingClientRect() : null;
         const widthPx = (rect?.width || svg.clientWidth || 0);
@@ -1727,7 +1727,12 @@
         if (!Number.isFinite(pxPerUnit) || pxPerUnit <= 0) {
             pxPerUnit = 1;
         }
-        return { pxPerUnit, unitPerPx: 1 / pxPerUnit };
+        return {
+            pxPerUnit,
+            unitPerPx: 1 / pxPerUnit,
+            viewportWidthPx: widthPx,
+            viewportHeightPx: heightPx
+        };
     }
 
     function expandViewBox(viewBox, paddingUnits) {
@@ -1890,6 +1895,20 @@
         group.appendChild(angleTextElement);
     }
 
+    function computeDimensionFontPx(scale) {
+        if (!scale) {
+            return 16;
+        }
+        const widthPx = Number.isFinite(scale.viewportWidthPx) ? scale.viewportWidthPx : 0;
+        const heightPx = Number.isFinite(scale.viewportHeightPx) ? scale.viewportHeightPx : 0;
+        const referencePx = Math.max(Math.min(widthPx, heightPx), 0);
+        if (referencePx <= 0) {
+            return 16;
+        }
+        const desiredPx = referencePx / 14;
+        return Math.max(14, Math.min(desiredPx, 26));
+    }
+
     function renderDimensions(svg, geometry, scale) {
         if (!geometry) return;
         const hasLengths = dimensionPreferences.showLengths && Array.isArray(geometry.legs) && geometry.legs.length > 0;
@@ -1899,8 +1918,9 @@
         }
 
         const dimensionGroup = createSvgElement('g', { class: 'bf2d-dimensions' });
-        const charWidthUnits = DIMENSION_CONFIG.approxCharWidthPx * scale.unitPerPx;
-        const fontSize = Math.max(12 * scale.unitPerPx, 6 * scale.unitPerPx);
+        const baseFontPx = computeDimensionFontPx(scale);
+        const charWidthUnits = DIMENSION_CONFIG.approxCharWidthPx * (baseFontPx / 12) * scale.unitPerPx;
+        const fontSize = baseFontPx * scale.unitPerPx;
 
         if (hasLengths) {
             geometry.legs.forEach(leg => addLengthDimension(dimensionGroup, leg, {
