@@ -347,13 +347,22 @@
             index += 1;
         }
 
-        const lineIndices = segments
-            .map((segment, idx) => (segment.type === 'line' ? idx : null))
-            .filter(idx => idx !== null);
-        if (lineIndices.length > 0) {
-            segments[lineIndices[0]].isOverhang = true;
-            const lastIndex = lineIndices[lineIndices.length - 1];
-            segments[lastIndex].isOverhang = true;
+        if (segments.length > 0) {
+            for (let i = 0; i < segments.length; i++) {
+                const segment = segments[i];
+                if (!segment || segment.type !== 'line') {
+                    break;
+                }
+                segment.isOverhang = true;
+            }
+
+            for (let i = segments.length - 1; i >= 0; i--) {
+                const segment = segments[i];
+                if (!segment || segment.type !== 'line') {
+                    break;
+                }
+                segment.isOverhang = true;
+            }
         }
 
         const totalLength = segments.reduce((sum, segment) => sum + (Number(segment.length) || 0), 0);
@@ -814,12 +823,61 @@
         const view3dBtn = document.getElementById('bf3dViewToggle3d');
         const preview2d = document.getElementById('bf3dPreview2d');
         const preview3d = document.getElementById('bf3dPreview3d');
+        const measureBtn = document.getElementById('bf3dMeasureButton');
+
+        let measurementModeActive = false;
+        const setMeasurementMode = active => {
+            const next = !!active;
+            if (!measureBtn) {
+                measurementModeActive = next;
+                if (window.bf3dViewer) {
+                    window.bf3dViewer.toggleMeasurementMode(next);
+                }
+                return;
+            }
+            if (measurementModeActive === next) {
+                if (next && window.bf3dViewer) {
+                    window.bf3dViewer.toggleMeasurementMode(true);
+                }
+                return;
+            }
+            measurementModeActive = next;
+            measureBtn.classList.toggle('is-active', next);
+            measureBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+            if (window.bf3dViewer) {
+                window.bf3dViewer.toggleMeasurementMode(next);
+            }
+        };
+
+        const disableMeasurementMode = () => {
+            if (!measurementModeActive) {
+                return;
+            }
+            setMeasurementMode(false);
+        };
+
+        if (measureBtn) {
+            measureBtn.disabled = true;
+            measureBtn.setAttribute('aria-pressed', 'false');
+            measureBtn.addEventListener('click', () => {
+                if (measureBtn.disabled) {
+                    return;
+                }
+                setMeasurementMode(!measurementModeActive);
+            });
+        }
 
         view2dBtn?.addEventListener('click', () => {
             preview2d.style.display = 'block';
             preview3d.style.display = 'none';
             view2dBtn.classList.add('is-active');
             view3dBtn.classList.remove('is-active');
+            if (measureBtn) {
+                measureBtn.disabled = true;
+                measureBtn.classList.remove('is-active');
+                measureBtn.setAttribute('aria-pressed', 'false');
+            }
+            disableMeasurementMode();
         });
 
         view3dBtn?.addEventListener('click', () => {
@@ -827,6 +885,9 @@
             preview3d.style.display = 'block';
             view3dBtn.classList.add('is-active');
             view2dBtn.classList.remove('is-active');
+            if (measureBtn) {
+                measureBtn.disabled = false;
+            }
             if (window.bf3dViewer) {
                 window.bf3dViewer.init();
                 window.bf3dViewer.update({
