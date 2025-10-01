@@ -1730,6 +1730,34 @@
         return { pxPerUnit, unitPerPx: 1 / pxPerUnit };
     }
 
+    function expandViewBox(viewBox, paddingUnits) {
+        if (!viewBox || !Number.isFinite(paddingUnits) || paddingUnits <= 0) {
+            return viewBox;
+        }
+        return {
+            x: viewBox.x - paddingUnits,
+            y: viewBox.y - paddingUnits,
+            width: viewBox.width + paddingUnits * 2,
+            height: viewBox.height + paddingUnits * 2
+        };
+    }
+
+    function computeDimensionPaddingUnits(scale) {
+        if (!scale || !Number.isFinite(scale.unitPerPx) || scale.unitPerPx <= 0) {
+            return 0;
+        }
+        const lengthPaddingPx = DIMENSION_CONFIG.lengthOffsetPx
+            + DIMENSION_CONFIG.lengthTextGapPx
+            + DIMENSION_CONFIG.lengthTextExtraGapPx
+            + 24;
+        const bendPaddingPx = DIMENSION_CONFIG.radiusInnerOffsetPx
+            + DIMENSION_CONFIG.radiusTextOffsetPx
+            + DIMENSION_CONFIG.angleTextOffsetPx
+            + 24;
+        const paddingPx = Math.max(lengthPaddingPx, bendPaddingPx, 64);
+        return paddingPx * scale.unitPerPx;
+    }
+
     function addLengthDimension(group, leg, config) {
         const length = Number(leg.length);
         if (!Number.isFinite(length) || length <= 0) return;
@@ -1942,9 +1970,9 @@
         }
     }
 
-    function renderSvgPreview(summary) {
-        const svg = document.getElementById('bf2dPreviewSvg');
-        const note = document.getElementById('bf2dPreviewNote');
+    function renderSvgPreview(summary, targetSvg) {
+        const svg = targetSvg || document.getElementById('bf2dPreviewSvg');
+        const note = targetSvg ? null : document.getElementById('bf2dPreviewNote');
         if (!svg) return;
         while (svg.firstChild) {
             svg.removeChild(svg.firstChild);
@@ -1989,7 +2017,26 @@
         }
 
         const geometry = summary.geometry;
-        const { viewBox, pathData, screenPoints } = geometry;
+        let viewBox = geometry.viewBox ? { ...geometry.viewBox } : null;
+        if (!viewBox) {
+            svg.removeAttribute('viewBox');
+            return;
+        }
+
+        let scale = computeSvgScale(svg, viewBox);
+        let paddingUnits = computeDimensionPaddingUnits(scale);
+        if (paddingUnits > 0) {
+            viewBox = expandViewBox(viewBox, paddingUnits);
+            scale = computeSvgScale(svg, viewBox);
+            const refinedPadding = computeDimensionPaddingUnits(scale);
+            if (refinedPadding > paddingUnits) {
+                viewBox = expandViewBox(viewBox, refinedPadding - paddingUnits);
+                paddingUnits = refinedPadding;
+                scale = computeSvgScale(svg, viewBox);
+            }
+        }
+
+        const { pathData, screenPoints } = geometry;
         svg.setAttribute('viewBox', `${viewBox.x.toFixed(2)} ${viewBox.y.toFixed(2)} ${viewBox.width.toFixed(2)} ${viewBox.height.toFixed(2)}`);
 
         const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -2005,7 +2052,6 @@
         path.setAttribute('d', pathData);
         svg.appendChild(path);
 
-        const scale = computeSvgScale(svg, viewBox);
         renderDimensions(svg, geometry, scale);
 
         if (geometry.intersections && geometry.intersections.length > 0) {
