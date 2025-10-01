@@ -2984,11 +2984,11 @@ function triggerPreviewUpdateDebounced() {
                                     svgContent += buildDimensionLineSvg(overhangX, dimY + INTER_ZONE_DIM_OFFSET, overhangX + overhangWidth, dimY + INTER_ZONE_DIM_OFFSET, `i=${initialOverhang}`, 0, 'dim-text-overhang', 'dim-line-default', 'center');
                                 }
 
-                                // draw standard stirrup at position 0
+                                // draw standard stirrup at the start of the effective zone (end of initial overhang)
                                 if (zonesData.length > 0) {
                                     const firstDia = zonesData[0].dia;
                                     let strokeWidthStd = Math.max(1, Math.min(3.5, firstDia / 3));
-                                    const xStd = Math.round(PADDING_VISUAL);
+                                    const xStd = Math.round(PADDING_VISUAL + initialOverhang * scale);
                                     svgContent += `<line class="stirrup" style="stroke-width:${strokeWidthStd}px;stroke:#000" x1="${xStd}" y1="${Math.round(centerY - STIRRUP_HEIGHT_VISUAL / 2)}" x2="${xStd}" y2="${Math.round(centerY + STIRRUP_HEIGHT_VISUAL / 2)}"/>`;
                                 }
 
