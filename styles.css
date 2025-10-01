@@ -4314,6 +4314,41 @@ select.status-select.done {
     height: 100% !important;
 }
 
+#viewer3dContainer.is-measuring canvas {
+    cursor: crosshair !important;
+}
+
+.viewer3d-measure-label {
+    position: absolute;
+    min-width: 48px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background: rgba(37, 99, 235, 0.92);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    pointer-events: none;
+    box-shadow: var(--shadow-sm);
+    transform: translate(-50%, -50%);
+    transition: opacity 0.15s ease;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.viewer3d-measure-label.is-preview {
+    background: rgba(99, 102, 241, 0.88);
+}
+
+#viewer3dContainer.is-measuring .viewer3d-measure-label {
+    display: block;
+}
+
+.preview-toolbar .btn-secondary.is-active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
 .bf3d-dimension-toggle-group {
     display: flex;
     flex-wrap: wrap;
