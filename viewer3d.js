@@ -253,6 +253,7 @@ function update(basketData) {
         const dia = Math.max(Number(zone?.dia) || 0, 0);
         const num = Math.max(Number(zone?.num) || 0, 0);
         const pitchMm = Math.max(Number(zone?.pitch) || 0, 0);
+        const includeStandardStirrup = index === 0 && (num > 0 || pitchMm > 0);
 
         const stirrupRadius = Math.max((dia / 2) * scale, 0.0035);
         lastMainBarRadius = Math.max(lastMainBarRadius, stirrupRadius);
@@ -283,7 +284,23 @@ function update(basketData) {
             zoneGroup.add(overlay);
         }
 
+        if (includeStandardStirrup) {
+            const standardStirrup = createStirrup(scaledWidth, scaledHeight, stirrupRadius, stirrupMaterial);
+            standardStirrup.position.z = startReference + zoneStartMm * scale;
+            standardStirrup.userData = standardStirrup.userData || {};
+            standardStirrup.userData.zoneDisplayIndex = displayIndex;
+            standardStirrup.traverse(child => {
+                if (!child) return;
+                child.userData = child.userData || {};
+                child.userData.zoneDisplayIndex = displayIndex;
+            });
+            zoneGroup.add(standardStirrup);
+        }
+
         for (let i = 0; i < num; i++) {
+            if (pitchMm <= 0) {
+                break;
+            }
             const stirrupPosMm = zoneStartMm + (i + 1) * pitchMm;
             if (stirrupPosMm > zoneLimitMm + 0.001) {
                 break;
