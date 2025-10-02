@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 const ZONE_COLORS = [0x2563eb, 0x9333ea, 0x059669, 0xf59e0b, 0xec4899, 0x0ea5e9];
 const measurementMarkerGeometry = new THREE.SphereGeometry(1, 24, 24);
 
 let scene, camera, renderer, controls;
+let textureLoader, steelAlbedo, steelRoughness, steelNormal;
 let currentBasketGroup = null;
 let shouldAutoFit = true;
 let clickableZoneGroups = [];
@@ -108,15 +110,25 @@ function init() {
     controls.update();
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdedede, 0.35);
-    scene.add(hemiLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    directionalLight.position.set(2, 5, 3);
     scene.add(directionalLight);
+
+    // Textures & Environment
+    textureLoader = new THREE.TextureLoader();
+    steelAlbedo = textureLoader.load('textures/steel_albedo.jpg');
+    steelRoughness = textureLoader.load('textures/steel_roughness.jpg');
+    steelNormal = textureLoader.load('textures/steel_normal.jpg');
+
+    new RGBELoader()
+        .setPath('textures/')
+        .load('venice_sunset_1k.hdr', function (texture) {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            scene.environment = texture;
+        });
 
     // Ground grid
     const gridHelper = new THREE.GridHelper(60, 30, 0xd0d0d0, 0xe6e6e6);
@@ -208,7 +220,14 @@ function update(basketData) {
     currentScale = scale;
     lastMainBarRadius = Math.max(mainBarRadius, 0.05);
 
-    const mainBarMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.4 });
+    const mainBarMaterial = new THREE.MeshStandardMaterial({
+        map: steelAlbedo,
+        roughnessMap: steelRoughness,
+        normalMap: steelNormal,
+        color: 0xffffff,
+        metalness: 0.9,
+        roughness: 0.6
+    });
 
     const mainBarGeometry = new THREE.CylinderGeometry(mainBarRadius, mainBarRadius, Math.max(scaledLength, 0.001), 12);
     const positions = [
@@ -267,7 +286,14 @@ function update(basketData) {
         if (isHighlighted) {
             baseColor.offsetHSL(0, 0, 0.12);
         }
-        const stirrupMaterial = new THREE.MeshStandardMaterial({ color: baseColor, metalness: 0.6, roughness: 0.45 });
+        const stirrupMaterial = new THREE.MeshStandardMaterial({
+            map: steelAlbedo,
+            roughnessMap: steelRoughness,
+            normalMap: steelNormal,
+            color: baseColor,
+            metalness: 0.9,
+            roughness: 0.6
+        });
 
         if (zoneEffectiveLengthMm > 0) {
             const overlayMaterial = new THREE.MeshBasicMaterial({

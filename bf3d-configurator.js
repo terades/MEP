@@ -821,6 +821,7 @@
         // View toggles
         const view2dBtn = document.getElementById('bf3dViewToggle2d');
         const view3dBtn = document.getElementById('bf3dViewToggle3d');
+        const animationBtn = document.getElementById('bf3dPlayAnimationBtn');
         const preview2d = document.getElementById('bf3dPreview2d');
         const preview3d = document.getElementById('bf3dPreview3d');
         const measureBtn = document.getElementById('bf3dMeasureButton');
@@ -867,6 +868,14 @@
             });
         }
 
+        if (animationBtn) {
+            animationBtn.addEventListener('click', () => {
+                if (window.bf3dViewer && typeof window.bf3dViewer.playBendingAnimation === 'function') {
+                    window.bf3dViewer.playBendingAnimation();
+                }
+            });
+        }
+
         view2dBtn?.addEventListener('click', () => {
             preview2d.style.display = 'block';
             preview3d.style.display = 'none';
@@ -877,6 +886,7 @@
                 measureBtn.classList.remove('is-active');
                 measureBtn.setAttribute('aria-pressed', 'false');
             }
+            if (animationBtn) animationBtn.disabled = true;
             disableMeasurementMode();
         });
 
@@ -885,9 +895,9 @@
             preview3d.style.display = 'block';
             view3dBtn.classList.add('is-active');
             view2dBtn.classList.remove('is-active');
-            if (measureBtn) {
-                measureBtn.disabled = false;
-            }
+            if (measureBtn) measureBtn.disabled = false;
+            if (animationBtn) animationBtn.disabled = false;
+
             if (window.bf3dViewer) {
                 window.bf3dViewer.init();
                 window.bf3dViewer.update({

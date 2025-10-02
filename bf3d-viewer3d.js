@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 class PlanarArcCurve3 extends THREE.Curve {
     constructor(center, radius, axisX, axisY, startAngle, endAngle) {
@@ -33,6 +34,8 @@ class PlanarArcCurve3 extends THREE.Curve {
         renderer: null,
         controls: null,
         meshGroup: null,
+        textureLoader: null,
+        steelMaterial: null,
         labelRenderer: null,
         labelRoot: null,
         measurementLabelRoot: null,
@@ -94,11 +97,34 @@ class PlanarArcCurve3 extends THREE.Curve {
         state.controls = new OrbitControls(state.camera, state.renderer.domElement);
         state.controls.enableDamping = true;
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+        state.controls = new OrbitControls(state.camera, state.renderer.domElement);
+        state.controls.enableDamping = true;
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.7);
         state.scene.add(ambient);
-        const keyLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        keyLight.position.set(1, 1, 1);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        keyLight.position.set(5, 10, 7);
         state.scene.add(keyLight);
+
+        state.textureLoader = new THREE.TextureLoader();
+        const steelAlbedo = state.textureLoader.load('textures/steel_albedo.jpg');
+        const steelRoughness = state.textureLoader.load('textures/steel_roughness.jpg');
+        const steelNormal = state.textureLoader.load('textures/steel_normal.jpg');
+        state.steelMaterial = new THREE.MeshStandardMaterial({
+            map: steelAlbedo,
+            roughnessMap: steelRoughness,
+            normalMap: steelNormal,
+            color: 0xffffff,
+            metalness: 0.95,
+            roughness: 0.65
+        });
+
+        new RGBELoader()
+            .setPath('textures/')
+            .load('venice_sunset_1k.hdr', function (texture) {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                state.scene.environment = texture;
+            });
 
         const grid = new THREE.GridHelper(2000, 20, 0xcccccc, 0xdddddd);
         state.scene.add(grid);
@@ -712,8 +738,7 @@ class PlanarArcCurve3 extends THREE.Curve {
         const tubularSegments = Math.min(512, Math.max(32, Math.round(subdivisions * 2)));
         const radialSegments = 24;
         const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, radialSegments, false);
-        const material = new THREE.MeshStandardMaterial({ color: 0x6c757d, metalness: 0.7, roughness: 0.5 });
-        const mesh = new THREE.Mesh(tubeGeometry, material);
+        const mesh = new THREE.Mesh(tubeGeometry, state.steelMaterial);
 
         state.meshGroup = new THREE.Group();
         state.meshGroup.add(mesh);
@@ -743,10 +768,38 @@ class PlanarArcCurve3 extends THREE.Curve {
         }
     }
 
+    function playBendingAnimation() {
+        if (!state.meshGroup || !state.initialized) return;
+
+        const mesh = state.meshGroup.children[0];
+        if (!mesh || !mesh.geometry) return;
+
+        const geometry = mesh.geometry;
+        const totalVertices = geometry.attributes.position.count;
+        geometry.setDrawRange(0, 0);
+        mesh.visible = true;
+
+        let currentVertex = 0;
+        const animationSpeed = Math.max(3, Math.ceil(totalVertices / 150)); // Adjust speed based on complexity
+
+        function animateFrame() {
+            if (currentVertex > totalVertices) {
+                geometry.setDrawRange(0, totalVertices); // Ensure it's fully drawn at the end
+                return;
+            }
+            geometry.setDrawRange(0, currentVertex);
+            currentVertex += animationSpeed;
+            requestAnimationFrame(animateFrame);
+        }
+
+        animateFrame();
+    }
+
     window.bf3dViewer = {
         init,
         update,
         onResize,
-        toggleMeasurementMode: setMeasurementActive
+        toggleMeasurementMode: setMeasurementActive,
+        playBendingAnimation
     };
 })();
