@@ -15,6 +15,23 @@ function createFormFieldIdentifier(prefix, rawValue) {
     return `${prefix}-${base}`;
 }
 
+function splitPosnrValue(value) {
+    if (typeof value !== 'string') {
+        return { base: '', suffix: null };
+    }
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+        return { base: '', suffix: null };
+    }
+    const match = trimmed.match(/^(.*?)(?:\s*\/\s*(\d+))?$/);
+    if (!match) {
+        return { base: trimmed, suffix: null };
+    }
+    const base = (match[1] || '').trim();
+    const suffix = match[2] ? Number.parseInt(match[2], 10) : null;
+    return { base, suffix: Number.isFinite(suffix) ? suffix : null };
+}
+
 function normalizeTimestamp(value) {
     if (value === null || value === undefined) {
         return null;
@@ -52,7 +69,7 @@ function loadProductionList() {
         try {
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed)) {
-                productionList = parsed.map(item => {
+                const mapped = parsed.map(item => {
                     const entry = { ...item };
                     entry.id = typeof item?.id === 'string' || Number.isFinite(item?.id)
                         ? item.id
@@ -78,6 +95,7 @@ function loadProductionList() {
                     }
                     return entry;
                 });
+                productionList = expandOrdersWithMultipleLabels(mapped);
             } else {
                 productionList = [];
             }
@@ -86,6 +104,80 @@ function loadProductionList() {
             productionList = [];
         }
     }
+}
+
+function expandOrdersWithMultipleLabels(list) {
+    if (!Array.isArray(list)) {
+        return [];
+    }
+    const expanded = [];
+    list.forEach(item => {
+        const baseItem = { ...item };
+        const posnrString = typeof baseItem.posnr === 'string'
+            ? baseItem.posnr
+            : (baseItem.posnr !== null && baseItem.posnr !== undefined ? String(baseItem.posnr) : '');
+        const parentPosnrString = typeof baseItem.parentPosnr === 'string'
+            ? baseItem.parentPosnr
+            : (baseItem.parentPosnr !== null && baseItem.parentPosnr !== undefined ? String(baseItem.parentPosnr) : '');
+        baseItem.posnr = posnrString;
+        baseItem.parentPosnr = parentPosnrString;
+        const codes = Array.isArray(baseItem.bvbsCodes) ? baseItem.bvbsCodes : [];
+        const totalLabels = Number.isFinite(baseItem.labelTotal) && baseItem.labelTotal > 0
+            ? baseItem.labelTotal
+            : (codes.length > 0 ? codes.length : 1);
+        if (codes.length <= 1) {
+            if (!Number.isFinite(baseItem.labelTotal) || baseItem.labelTotal <= 0) {
+                baseItem.labelTotal = totalLabels;
+            }
+            if (!Number.isFinite(baseItem.labelIndex) || baseItem.labelIndex <= 0) {
+                baseItem.labelIndex = 1;
+            }
+            if (typeof baseItem.parentPosnr !== 'string' || baseItem.parentPosnr.length === 0) {
+                const { base } = splitPosnrValue(baseItem.posnr || '');
+                if (base && base !== (baseItem.posnr || '').trim()) {
+                    baseItem.parentPosnr = base;
+                }
+            }
+            expanded.push(baseItem);
+            return;
+        }
+
+        const { base: derivedBase } = splitPosnrValue(baseItem.parentPosnr || baseItem.posnr || '');
+        const labelImgArray = Array.isArray(baseItem.labelImg) ? baseItem.labelImg : [baseItem.labelImg];
+        const baseId = String(baseItem.id || `${baseItem.komm || ''}${baseItem.posnr || ''}${Date.now()}`);
+        let createdCount = 0;
+        codes.forEach((code, index) => {
+            if (typeof code !== 'string' || code.trim().length === 0) {
+                return;
+            }
+            const labelNumber = index + 1;
+            const labelImage = labelImgArray[index] || labelImgArray[0] || '';
+            const newItem = {
+                ...baseItem,
+                id: `${baseId}-label-${labelNumber}`,
+                bvbsCodes: [code],
+                labelImg: labelImage,
+                labelIndex: labelNumber,
+                labelTotal: totalLabels,
+                parentPosnr: derivedBase || '',
+            };
+            if ((derivedBase || '').length > 0) {
+                newItem.posnr = `${derivedBase}/${labelNumber}`;
+            } else if (posnrString.length > 0 && !posnrString.includes(`/${labelNumber}`)) {
+                newItem.posnr = `${posnrString}/${labelNumber}`;
+            }
+            expanded.push(newItem);
+            createdCount += 1;
+        });
+        if (createdCount === 0) {
+            const fallbackItem = { ...baseItem };
+            fallbackItem.bvbsCodes = [];
+            fallbackItem.labelTotal = totalLabels;
+            fallbackItem.labelIndex = 1;
+            expanded.push(fallbackItem);
+        }
+    });
+    return expanded;
 }
 
 function persistProductionList() {
@@ -2448,6 +2540,7 @@ function openLabelPreviewModal(order = {}) {
 
     const detailEntries = [];
     const labelCount = Array.isArray(order.bvbsCodes) ? order.bvbsCodes.length : 0;
+    const totalLabels = Number.isFinite(order.labelTotal) ? order.labelTotal : labelCount;
     const durationMs = order.startTimestamp
         ? ((order.status === 'done' && order.endTimestamp) ? (order.endTimestamp - order.startTimestamp) : (Date.now() - order.startTimestamp))
         : null;
@@ -2461,7 +2554,10 @@ function openLabelPreviewModal(order = {}) {
     detailEntries.push({ labelKey: 'Freigegeben am', fallbackLabel: 'Freigegeben am', value: formatDateTime(order.releasedAt || order.startTimestamp) });
     detailEntries.push({ labelKey: 'Zuletzt aktualisiert', fallbackLabel: 'Zuletzt aktualisiert', value: formatDateTime(order.updatedAt || order.releasedAt) });
     detailEntries.push({ labelKey: 'Laufzeit', fallbackLabel: 'Laufzeit', value: durationMs !== null ? formatDuration(durationMs) : '-' });
-    detailEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: labelCount });
+    detailEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: totalLabels });
+    if (Number.isFinite(order.labelIndex) && totalLabels > 1) {
+        detailEntries.push({ labelKey: 'Label', fallbackLabel: 'Label', value: `${order.labelIndex}/${totalLabels}` });
+    }
     const noteValue = typeof order.note === 'string' && order.note.trim().length > 0
         ? order.note.trim()
         : getTranslation('Keine Bemerkung', 'Keine Bemerkung');
@@ -2828,7 +2924,11 @@ function renderProductionList() {
         labelInfoList.className = 'label-extra-info';
         const labelInfoEntries = [];
         const labelCount = Array.isArray(item.bvbsCodes) ? item.bvbsCodes.length : 0;
-        labelInfoEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: labelCount });
+        const totalLabels = Number.isFinite(item.labelTotal) ? item.labelTotal : labelCount;
+        labelInfoEntries.push({ labelKey: 'Labelanzahl', fallbackLabel: 'Labelanzahl', value: totalLabels });
+        if (Number.isFinite(item.labelIndex) && totalLabels > 1) {
+            labelInfoEntries.push({ labelKey: 'Label', fallbackLabel: 'Label', value: `${item.labelIndex}/${totalLabels}` });
+        }
         const releaseTime = item.releasedAt || item.startTime || item.startTimestamp;
         labelInfoEntries.push({ labelKey: 'Freigegeben am', fallbackLabel: 'Freigegeben am', value: formatDateTime(releaseTime) });
         if (item.updatedAt && item.updatedAt !== releaseTime) {
@@ -3768,30 +3868,97 @@ document.addEventListener('DOMContentLoaded', () => {
             showFeedback('releaseModalError', i18n.t('Bitte Startzeitpunkt angeben.'), 'warning', 3000);
             return;
         }
-        const labelElement = document.getElementById('printableLabel');
-        const canvas = await html2canvas(labelElement);
-        const imgData = canvas.toDataURL('image/png');
+
         const codes = typeof getBvbsCodes === 'function' ? getBvbsCodes() : [];
         const normalizedCodes = Array.isArray(codes)
             ? codes.filter(code => typeof code === 'string' && code.trim().length > 0)
             : [];
+        const totalLabels = normalizedCodes.length > 0 ? normalizedCodes.length : 1;
+
+        const captureLabelImage = async (element) => {
+            if (!element) {
+                return '';
+            }
+            try {
+                const canvas = await html2canvas(element);
+                return canvas.toDataURL('image/png');
+            } catch (error) {
+                console.error('Failed to capture label preview', error);
+                return '';
+            }
+        };
+
+        const primaryLabelElement = document.getElementById('printableLabel');
+        const secondaryLabelElement = document.getElementById('printableLabel2');
+        const labelElements = [];
+        if (primaryLabelElement) {
+            labelElements.push(primaryLabelElement);
+        }
+        if (normalizedCodes.length > 1 && secondaryLabelElement) {
+            labelElements.push(secondaryLabelElement);
+        }
+        const imagesNeeded = Math.max(totalLabels, labelElements.length, 1);
+        const fallbackElement = labelElements[0] || primaryLabelElement || null;
+        const labelImages = [];
+        for (let index = 0; index < imagesNeeded; index += 1) {
+            const element = labelElements[index] || fallbackElement;
+            // eslint-disable-next-line no-await-in-loop
+            labelImages[index] = await captureLabelImage(element);
+        }
+
         const timestampIso = new Date().toISOString();
         const releaseNoteInput = document.getElementById('releaseNote');
         const releaseNoteValue = typeof releaseNoteInput?.value === 'string' ? releaseNoteInput.value.trim() : '';
-        productionList.push({
-            id: Date.now(),
+        const projektValue = document.getElementById('projekt')?.value || '';
+        const kommValue = document.getElementById('KommNr')?.value || '';
+        const auftragValue = document.getElementById('auftrag')?.value || '';
+        const posnrValue = document.getElementById('posnr')?.value || '';
+        const { base: basePosnrValue } = splitPosnrValue(posnrValue);
+        const normalizedPosnrBase = basePosnrValue || posnrValue.trim();
+        const baseId = Date.now();
+        const commonData = {
             startTime,
-            projekt: document.getElementById('projekt').value,
-            komm: document.getElementById('KommNr').value,
-            auftrag: document.getElementById('auftrag').value,
-            posnr: document.getElementById('posnr').value,
+            projekt: projektValue,
+            komm: kommValue,
+            auftrag: auftragValue,
             note: releaseNoteValue,
-            labelImg: imgData,
             status: 'pending',
-            bvbsCodes: normalizedCodes,
             releasedAt: timestampIso,
             updatedAt: timestampIso
-        });
+        };
+
+        if (normalizedCodes.length <= 1) {
+            const singleOrder = {
+                ...commonData,
+                id: baseId,
+                posnr: posnrValue,
+                labelImg: labelImages[0] || '',
+                bvbsCodes: normalizedCodes,
+                labelTotal: totalLabels,
+                labelIndex: 1
+            };
+            if (normalizedPosnrBase && normalizedPosnrBase !== posnrValue.trim()) {
+                singleOrder.parentPosnr = normalizedPosnrBase;
+            }
+            productionList.push(singleOrder);
+        } else {
+            normalizedCodes.forEach((code, idx) => {
+                const labelNumber = idx + 1;
+                const labelImage = labelImages[idx] || labelImages[0] || '';
+                const posnrBase = normalizedPosnrBase || posnrValue.trim();
+                const labelPosnr = posnrBase ? `${posnrBase}/${labelNumber}` : posnrValue;
+                productionList.push({
+                    ...commonData,
+                    id: `${baseId}-${labelNumber}`,
+                    posnr: labelPosnr,
+                    labelImg: labelImage,
+                    bvbsCodes: [code],
+                    labelTotal: totalLabels,
+                    labelIndex: labelNumber,
+                    parentPosnr: posnrBase
+                });
+            });
+        }
         if (window.deleteCurrentSavedOrder) {
             window.deleteCurrentSavedOrder();
         }
