@@ -4318,6 +4318,58 @@ select.status-select.done {
     cursor: crosshair !important;
 }
 
+.viewer3d-zone-tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.5rem;
+    background: rgba(15, 23, 42, 0.92);
+    color: #f9fafb;
+    font-size: 0.78rem;
+    line-height: 1.3;
+    pointer-events: none;
+    box-shadow: var(--shadow-sm);
+    display: none;
+    z-index: 14;
+    transition: opacity 0.12s ease;
+    opacity: 0;
+}
+
+.viewer3d-zone-tooltip.is-visible {
+    opacity: 1;
+}
+
+.viewer3d-zone-tooltip__title {
+    font-weight: 600;
+    font-size: 0.82rem;
+    margin-bottom: 0.25rem;
+}
+
+.viewer3d-zone-tooltip__list {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.viewer3d-zone-tooltip__list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+.viewer3d-zone-tooltip__list dt {
+    margin: 0;
+    font-weight: 600;
+}
+
+.viewer3d-zone-tooltip__list dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
 .viewer3d-measure-label {
     position: absolute;
     min-width: 48px;
