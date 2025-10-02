@@ -2788,7 +2788,11 @@ function triggerPreviewUpdateDebounced() {
                             mainBarDiameter: parseFloat(document.getElementById('langdrahtDurchmesser').value) || 0,
                             initialOverhang: parseFloat(document.getElementById('anfangsueberstand').value) || 0,
                             finalOverhang: parseFloat(document.getElementById('endueberstand').value) || 0,
-                            zones: JSON.parse(JSON.stringify(zonesData)),
+                            zones: zonesData.map((zone, index) => ({
+                                ...zone,
+                                displayIndex: index + 1,
+                                effectiveNum: getEffectiveZoneNum(zone, index)
+                            })),
                             highlightedZoneDisplayIndex,
                             showOverhangs
                         };

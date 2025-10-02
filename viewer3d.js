@@ -11,6 +11,8 @@ let currentBasketGroup = null;
 let shouldAutoFit = true;
 let clickableZoneGroups = [];
 let viewerContainer = null;
+let zoneTooltipEl = null;
+let hoverZoneIndex = null;
 let currentScale = 0.01;
 let lastMainBarRadius = 0.05;
 const measurementState = {
@@ -29,6 +31,75 @@ const pointer = new THREE.Vector2();
 let isPointerDown = false;
 let pointerMoved = false;
 const pointerDownPosition = { x: 0, y: 0 };
+
+function ensureZoneTooltip() {
+    if (!viewerContainer) {
+        return null;
+    }
+    if (!zoneTooltipEl) {
+        zoneTooltipEl = document.createElement('div');
+        zoneTooltipEl.className = 'viewer3d-zone-tooltip';
+        zoneTooltipEl.style.display = 'none';
+        viewerContainer.appendChild(zoneTooltipEl);
+    }
+    return zoneTooltipEl;
+}
+
+function hideZoneTooltip() {
+    hoverZoneIndex = null;
+    if (!zoneTooltipEl) {
+        return;
+    }
+    zoneTooltipEl.style.display = 'none';
+    zoneTooltipEl.classList.remove('is-visible');
+    zoneTooltipEl.textContent = '';
+}
+
+function formatZoneTooltipNumber(value) {
+    if (!Number.isFinite(value)) {
+        return '–';
+    }
+    const integer = Math.round(value);
+    if (Math.abs(value - integer) < 1e-6) {
+        return String(integer);
+    }
+    return value.toFixed(1);
+}
+
+function showZoneTooltip(zoneInfo, event) {
+    if (!zoneInfo || !event) {
+        hideZoneTooltip();
+        return;
+    }
+    const container = viewerContainer;
+    if (!container) {
+        return;
+    }
+    const tooltip = ensureZoneTooltip();
+    if (!tooltip) {
+        return;
+    }
+
+    const { displayIndex, dia, effectiveNum, pitch } = zoneInfo;
+    if (hoverZoneIndex !== displayIndex) {
+        tooltip.innerHTML = `
+            <div class="viewer3d-zone-tooltip__title">Zone ${displayIndex}</div>
+            <dl class="viewer3d-zone-tooltip__list">
+                <div><dt>Ø (d)</dt><dd>${formatZoneTooltipNumber(dia)} mm</dd></div>
+                <div><dt>Anzahl (n)</dt><dd>${formatZoneTooltipNumber(effectiveNum)}</dd></div>
+                <div><dt>Abstand (p)</dt><dd>${formatZoneTooltipNumber(pitch)} mm</dd></div>
+            </dl>
+        `;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left + 14;
+    const offsetY = event.clientY - rect.top + 14;
+    tooltip.style.transform = `translate(${Math.round(offsetX)}px, ${Math.round(offsetY)}px)`;
+    tooltip.style.display = 'block';
+    tooltip.classList.add('is-visible');
+    hoverZoneIndex = displayIndex;
+}
 
 function ensureMeasurementValueElement() {
     if (!viewerContainer) {
@@ -263,7 +334,9 @@ function update(basketData) {
     let accumulatedZoneLengthMm = 0;
     const zonesArray = Array.isArray(basketData.zones) ? basketData.zones : [];
     zonesArray.forEach((zone, index) => {
-        const displayIndex = index + 1;
+        const displayIndex = Number.isFinite(Number(zone?.displayIndex))
+            ? Number(zone.displayIndex)
+            : index + 1;
         const zoneGroup = new THREE.Group();
         zoneGroup.name = `zoneGroup-${displayIndex}`;
         zoneGroup.userData = zoneGroup.userData || {};
@@ -272,6 +345,9 @@ function update(basketData) {
         const dia = Math.max(Number(zone?.dia) || 0, 0);
         const num = Math.max(Number(zone?.num) || 0, 0);
         const pitchMm = Math.max(Number(zone?.pitch) || 0, 0);
+        const effectiveNum = Number.isFinite(Number(zone?.effectiveNum))
+            ? Math.max(Number(zone.effectiveNum) || 0, 0)
+            : (index === 0 ? num + 1 : num);
         const includeStandardStirrup = index === 0 && (num > 0 || pitchMm > 0);
 
         const stirrupRadius = Math.max((dia / 2) * scale, 0.0035);
@@ -280,6 +356,18 @@ function update(basketData) {
         const zoneStartMm = initialOverhangMm + accumulatedZoneLengthMm;
         const zoneLengthMm = num > 0 && pitchMm > 0 ? num * pitchMm : 0;
         const zoneEffectiveLengthMm = Math.max(0, Math.min(zoneLengthMm, zoneLimitMm - zoneStartMm));
+
+        const zoneInfo = {
+            displayIndex,
+            dia,
+            num,
+            effectiveNum,
+            pitch: pitchMm,
+            zoneStartMm,
+            zoneLengthMm,
+            zoneEffectiveLengthMm
+        };
+        zoneGroup.userData.zoneInfo = zoneInfo;
 
         const baseColor = new THREE.Color(ZONE_COLORS[index % ZONE_COLORS.length]);
         const isHighlighted = highlightedZoneIndex === displayIndex;
@@ -307,6 +395,7 @@ function update(basketData) {
             overlay.renderOrder = -10;
             overlay.userData = overlay.userData || {};
             overlay.userData.zoneDisplayIndex = displayIndex;
+            overlay.userData.zoneInfo = zoneInfo;
             zoneGroup.add(overlay);
         }
 
@@ -315,10 +404,12 @@ function update(basketData) {
             standardStirrup.position.z = startReference + zoneStartMm * scale;
             standardStirrup.userData = standardStirrup.userData || {};
             standardStirrup.userData.zoneDisplayIndex = displayIndex;
+            standardStirrup.userData.zoneInfo = zoneInfo;
             standardStirrup.traverse(child => {
                 if (!child) return;
                 child.userData = child.userData || {};
                 child.userData.zoneDisplayIndex = displayIndex;
+                child.userData.zoneInfo = zoneInfo;
             });
             zoneGroup.add(standardStirrup);
         }
@@ -336,10 +427,12 @@ function update(basketData) {
             stirrup.position.z = startReference + stirrupPosMm * scale;
             stirrup.userData = stirrup.userData || {};
             stirrup.userData.zoneDisplayIndex = displayIndex;
+            stirrup.userData.zoneInfo = zoneInfo;
             stirrup.traverse(child => {
                 if (!child) return;
                 child.userData = child.userData || {};
                 child.userData.zoneDisplayIndex = displayIndex;
+                child.userData.zoneInfo = zoneInfo;
             });
             zoneGroup.add(stirrup);
         }
@@ -696,6 +789,8 @@ function setMeasurementActive(active) {
         hideMeasurementValue();
     }
 
+    hideZoneTooltip();
+
     if (renderer?.domElement) {
         renderer.domElement.style.cursor = next ? 'crosshair' : 'grab';
     }
@@ -781,6 +876,7 @@ function onPointerLeave() {
         if (renderer && renderer.domElement) {
             renderer.domElement.style.cursor = 'crosshair';
         }
+        hideZoneTooltip();
         return;
     }
     isPointerDown = false;
@@ -788,6 +884,7 @@ function onPointerLeave() {
     if (renderer && renderer.domElement) {
         renderer.domElement.style.cursor = 'grab';
     }
+    hideZoneTooltip();
 }
 
 function handleZonePick(event) {
@@ -813,32 +910,48 @@ function updateHoverState(event) {
         if (measurementState.labelPoint) {
             updateMeasurementLabelPosition(measurementState.labelPoint);
         }
+        hideZoneTooltip();
         return;
     }
 
     if (isPointerDown) {
         canvas.style.cursor = 'grabbing';
+        hideZoneTooltip();
         return;
     }
 
     if (!camera || !clickableZoneGroups.length) {
         canvas.style.cursor = 'grab';
+        hideZoneTooltip();
         return;
     }
 
     if (!event) {
         canvas.style.cursor = 'grab';
+        hideZoneTooltip();
         return;
     }
 
     if (!updatePointerFromEvent(event)) {
         canvas.style.cursor = 'grab';
+        hideZoneTooltip();
         return;
     }
 
     raycaster.setFromCamera(pointer, camera);
     const intersects = raycaster.intersectObjects(clickableZoneGroups, true);
-    canvas.style.cursor = intersects.length > 0 ? 'pointer' : 'grab';
+    if (intersects.length > 0) {
+        canvas.style.cursor = 'pointer';
+        const zoneInfo = findZoneInfo(intersects[0].object);
+        if (zoneInfo) {
+            showZoneTooltip(zoneInfo, event);
+        } else {
+            hideZoneTooltip();
+        }
+    } else {
+        canvas.style.cursor = 'grab';
+        hideZoneTooltip();
+    }
 }
 
 function findZoneDisplayIndex(object3D) {
@@ -846,6 +959,17 @@ function findZoneDisplayIndex(object3D) {
     while (current) {
         if (current.userData && Number.isFinite(current.userData.zoneDisplayIndex)) {
             return current.userData.zoneDisplayIndex;
+        }
+        current = current.parent;
+    }
+    return null;
+}
+
+function findZoneInfo(object3D) {
+    let current = object3D;
+    while (current) {
+        if (current.userData && current.userData.zoneInfo) {
+            return current.userData.zoneInfo;
         }
         current = current.parent;
     }
