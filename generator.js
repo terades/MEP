@@ -2815,6 +2815,8 @@ function triggerPreviewUpdateDebounced() {
                             }
 
                             const headerLabels = ["Zone", "Anzahl (n)", "Abstand (p)"];
+                            const stirrupName1 = document.getElementById('buegelname1')?.value.trim() || '';
+                            const stirrupName2 = document.getElementById('buegelname2')?.value.trim() || '';
                             const firstGroup = zonesData.slice(0, zonesPerLabel);
                             const secondGroup = zonesData.slice(zonesPerLabel);
 
@@ -2866,6 +2868,31 @@ function triggerPreviewUpdateDebounced() {
 
                                 tbody.appendChild(row);
                             });
+
+                            const stirrupRow = document.createElement('tr');
+                            const stirrupHeaderCell = document.createElement('th');
+                            const stirrupHeaderLabel = window.i18n?.t?.('Bügelname') || 'Bügelname';
+                            stirrupHeaderCell.textContent = stirrupHeaderLabel;
+                            stirrupRow.appendChild(stirrupHeaderCell);
+
+                            zonesData.forEach((zone, cellIndex) => {
+                                const cell = document.createElement('td');
+                                const isSecondLabelZone = cellIndex >= zonesPerLabel;
+                                const nameForZone = isSecondLabelZone ? stirrupName2 : stirrupName1;
+                                cell.textContent = nameForZone || '-';
+                                if (highlightedZoneDisplayIndex === cellIndex + 1) {
+                                    cell.classList.add('focused-zone-form');
+                                }
+                                if (cellIndex < zonesPerLabel) {
+                                    cell.classList.add('first-label-zone');
+                                }
+                                if (cellIndex === zonesPerLabel) {
+                                    cell.classList.add('second-label-start');
+                                }
+                                stirrupRow.appendChild(cell);
+                            });
+
+                            tbody.appendChild(stirrupRow);
                         }
 			
 			
@@ -3647,7 +3674,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         });
 
-                            document.getElementById('buegelname2')?.addEventListener('input', () => updateGenerateButtonState());
+                            const buegelname1El = document.getElementById('buegelname1');
+                            if (buegelname1El) {
+                                buegelname1El.addEventListener('input', () => {
+                                    renderZoneSummaryTable();
+                                    if (typeof updateLabelPreview === 'function') {
+                                        updateLabelPreview();
+                                    }
+                                });
+                            }
+
+                            const buegelname2El = document.getElementById('buegelname2');
+                            if (buegelname2El) {
+                                buegelname2El.addEventListener('input', () => {
+                                    updateGenerateButtonState();
+                                    renderZoneSummaryTable();
+                                    if (typeof updateLabelPreview === 'function') {
+                                        updateLabelPreview();
+                                    }
+                                });
+                            }
 			
 			
 			
